@@ -44,6 +44,13 @@ export default {
           DEFAULT: "#f8fafc",
           foreground: "#0f172a",
         },
+        adminlte: {
+          primary: "#367fa9",
+          secondary: "#222d32",
+          dark: "#1a2226",
+          active: "#1e282c",
+          text: "#4b646f",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

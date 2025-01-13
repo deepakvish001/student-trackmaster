@@ -10,36 +10,68 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const menuItems = [
     { title: 'Dashboard', icon: Home, path: '/dashboard' },
-    { title: 'Add Student', icon: UserPlus, path: '/students/add' },
-    { title: 'View Students', icon: List, path: '/students/view' },
-    { title: 'Batches', icon: BookOpen, path: '/batches' },
-    { title: 'Downloads', icon: Download, path: '/downloads' },
+    {
+      title: 'Student List',
+      icon: Users,
+      submenu: [
+        { title: 'Add Student', icon: UserPlus, path: '/students/add' },
+        { title: 'View Student', icon: List, path: '/students/view' },
+      ],
+    },
+    { title: 'Batch List', icon: BookOpen, path: '/batches' },
+    { title: 'Download', icon: Download, path: '/downloads' },
   ];
 
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <Sidebar>
-          <div className="px-4 py-4">
+        <Sidebar className="bg-[#222d32] text-white">
+          <div className="px-4 py-4 bg-[#367fa9]">
             <h1 className="text-xl font-bold">AdminLTE USER</h1>
+          </div>
+          <div className="px-4 py-3 bg-[#1a2226] text-[#4b646f]">
+            <span>User</span>
           </div>
           <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel>Menu</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   {menuItems.map((item) => (
-                    <SidebarMenuItem key={item.path}>
-                      <SidebarMenuButton asChild>
-                        <Link
-                          to={item.path}
-                          className={location.pathname === item.path ? 'bg-accent' : ''}
-                        >
+                    item.submenu ? (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton className="w-full">
                           <item.icon className="w-4 h-4" />
                           <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
+                        </SidebarMenuButton>
+                        <SidebarMenu className="ml-4">
+                          {item.submenu.map((subItem) => (
+                            <SidebarMenuItem key={subItem.path}>
+                              <SidebarMenuButton asChild>
+                                <Link
+                                  to={subItem.path}
+                                  className={location.pathname === subItem.path ? 'bg-[#1e282c]' : ''}
+                                >
+                                  <subItem.icon className="w-4 h-4" />
+                                  <span>{subItem.title}</span>
+                                </Link>
+                              </SidebarMenuButton>
+                            </SidebarMenuItem>
+                          ))}
+                        </SidebarMenu>
+                      </SidebarMenuItem>
+                    ) : (
+                      <SidebarMenuItem key={item.path}>
+                        <SidebarMenuButton asChild>
+                          <Link
+                            to={item.path}
+                            className={location.pathname === item.path ? 'bg-[#1e282c]' : ''}
+                          >
+                            <item.icon className="w-4 h-4" />
+                            <span>{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )
                   ))}
                 </SidebarMenu>
               </SidebarGroupContent>
@@ -47,12 +79,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </SidebarContent>
         </Sidebar>
 
-        <div className="flex-1">
+        <div className="flex-1 bg-[#ecf0f5]">
           <header className="bg-white border-b border-gray-200 px-4 py-4 flex justify-between items-center">
             <div className="flex items-center space-x-2">
-              <span className="text-gray-500">Home</span>
+              <Link to="/" className="text-blue-600 hover:underline">Home</Link>
               <span className="text-gray-500">/</span>
-              <span className="text-gray-900">{location.pathname.substring(1)}</span>
+              <span className="text-gray-900 capitalize">
+                {location.pathname.split('/').pop()?.replace('-', ' ')}
+              </span>
             </div>
             <Button variant="ghost" onClick={logout}>
               <LogOut className="w-4 h-4 mr-2" />
