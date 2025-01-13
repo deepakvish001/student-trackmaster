@@ -39,7 +39,7 @@ const mockStudents = [
 
 export default function ViewStudents() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedBatch, setSelectedBatch] = useState("");
+  const [selectedBatch, setSelectedBatch] = useState<string | undefined>();
 
   const filteredStudents = mockStudents.filter(
     (student) =>
@@ -72,7 +72,7 @@ export default function ViewStudents() {
                     <SelectValue placeholder="Filter by batch" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Batches</SelectItem>
+                    <SelectItem value="all">All Batches</SelectItem>
                     <SelectItem value="2617113">Batch 2617113</SelectItem>
                     <SelectItem value="2617114">Batch 2617114</SelectItem>
                   </SelectContent>
