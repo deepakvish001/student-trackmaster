@@ -6,6 +6,10 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import AddStudent from "./pages/students/AddStudent";
+import ViewStudents from "./pages/students/ViewStudents";
+import Batches from "./pages/Batches";
+import Downloads from "./pages/Downloads";
 import { useAuth } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
@@ -45,6 +49,38 @@ const AppRoutes = () => (
       element={
         <PrivateRoute>
           <Dashboard />
+        </PrivateRoute>
+      }
+    />
+    <Route
+      path="/students/add"
+      element={
+        <PrivateRoute>
+          <AddStudent />
+        </PrivateRoute>
+      }
+    />
+    <Route
+      path="/students/view"
+      element={
+        <PrivateRoute>
+          <ViewStudents />
+        </PrivateRoute>
+      }
+    />
+    <Route
+      path="/batches"
+      element={
+        <PrivateRoute>
+          <Batches />
+        </PrivateRoute>
+      }
+    />
+    <Route
+      path="/downloads"
+      element={
+        <PrivateRoute>
+          <Downloads />
         </PrivateRoute>
       }
     />

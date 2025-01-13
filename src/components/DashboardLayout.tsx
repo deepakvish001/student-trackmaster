@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
-import { Home, Users, BookOpen, Download, LogOut } from 'lucide-react';
+import { Home, Users, BookOpen, Download, LogOut, UserPlus, List } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -10,7 +10,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const menuItems = [
     { title: 'Dashboard', icon: Home, path: '/dashboard' },
-    { title: 'Students', icon: Users, path: '/students' },
+    { title: 'Add Student', icon: UserPlus, path: '/students/add' },
+    { title: 'View Students', icon: List, path: '/students/view' },
     { title: 'Batches', icon: BookOpen, path: '/batches' },
     { title: 'Downloads', icon: Download, path: '/downloads' },
   ];
