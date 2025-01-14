@@ -9,7 +9,92 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      batches: {
+        Row: {
+          admin_name: string
+          batch_name: string
+          created_at: string
+          id: number
+          is_enabled: boolean | null
+          max_students: number
+          serial_number: number
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          admin_name: string
+          batch_name: string
+          created_at?: string
+          id?: number
+          is_enabled?: boolean | null
+          max_students: number
+          serial_number: number
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          admin_name?: string
+          batch_name?: string
+          created_at?: string
+          id?: number
+          is_enabled?: boolean | null
+          max_students?: number
+          serial_number?: number
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      students: {
+        Row: {
+          batch_id: number | null
+          created_at: string
+          finger_1: string | null
+          finger_2: string | null
+          finger_3: string | null
+          finger_4: string | null
+          finger_5: string | null
+          id: number
+          is_enabled: boolean | null
+          student_name: string
+          updated_at: string
+        }
+        Insert: {
+          batch_id?: number | null
+          created_at?: string
+          finger_1?: string | null
+          finger_2?: string | null
+          finger_3?: string | null
+          finger_4?: string | null
+          finger_5?: string | null
+          id?: number
+          is_enabled?: boolean | null
+          student_name: string
+          updated_at?: string
+        }
+        Update: {
+          batch_id?: number | null
+          created_at?: string
+          finger_1?: string | null
+          finger_2?: string | null
+          finger_3?: string | null
+          finger_4?: string | null
+          finger_5?: string | null
+          id?: number
+          is_enabled?: boolean | null
+          student_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "students_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
