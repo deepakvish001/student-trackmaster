@@ -47,11 +47,47 @@ export default function AddStudent() {
     toast.success("Student added successfully!");
   }
 
-  const captureFingerprint = (index: number) => {
-    // Mock fingerprint capture - in real implementation, this would interface with a fingerprint scanner
-    const mockFingerprint = `fingerprint_data_${index}_${Date.now()}`;
-    form.setValue(`fingerprints.${index}`, mockFingerprint);
-    toast.success(`Fingerprint ${index + 1} captured successfully!`);
+  const captureFingerprint = async (index: number) => {
+    try {
+      // First check if the service is running
+      const checkResponse = await fetch('http://localhost:11100/rd/info');
+      
+      if (!checkResponse.ok) {
+        toast.error("Please ensure Mantra RD Service is running");
+        return;
+      }
+
+      // Capture fingerprint
+      const captureResponse = await fetch('http://localhost:11100/rd/capture', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          "Template": "1",
+          "Quality": "60",
+          "TimeOut": "10000",
+          "Format": "ISO"
+        })
+      });
+
+      if (!captureResponse.ok) {
+        throw new Error('Failed to capture fingerprint');
+      }
+
+      const data = await captureResponse.json();
+      
+      if (data.ErrorCode === "0") {
+        // Store the captured fingerprint data
+        form.setValue(`fingerprints.${index}`, data.Data);
+        toast.success(`Fingerprint ${index + 1} captured successfully!`);
+      } else {
+        toast.error(`Error capturing fingerprint: ${data.ErrorDescription}`);
+      }
+    } catch (error) {
+      console.error('Fingerprint capture error:', error);
+      toast.error("Failed to capture fingerprint. Please ensure device is connected and service is running.");
+    }
   };
 
   return (
