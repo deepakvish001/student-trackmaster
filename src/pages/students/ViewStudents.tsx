@@ -67,7 +67,7 @@ export default function ViewStudents() {
       return;
     }
 
-    setStudents(data);
+    setStudents(data || []);
   };
 
   const handleToggleStatus = async (student: Student) => {
@@ -153,7 +153,7 @@ export default function ViewStudents() {
               {filteredStudents.map((student) => (
                 <TableRow key={student.id}>
                   <TableCell>{student.student_name}</TableCell>
-                  <TableCell>{(student.batches as any)?.batch_name}</TableCell>
+                  <TableCell>{student.batches?.batch_name || '-'}</TableCell>
                   <TableCell>{student.finger_1 || '-'}</TableCell>
                   <TableCell>{student.finger_2 || '-'}</TableCell>
                   <TableCell>{student.finger_3 || '-'}</TableCell>

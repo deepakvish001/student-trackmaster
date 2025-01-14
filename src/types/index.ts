@@ -13,7 +13,7 @@ export interface Batch {
 export interface Student {
   id: number;
   student_name: string;
-  batch_id: number;
+  batch_id: number | null;
   finger_1: string | null;
   finger_2: string | null;
   finger_3: string | null;
@@ -22,4 +22,7 @@ export interface Student {
   is_enabled: boolean;
   created_at: string;
   updated_at: string;
+  batches?: {
+    batch_name: string;
+  };
 }

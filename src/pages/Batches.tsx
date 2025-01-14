@@ -122,9 +122,18 @@ export default function Batches() {
       return;
     }
 
+    // Ensure all required fields are present
+    const batchData = {
+      batch_name: values.batch_name,
+      serial_number: values.serial_number,
+      admin_name: values.admin_name,
+      username: values.username,
+      max_students: values.max_students,
+    };
+
     const { error } = await supabase
       .from('batches')
-      .insert([values]);
+      .insert([batchData]);
 
     if (error) {
       toast({
