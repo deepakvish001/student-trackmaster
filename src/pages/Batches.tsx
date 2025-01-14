@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   Table,
@@ -37,25 +37,24 @@ import type { Batch } from "@/types";
 
 const batchSchema = z.object({
   batch_name: z.string().min(1, "Batch name is required"),
-  serial_number: z.number().min(1, "Serial number is required"),
   admin_name: z.string().min(1, "Admin name is required"),
   username: z.string().min(1, "Username is required"),
   max_students: z.number().min(1, "Number of students is required"),
 });
 
+const ITEMS_PER_PAGE = 10;
+
 export default function Batches() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof batchSchema>>({
     resolver: zodResolver(batchSchema),
     defaultValues: {
       batch_name: "",
-      serial_number: 0,
       admin_name: "",
       username: "",
       max_students: 0,
@@ -122,10 +121,19 @@ export default function Batches() {
       return;
     }
 
-    // Ensure all required fields are present
+    // Get the next serial number
+    const { data: maxSerial } = await supabase
+      .from('batches')
+      .select('serial_number')
+      .order('serial_number', { ascending: false })
+      .limit(1)
+      .single();
+
+    const nextSerial = maxSerial ? maxSerial.serial_number + 1 : 1;
+
     const batchData = {
       batch_name: values.batch_name,
-      serial_number: values.serial_number,
+      serial_number: nextSerial,
       admin_name: values.admin_name,
       username: values.username,
       max_students: values.max_students,
@@ -200,12 +208,21 @@ export default function Batches() {
     batch.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const totalPages = Math.ceil(filteredBatches.length / ITEMS_PER_PAGE);
+  const paginatedBatches = filteredBatches.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   return (
     <DashboardLayout>
-      <Card>
+      <Card className="animate-fade-in">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Batch List</CardTitle>
-          <Button onClick={() => setIsAddDialogOpen(true)}>
+          <Button 
+            onClick={() => setIsAddDialogOpen(true)}
+            className="bg-primary hover:bg-primary/90 transition-colors"
+          >
             <UserPlus className="mr-2 h-4 w-4" />
             Add New Batch
           </Button>
@@ -218,7 +235,7 @@ export default function Batches() {
                 placeholder="Search batches..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
+                className="pl-8 hover:border-primary focus:border-primary transition-colors"
               />
             </div>
           </div>
@@ -235,9 +252,9 @@ export default function Batches() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredBatches.map((batch, index) => (
-                <TableRow key={batch.id}>
-                  <TableCell>{batch.serial_number}</TableCell>
+              {paginatedBatches.map((batch, index) => (
+                <TableRow key={batch.id} className="hover:bg-muted/50 transition-colors">
+                  <TableCell>{(currentPage - 1) * ITEMS_PER_PAGE + index + 1}</TableCell>
                   <TableCell>{batch.batch_name}</TableCell>
                   <TableCell>{batch.admin_name}</TableCell>
                   <TableCell>{batch.username}</TableCell>
@@ -255,6 +272,7 @@ export default function Batches() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleToggleStatus(batch)}
+                        className="hover:bg-primary/10 transition-colors"
                       >
                         <Power className="h-4 w-4" />
                       </Button>
@@ -262,9 +280,9 @@ export default function Batches() {
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          setSelectedBatch(batch);
                           // Implement edit functionality
                         }}
+                        className="hover:bg-primary/10 transition-colors"
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -272,6 +290,7 @@ export default function Batches() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDelete(batch)}
+                        className="hover:bg-destructive/10 transition-colors"
                       >
                         <Trash className="h-4 w-4" />
                       </Button>
@@ -281,11 +300,35 @@ export default function Batches() {
               ))}
             </TableBody>
           </Table>
+          
+          {totalPages > 1 && (
+            <div className="mt-4 flex justify-center space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="hover:bg-primary/10 transition-colors"
+              >
+                Previous
+              </Button>
+              <span className="flex items-center px-4">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="hover:bg-primary/10 transition-colors"
+              >
+                Next
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Add New Batch</DialogTitle>
             <DialogDescription>
@@ -301,23 +344,10 @@ export default function Batches() {
                   <FormItem>
                     <FormLabel>Batch Name</FormLabel>
                     <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="serial_number"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Serial Number</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
+                      <Input 
+                        placeholder="Enter Batch Name" 
                         {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value))}
+                        className="hover:border-primary focus:border-primary transition-colors"
                       />
                     </FormControl>
                     <FormMessage />
@@ -331,7 +361,11 @@ export default function Batches() {
                   <FormItem>
                     <FormLabel>Admin Name</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input 
+                        placeholder="Enter Admin Name" 
+                        {...field}
+                        className="hover:border-primary focus:border-primary transition-colors"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -344,7 +378,11 @@ export default function Batches() {
                   <FormItem>
                     <FormLabel>Username</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input 
+                        placeholder="Enter Username" 
+                        {...field}
+                        className="hover:border-primary focus:border-primary transition-colors"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -359,8 +397,10 @@ export default function Batches() {
                     <FormControl>
                       <Input
                         type="number"
+                        placeholder="Enter Max Students"
                         {...field}
                         onChange={(e) => field.onChange(parseInt(e.target.value))}
+                        className="hover:border-primary focus:border-primary transition-colors"
                       />
                     </FormControl>
                     <FormMessage />
@@ -368,7 +408,12 @@ export default function Batches() {
                 )}
               />
               <DialogFooter>
-                <Button type="submit">Create Batch</Button>
+                <Button 
+                  type="submit"
+                  className="bg-primary hover:bg-primary/90 transition-colors"
+                >
+                  Create Batch
+                </Button>
               </DialogFooter>
             </form>
           </Form>

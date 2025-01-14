@@ -11,16 +11,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
+import { FingerprintCapture } from "@/components/FingerprintCapture";
+import { BatchSelector } from "@/components/BatchSelector";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -31,6 +28,7 @@ const formSchema = z.object({
 });
 
 export default function AddStudent() {
+  const navigate = useNavigate();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -42,66 +40,40 @@ export default function AddStudent() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    toast.success("Student added successfully!");
-  }
-
-  const captureFingerprint = async (index: number) => {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      // First check if the service is running
-      const checkResponse = await fetch('http://localhost:11100/rd/info');
-      
-      if (!checkResponse.ok) {
-        toast.error("Please ensure Mantra RD Service is running");
-        return;
-      }
-
-      // Capture fingerprint
-      const captureResponse = await fetch('http://localhost:11100/rd/capture', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          "Template": "1",
-          "Quality": "60",
-          "TimeOut": "10000",
-          "Format": "ISO"
-        })
+      const { error } = await supabase.from('students').insert({
+        student_name: values.name,
+        batch_id: parseInt(values.batchId),
+        finger_1: values.fingerprints[0],
+        finger_2: values.fingerprints[1],
+        finger_3: values.fingerprints[2],
+        finger_4: values.fingerprints[3],
+        finger_5: values.fingerprints[4],
       });
 
-      if (!captureResponse.ok) {
-        throw new Error('Failed to capture fingerprint');
-      }
+      if (error) throw error;
 
-      const data = await captureResponse.json();
-      
-      if (data.ErrorCode === "0") {
-        // Store the captured fingerprint data
-        form.setValue(`fingerprints.${index}`, data.Data);
-        toast.success(`Fingerprint ${index + 1} captured successfully!`);
-      } else {
-        toast.error(`Error capturing fingerprint: ${data.ErrorDescription}`);
-      }
+      toast.success("Student added successfully!");
+      navigate("/students");
     } catch (error) {
-      console.error('Fingerprint capture error:', error);
-      toast.error("Failed to capture fingerprint. Please ensure device is connected and service is running.");
+      console.error('Error adding student:', error);
+      toast.error("Failed to add student. Please try again.");
     }
-  };
+  }
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Add Student</h2>
+          <h2 className="text-2xl font-bold text-primary">Add Student</h2>
         </div>
 
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardContent className="pt-6">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
                     name="name"
@@ -109,7 +81,11 @@ export default function AddStudent() {
                       <FormItem>
                         <FormLabel>Student Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter Student Name" {...field} />
+                          <Input 
+                            placeholder="Enter Student Name" 
+                            {...field}
+                            className="hover:border-primary focus:border-primary transition-colors"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -123,7 +99,11 @@ export default function AddStudent() {
                       <FormItem>
                         <FormLabel>Mobile</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter Mobile" {...field} />
+                          <Input 
+                            placeholder="Enter Mobile" 
+                            {...field}
+                            className="hover:border-primary focus:border-primary transition-colors"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -136,17 +116,12 @@ export default function AddStudent() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Batch</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select batch" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="2617113">2617113</SelectItem>
-                            <SelectItem value="2617114">2617114</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <BatchSelector 
+                            value={field.value} 
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -159,7 +134,11 @@ export default function AddStudent() {
                       <FormItem>
                         <FormLabel>Address</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter Address" {...field} />
+                          <Input 
+                            placeholder="Enter Address" 
+                            {...field}
+                            className="hover:border-primary focus:border-primary transition-colors"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -169,31 +148,32 @@ export default function AddStudent() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
                   {[0, 1, 2, 3, 4].map((index) => (
-                    <div key={index} className="flex flex-col items-center space-y-4">
-                      <div className="w-40 h-40 border-2 border-gray-300 rounded-lg flex items-center justify-center bg-white">
-                        {form.watch(`fingerprints.${index}`) ? (
-                          <img 
-                            src="/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png" 
-                            alt={`Fingerprint ${index + 1}`}
-                            className="w-32 h-32 object-contain"
-                          />
-                        ) : (
-                          <div className="text-gray-400">No Print</div>
-                        )}
-                      </div>
-                      <div className="text-center font-medium">Finger {index + 1}</div>
-                      <Button
-                        type="button"
-                        onClick={() => captureFingerprint(index)}
-                        className="w-full bg-blue-500 hover:bg-blue-600"
-                      >
-                        Capture
-                      </Button>
-                    </div>
+                    <FormField
+                      key={index}
+                      control={form.control}
+                      name={`fingerprints.${index}`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <FingerprintCapture
+                              index={index}
+                              value={field.value}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   ))}
                 </div>
 
-                <Button type="submit" className="w-32">Submit</Button>
+                <Button 
+                  type="submit" 
+                  className="w-32 bg-primary hover:bg-primary/90 transition-colors animate-fade-in"
+                >
+                  Submit
+                </Button>
               </form>
             </Form>
           </CardContent>
