@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import {
   Table,
   TableBody,
@@ -15,7 +15,6 @@ import {
   Search, 
   Edit2, 
   Trash2, 
-  Plus, 
   Check, 
   X,
   ChevronLeft,
@@ -98,8 +97,10 @@ export default function Batches() {
     setCurrentPage(1);
   };
 
+  // Only show enabled batches in the filtered list
   const filteredBatches = batches.filter((batch) =>
-    batch.batch_name.toLowerCase().includes(searchTerm.toLowerCase())
+    batch.batch_name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+    batch.is_enabled
   );
 
   const totalPages = Math.ceil(filteredBatches.length / itemsPerPage);
@@ -213,20 +214,23 @@ export default function Batches() {
             <TableHeader>
               <TableRow>
                 <TableHead>Batch Name</TableHead>
-                <TableHead className="hidden md:table-cell">Admin Name</TableHead>
-                <TableHead className="hidden md:table-cell">Username</TableHead>
-                <TableHead className="hidden md:table-cell">Max Students</TableHead>
+                <TableHead>Admin Name</TableHead>
+                <TableHead>Username</TableHead>
+                <TableHead>Max Students</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {currentBatches.map((batch) => (
-                <TableRow key={batch.id}>
+                <TableRow 
+                  key={batch.id}
+                  className={!batch.is_enabled ? "bg-red-50" : ""}
+                >
                   <TableCell className="font-medium">{batch.batch_name}</TableCell>
-                  <TableCell className="hidden md:table-cell">{batch.admin_name}</TableCell>
-                  <TableCell className="hidden md:table-cell">{batch.username}</TableCell>
-                  <TableCell className="hidden md:table-cell">{batch.max_students}</TableCell>
+                  <TableCell>{batch.admin_name}</TableCell>
+                  <TableCell>{batch.username}</TableCell>
+                  <TableCell>{batch.max_students}</TableCell>
                   <TableCell>
                     <Button
                       variant={batch.is_enabled ? "default" : "destructive"}

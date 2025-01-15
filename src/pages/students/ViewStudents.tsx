@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import {
   Table,
   TableBody,
@@ -212,18 +212,29 @@ export default function ViewStudents() {
             <TableHeader>
               <TableRow>
                 <TableHead>Student Name</TableHead>
-                <TableHead className="hidden md:table-cell">Batch</TableHead>
+                <TableHead>Batch</TableHead>
+                <TableHead>Finger 1</TableHead>
+                <TableHead>Finger 2</TableHead>
+                <TableHead>Finger 3</TableHead>
+                <TableHead>Finger 4</TableHead>
+                <TableHead>Finger 5</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {currentStudents.map((student) => (
-                <TableRow key={student.id}>
+                <TableRow 
+                  key={student.id}
+                  className={!student.is_enabled ? "bg-red-50" : ""}
+                >
                   <TableCell className="font-medium">{student.student_name}</TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {student.batches?.batch_name}
-                  </TableCell>
+                  <TableCell>{student.batches?.batch_name}</TableCell>
+                  <TableCell>{student.finger_1 ? "✓" : "✗"}</TableCell>
+                  <TableCell>{student.finger_2 ? "✓" : "✗"}</TableCell>
+                  <TableCell>{student.finger_3 ? "✓" : "✗"}</TableCell>
+                  <TableCell>{student.finger_4 ? "✓" : "✗"}</TableCell>
+                  <TableCell>{student.finger_5 ? "✓" : "✗"}</TableCell>
                   <TableCell>
                     <Button
                       variant={student.is_enabled ? "default" : "destructive"}
