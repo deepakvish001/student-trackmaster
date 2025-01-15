@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { useToast } from "@/components/ui/use-toast";
 import {
   Table,
   TableBody,
@@ -9,15 +10,23 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { 
+  Search, 
+  Edit2, 
+  Trash2, 
+  Plus, 
+  Check, 
+  X,
+  ChevronLeft,
+  ChevronRight
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -27,272 +36,301 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { UserPlus, Search, Edit, Trash, Power } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import type { Batch } from "@/types";
 
-const batchSchema = z.object({
-  batch_name: z.string().min(1, "Batch name is required"),
-  admin_name: z.string().min(1, "Admin name is required"),
-  username: z.string().min(1, "Username is required"),
-  max_students: z.number().min(1, "Number of students is required"),
+const formSchema = z.object({
+  batch_name: z.string().min(2, "Batch name must be at least 2 characters"),
+  admin_name: z.string().min(2, "Admin name must be at least 2 characters"),
+  username: z.string().min(2, "Username must be at least 2 characters"),
+  max_students: z.number().min(1, "Maximum students must be at least 1"),
 });
 
-const ITEMS_PER_PAGE = 10;
-
 export default function Batches() {
-  const [batches, setBatches] = useState<Batch[]>([]);
+  const [batches, setBatches] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [editingBatch, setEditingBatch] = useState(null);
+  const itemsPerPage = 10;
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof batchSchema>>({
-    resolver: zodResolver(batchSchema),
+  const form = useForm({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       batch_name: "",
       admin_name: "",
       username: "",
-      max_students: 0,
+      max_students: 1,
     },
   });
 
+  const fetchBatches = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from("batches")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setBatches(data || []);
+    } catch (error) {
+      console.error("Error fetching batches:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch batches. Please try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchBatches();
-    subscribeToChanges();
   }, []);
 
-  const subscribeToChanges = () => {
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'batches'
-        },
-        () => {
-          fetchBatches();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+  const handleSearch = (event) => {
+    setSearchTerm(event.target.value);
+    setCurrentPage(1);
   };
 
-  const fetchBatches = async () => {
-    const { data, error } = await supabase
-      .from('batches')
-      .select('*')
-      .order('created_at', { ascending: false });
+  const filteredBatches = batches.filter((batch) =>
+    batch.batch_name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-    if (error) {
+  const totalPages = Math.ceil(filteredBatches.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentBatches = filteredBatches.slice(startIndex, endIndex);
+
+  const handleEdit = async (values) => {
+    try {
+      const { error } = await supabase
+        .from("batches")
+        .update({
+          batch_name: values.batch_name,
+          admin_name: values.admin_name,
+          username: values.username,
+          max_students: values.max_students,
+        })
+        .eq("id", editingBatch.id);
+
+      if (error) throw error;
+
       toast({
-        title: "Error fetching batches",
-        description: error.message,
-        variant: "destructive",
+        title: "Success",
+        description: "Batch updated successfully",
       });
-      return;
-    }
-
-    setBatches(data);
-  };
-
-  const onSubmit = async (values: z.infer<typeof batchSchema>) => {
-    const { data: existingBatch } = await supabase
-      .from('batches')
-      .select()
-      .eq('batch_name', values.batch_name)
-      .single();
-
-    if (existingBatch) {
+      
+      fetchBatches();
+      setEditingBatch(null);
+    } catch (error) {
+      console.error("Error updating batch:", error);
       toast({
+        variant: "destructive",
         title: "Error",
-        description: "Batch name already exists",
-        variant: "destructive",
+        description: "Failed to update batch. Please try again.",
       });
-      return;
     }
-
-    // Get the next serial number
-    const { data: maxSerial } = await supabase
-      .from('batches')
-      .select('serial_number')
-      .order('serial_number', { ascending: false })
-      .limit(1)
-      .single();
-
-    const nextSerial = maxSerial ? maxSerial.serial_number + 1 : 1;
-
-    const batchData = {
-      batch_name: values.batch_name,
-      serial_number: nextSerial,
-      admin_name: values.admin_name,
-      username: values.username,
-      max_students: values.max_students,
-    };
-
-    const { error } = await supabase
-      .from('batches')
-      .insert([batchData]);
-
-    if (error) {
-      toast({
-        title: "Error creating batch",
-        description: error.message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    toast({
-      title: "Success",
-      description: "Batch created successfully",
-    });
-    setIsAddDialogOpen(false);
-    form.reset();
   };
 
-  const handleDelete = async (batch: Batch) => {
-    const { error } = await supabase
-      .from('batches')
-      .delete()
-      .eq('id', batch.id);
+  const handleDelete = async (id) => {
+    if (window.confirm("Are you sure you want to delete this batch?")) {
+      try {
+        const { error } = await supabase
+          .from("batches")
+          .delete()
+          .eq("id", id);
 
-    if (error) {
-      toast({
-        title: "Error deleting batch",
-        description: error.message,
-        variant: "destructive",
-      });
-      return;
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: "Batch deleted successfully",
+        });
+        
+        fetchBatches();
+      } catch (error) {
+        console.error("Error deleting batch:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to delete batch. Please try again.",
+        });
+      }
     }
-
-    toast({
-      title: "Success",
-      description: "Batch deleted successfully",
-    });
   };
 
-  const handleToggleStatus = async (batch: Batch) => {
-    const { error } = await supabase
-      .from('batches')
-      .update({ is_enabled: !batch.is_enabled })
-      .eq('id', batch.id);
+  const toggleStatus = async (id, currentStatus) => {
+    try {
+      const { error } = await supabase
+        .from("batches")
+        .update({ is_enabled: !currentStatus })
+        .eq("id", id);
 
-    if (error) {
+      if (error) throw error;
+
       toast({
-        title: "Error updating batch status",
-        description: error.message,
-        variant: "destructive",
+        title: "Success",
+        description: `Batch ${currentStatus ? "disabled" : "enabled"} successfully`,
       });
-      return;
+      
+      fetchBatches();
+    } catch (error) {
+      console.error("Error toggling batch status:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update batch status. Please try again.",
+      });
     }
-
-    toast({
-      title: "Success",
-      description: `Batch ${batch.is_enabled ? 'disabled' : 'enabled'} successfully`,
-    });
   };
-
-  const filteredBatches = batches.filter(batch =>
-    batch.batch_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    batch.admin_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    batch.username.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const totalPages = Math.ceil(filteredBatches.length / ITEMS_PER_PAGE);
-  const paginatedBatches = filteredBatches.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
 
   return (
     <DashboardLayout>
-      <Card className="animate-fade-in">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Batch List</CardTitle>
-          <Button 
-            onClick={() => setIsAddDialogOpen(true)}
-            className="bg-primary hover:bg-primary/90 transition-colors"
-          >
-            <UserPlus className="mr-2 h-4 w-4" />
-            Add New Batch
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4">
-            <div className="relative">
-              <Search className="absolute left-2 top-3 h-4 w-4 text-gray-500" />
+      <div className="space-y-6 p-4 md:p-6 animate-fade-in">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <h2 className="text-2xl font-bold text-primary">Batch List</h2>
+          <div className="w-full md:w-auto flex flex-col md:flex-row gap-4">
+            <div className="relative w-full md:w-64">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 placeholder="Search batches..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 hover:border-primary focus:border-primary transition-colors"
+                onChange={handleSearch}
+                className="pl-10"
               />
             </div>
           </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Sr. No</TableHead>
                 <TableHead>Batch Name</TableHead>
-                <TableHead>Admin</TableHead>
-                <TableHead>User Name</TableHead>
-                <TableHead>Students</TableHead>
+                <TableHead className="hidden md:table-cell">Admin Name</TableHead>
+                <TableHead className="hidden md:table-cell">Username</TableHead>
+                <TableHead className="hidden md:table-cell">Max Students</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedBatches.map((batch, index) => (
-                <TableRow key={batch.id} className="hover:bg-muted/50 transition-colors">
-                  <TableCell>{(currentPage - 1) * ITEMS_PER_PAGE + index + 1}</TableCell>
-                  <TableCell>{batch.batch_name}</TableCell>
-                  <TableCell>{batch.admin_name}</TableCell>
-                  <TableCell>{batch.username}</TableCell>
-                  <TableCell>{batch.max_students}</TableCell>
+              {currentBatches.map((batch) => (
+                <TableRow key={batch.id}>
+                  <TableCell className="font-medium">{batch.batch_name}</TableCell>
+                  <TableCell className="hidden md:table-cell">{batch.admin_name}</TableCell>
+                  <TableCell className="hidden md:table-cell">{batch.username}</TableCell>
+                  <TableCell className="hidden md:table-cell">{batch.max_students}</TableCell>
                   <TableCell>
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      batch.is_enabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {batch.is_enabled ? 'Active' : 'Inactive'}
-                    </span>
+                    <Button
+                      variant={batch.is_enabled ? "default" : "destructive"}
+                      size="sm"
+                      onClick={() => toggleStatus(batch.id, batch.is_enabled)}
+                    >
+                      {batch.is_enabled ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                    </Button>
                   </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setEditingBatch(batch);
+                              form.reset({
+                                batch_name: batch.batch_name,
+                                admin_name: batch.admin_name,
+                                username: batch.username,
+                                max_students: batch.max_students,
+                              });
+                            }}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Edit Batch</DialogTitle>
+                          </DialogHeader>
+                          <Form {...form}>
+                            <form onSubmit={form.handleSubmit(handleEdit)} className="space-y-4">
+                              <FormField
+                                control={form.control}
+                                name="batch_name"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Batch Name</FormLabel>
+                                    <FormControl>
+                                      <Input {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name="admin_name"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Admin Name</FormLabel>
+                                    <FormControl>
+                                      <Input {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name="username"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Username</FormLabel>
+                                    <FormControl>
+                                      <Input {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name="max_students"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Max Students</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        {...field}
+                                        onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <Button type="submit" className="w-full">
+                                Save Changes
+                              </Button>
+                            </form>
+                          </Form>
+                        </DialogContent>
+                      </Dialog>
                       <Button
-                        variant="ghost"
+                        variant="destructive"
                         size="sm"
-                        onClick={() => handleToggleStatus(batch)}
-                        className="hover:bg-primary/10 transition-colors"
+                        onClick={() => handleDelete(batch.id)}
                       >
-                        <Power className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          // Implement edit functionality
-                        }}
-                        className="hover:bg-primary/10 transition-colors"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(batch)}
-                        className="hover:bg-destructive/10 transition-colors"
-                      >
-                        <Trash className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </TableCell>
@@ -300,125 +338,31 @@ export default function Batches() {
               ))}
             </TableBody>
           </Table>
-          
-          {totalPages > 1 && (
-            <div className="mt-4 flex justify-center space-x-2">
-              <Button
-                variant="outline"
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="hover:bg-primary/10 transition-colors"
-              >
-                Previous
-              </Button>
-              <span className="flex items-center px-4">
-                Page {currentPage} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-                className="hover:bg-primary/10 transition-colors"
-              >
-                Next
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
 
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Add New Batch</DialogTitle>
-            <DialogDescription>
-              Fill in the details to create a new batch
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="batch_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Batch Name</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter Batch Name" 
-                        {...field}
-                        className="hover:border-primary focus:border-primary transition-colors"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="admin_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Admin Name</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter Admin Name" 
-                        {...field}
-                        className="hover:border-primary focus:border-primary transition-colors"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Username</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter Username" 
-                        {...field}
-                        className="hover:border-primary focus:border-primary transition-colors"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="max_students"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Number of Students</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="Enter Max Students"
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value))}
-                        className="hover:border-primary focus:border-primary transition-colors"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button 
-                  type="submit"
-                  className="bg-primary hover:bg-primary/90 transition-colors"
-                >
-                  Create Batch
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+        {/* Pagination */}
+        <div className="flex justify-center items-center space-x-2 mt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
     </DashboardLayout>
   );
 }
