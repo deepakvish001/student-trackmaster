@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Fingerprint } from "lucide-react";
 import { toast } from "sonner";
@@ -11,18 +11,45 @@ interface FingerprintCaptureProps {
 
 export function FingerprintCapture({ index, value, onChange }: FingerprintCaptureProps) {
   const [isCapturing, setIsCapturing] = useState(false);
+  const [serviceStatus, setServiceStatus] = useState<'checking' | 'running' | 'not-running'>('checking');
+
+  // Check service status on component mount
+  useEffect(() => {
+    checkServiceStatus();
+  }, []);
+
+  const checkServiceStatus = async () => {
+    try {
+      const response = await fetch('http://localhost:11100/rd/info');
+      if (response.ok) {
+        setServiceStatus('running');
+        return true;
+      } else {
+        setServiceStatus('not-running');
+        return false;
+      }
+    } catch (error) {
+      console.error('Service check error:', error);
+      setServiceStatus('not-running');
+      return false;
+    }
+  };
 
   const captureFingerprint = async () => {
     try {
       setIsCapturing(true);
-      // First check if the service is running
-      const checkResponse = await fetch('http://localhost:11100/rd/info');
       
-      if (!checkResponse.ok) {
-        toast.error("Please ensure Mantra RD Service is running");
+      // First check if the service is running
+      const isServiceRunning = await checkServiceStatus();
+      
+      if (!isServiceRunning) {
+        toast.error("Please ensure Mantra RD Service is running on port 11100");
+        console.log("Service Status Check Failed - Service not running on port 11100");
         return;
       }
 
+      console.log("Attempting to capture fingerprint...");
+      
       // Capture fingerprint
       const captureResponse = await fetch('http://localhost:11100/rd/capture', {
         method: 'POST',
@@ -42,12 +69,14 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
       }
 
       const data = await captureResponse.json();
+      console.log("Capture Response:", data);
       
       if (data.ErrorCode === "0") {
         onChange(data.Data);
         toast.success(`Fingerprint ${index + 1} captured successfully!`);
       } else {
         toast.error(`Error capturing fingerprint: ${data.ErrorDescription}`);
+        console.error("Capture Error:", data.ErrorDescription);
       }
     } catch (error) {
       console.error('Fingerprint capture error:', error);
@@ -71,10 +100,17 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
         )}
       </div>
       <div className="text-center font-medium">Finger {index + 1}</div>
+      <div className="text-sm text-gray-500">
+        Service Status: {
+          serviceStatus === 'checking' ? 'Checking...' :
+          serviceStatus === 'running' ? 'Running' :
+          'Not Running'
+        }
+      </div>
       <Button
         type="button"
         onClick={captureFingerprint}
-        disabled={isCapturing}
+        disabled={isCapturing || serviceStatus === 'not-running'}
         className="w-full bg-primary hover:bg-primary/90 transition-colors"
       >
         <Fingerprint className="mr-2 h-4 w-4" />
