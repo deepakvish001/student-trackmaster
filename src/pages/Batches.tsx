@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ import { BatchForm } from "@/components/batches/BatchForm";
 import { BatchSearch } from "@/components/batches/BatchSearch";
 import { BatchPagination } from "@/components/batches/BatchPagination";
 import { Batch, BatchFormData } from "@/types/batch";
+import { useAuth } from "@/contexts/AuthContext";
 
 const formSchema = z.object({
   batch_name: z.string().min(2, "Batch name must be at least 2 characters"),
@@ -39,6 +41,8 @@ const formSchema = z.object({
 });
 
 export default function Batches() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [batches, setBatches] = useState<Batch[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -61,6 +65,14 @@ export default function Batches() {
     },
   });
 
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    fetchBatches();
+  }, [user, navigate]);
+
   const fetchBatches = async () => {
     try {
       setIsLoading(true);
@@ -69,7 +81,15 @@ export default function Batches() {
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching batches:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to fetch batches. Please try again.",
+        });
+        return;
+      }
       setBatches(data || []);
     } catch (error) {
       console.error("Error fetching batches:", error);
@@ -84,8 +104,6 @@ export default function Batches() {
   };
 
   useEffect(() => {
-    fetchBatches();
-
     // Subscribe to real-time updates
     const channel = supabase
       .channel('schema-db-changes')
@@ -122,6 +140,15 @@ export default function Batches() {
   const currentBatches = filteredBatches.slice(startIndex, endIndex);
 
   const handleSubmit = async (values: BatchFormData) => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "You must be logged in to perform this action.",
+      });
+      return;
+    }
+
     try {
       if (editingBatch) {
         const { error } = await supabase
@@ -161,6 +188,15 @@ export default function Batches() {
   };
 
   const handleStatusChange = async (batch: Batch) => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "You must be logged in to perform this action.",
+      });
+      return;
+    }
+
     if (batch.is_enabled) {
       setBatchToDisable(batch);
       setShowDisableAlert(true);
@@ -170,6 +206,8 @@ export default function Batches() {
   };
 
   const toggleStatus = async (id: number, currentStatus: boolean) => {
+    if (!user) return;
+
     try {
       const { error } = await supabase
         .from("batches")
