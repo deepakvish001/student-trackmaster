@@ -18,7 +18,8 @@ import {
   Check, 
   X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  AlertOctagon
 } from "lucide-react";
 import {
   Dialog,
@@ -27,6 +28,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Form,
   FormControl,
@@ -55,6 +66,8 @@ export default function Batches() {
   const [isLoading, setIsLoading] = useState(true);
   const [editingBatch, setEditingBatch] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [batchToDisable, setBatchToDisable] = useState(null);
+  const [showDisableAlert, setShowDisableAlert] = useState(false);
   const itemsPerPage = 10;
   const { toast } = useToast();
 
@@ -162,6 +175,15 @@ export default function Batches() {
     }
   };
 
+  const handleStatusChange = async (batch) => {
+    if (batch.is_enabled) {
+      setBatchToDisable(batch);
+      setShowDisableAlert(true);
+    } else {
+      await toggleStatus(batch.id, batch.is_enabled);
+    }
+  };
+
   const toggleStatus = async (id, currentStatus) => {
     try {
       const { error } = await supabase
@@ -177,6 +199,8 @@ export default function Batches() {
       });
       
       fetchBatches();
+      setShowDisableAlert(false);
+      setBatchToDisable(null);
     } catch (error) {
       console.error("Error toggling batch status:", error);
       toast({
@@ -337,9 +361,16 @@ export default function Batches() {
                     <Button
                       variant={batch.is_enabled ? "default" : "destructive"}
                       size="sm"
-                      onClick={() => toggleStatus(batch.id, batch.is_enabled)}
+                      onClick={() => handleStatusChange(batch)}
+                      className={`transition-colors ${
+                        batch.is_enabled ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"
+                      }`}
                     >
-                      {batch.is_enabled ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                      {batch.is_enabled ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        <X className="h-4 w-4" />
+                      )}
                     </Button>
                   </TableCell>
                   <TableCell>
@@ -369,7 +400,6 @@ export default function Batches() {
           </Table>
         </div>
 
-        {/* Pagination */}
         <div className="flex justify-center items-center space-x-2 mt-4">
           <Button
             variant="outline"
@@ -391,6 +421,36 @@ export default function Batches() {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+
+        <AlertDialog open={showDisableAlert} onOpenChange={setShowDisableAlert}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                <div className="flex items-center gap-2">
+                  <AlertOctagon className="h-5 w-5 text-red-500" />
+                  Disable Batch
+                </div>
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to disable this batch? This action can be reversed later.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => {
+                setShowDisableAlert(false);
+                setBatchToDisable(null);
+              }}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => batchToDisable && toggleStatus(batchToDisable.id, batchToDisable.is_enabled)}
+                className="bg-red-500 hover:bg-red-600"
+              >
+                Disable
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );
