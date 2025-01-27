@@ -1,26 +1,8 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { 
-  Search, 
-  Plus,
-  Edit2, 
-  Check, 
-  X,
-  ChevronLeft,
-  ChevronRight,
-  AlertOctagon
-} from "lucide-react";
+import { Plus, AlertOctagon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -38,18 +20,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { BatchTable } from "@/components/batches/BatchTable";
+import { BatchForm } from "@/components/batches/BatchForm";
+import { BatchSearch } from "@/components/batches/BatchSearch";
+import { BatchPagination } from "@/components/batches/BatchPagination";
+import { Batch, BatchFormData } from "@/types/batch";
 
 const formSchema = z.object({
   batch_name: z.string().min(2, "Batch name must be at least 2 characters"),
@@ -60,18 +39,18 @@ const formSchema = z.object({
 });
 
 export default function Batches() {
-  const [batches, setBatches] = useState([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
-  const [editingBatch, setEditingBatch] = useState(null);
+  const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [batchToDisable, setBatchToDisable] = useState(null);
+  const [batchToDisable, setBatchToDisable] = useState<Batch | null>(null);
   const [showDisableAlert, setShowDisableAlert] = useState(false);
   const itemsPerPage = 10;
   const { toast } = useToast();
 
-  const form = useForm({
+  const form = useForm<BatchFormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       batch_name: "",
@@ -108,7 +87,7 @@ export default function Batches() {
     fetchBatches();
   }, []);
 
-  const handleSearch = (event) => {
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(event.target.value);
     setCurrentPage(1);
   };
@@ -122,18 +101,12 @@ export default function Batches() {
   const endIndex = startIndex + itemsPerPage;
   const currentBatches = filteredBatches.slice(startIndex, endIndex);
 
-  const handleSubmit = async (values) => {
+  const handleSubmit = async (values: BatchFormData) => {
     try {
       if (editingBatch) {
         const { error } = await supabase
           .from("batches")
-          .update({
-            batch_name: values.batch_name,
-            serial_number: values.serial_number,
-            admin_name: values.admin_name,
-            username: values.username,
-            max_students: values.max_students,
-          })
+          .update(values)
           .eq("id", editingBatch.id);
 
         if (error) throw error;
@@ -143,15 +116,7 @@ export default function Batches() {
           description: "Batch updated successfully",
         });
       } else {
-        const { error } = await supabase
-          .from("batches")
-          .insert([{
-            batch_name: values.batch_name,
-            serial_number: values.serial_number,
-            admin_name: values.admin_name,
-            username: values.username,
-            max_students: values.max_students,
-          }]);
+        const { error } = await supabase.from("batches").insert([values]);
 
         if (error) throw error;
 
@@ -175,7 +140,7 @@ export default function Batches() {
     }
   };
 
-  const handleStatusChange = async (batch) => {
+  const handleStatusChange = async (batch: Batch) => {
     if (batch.is_enabled) {
       setBatchToDisable(batch);
       setShowDisableAlert(true);
@@ -184,7 +149,7 @@ export default function Batches() {
     }
   };
 
-  const toggleStatus = async (id, currentStatus) => {
+  const toggleStatus = async (id: number, currentStatus: boolean) => {
     try {
       const { error } = await supabase
         .from("batches")
@@ -217,15 +182,7 @@ export default function Batches() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <h2 className="text-2xl font-bold text-primary">Batch List</h2>
           <div className="w-full md:w-auto flex flex-col md:flex-row gap-4">
-            <div className="relative w-full md:w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search batches..."
-                value={searchTerm}
-                onChange={handleSearch}
-                className="pl-10"
-              />
-            </div>
+            <BatchSearch searchTerm={searchTerm} onSearch={handleSearch} />
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button
@@ -248,179 +205,39 @@ export default function Batches() {
                 <DialogHeader>
                   <DialogTitle>{editingBatch ? "Edit" : "Add"} Batch</DialogTitle>
                 </DialogHeader>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="serial_number"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Serial Number</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value))}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="batch_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Batch Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="admin_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Admin Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="username"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Username</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="max_students"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Max Students</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value))}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button type="submit" className="w-full">
-                      {editingBatch ? "Save Changes" : "Create Batch"}
-                    </Button>
-                  </form>
-                </Form>
+                <BatchForm 
+                  form={form} 
+                  onSubmit={handleSubmit} 
+                  isEditing={!!editingBatch} 
+                />
               </DialogContent>
             </Dialog>
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Sr. No.</TableHead>
-                <TableHead>Batch Name</TableHead>
-                <TableHead>Admin Name</TableHead>
-                <TableHead>Username</TableHead>
-                <TableHead>Max Students</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentBatches.map((batch) => (
-                <TableRow 
-                  key={batch.id}
-                  className={!batch.is_enabled ? "bg-red-50" : ""}
-                >
-                  <TableCell>{batch.serial_number}</TableCell>
-                  <TableCell className="font-medium">{batch.batch_name}</TableCell>
-                  <TableCell>{batch.admin_name}</TableCell>
-                  <TableCell>{batch.username}</TableCell>
-                  <TableCell>{batch.max_students}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant={batch.is_enabled ? "default" : "destructive"}
-                      size="sm"
-                      onClick={() => handleStatusChange(batch)}
-                      className={`transition-colors ${
-                        batch.is_enabled ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"
-                      }`}
-                    >
-                      {batch.is_enabled ? (
-                        <Check className="h-4 w-4" />
-                      ) : (
-                        <X className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setEditingBatch(batch);
-                          form.reset({
-                            batch_name: batch.batch_name,
-                            serial_number: batch.serial_number,
-                            admin_name: batch.admin_name,
-                            username: batch.username,
-                            max_students: batch.max_students,
-                          });
-                          setIsDialogOpen(true);
-                        }}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <BatchTable
+            currentBatches={currentBatches}
+            onEdit={(batch) => {
+              setEditingBatch(batch);
+              form.reset({
+                batch_name: batch.batch_name,
+                serial_number: batch.serial_number,
+                admin_name: batch.admin_name,
+                username: batch.username,
+                max_students: batch.max_students,
+              });
+              setIsDialogOpen(true);
+            }}
+            onStatusChange={handleStatusChange}
+          />
         </div>
 
-        <div className="flex justify-center items-center space-x-2 mt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm">
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+        <BatchPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
 
         <AlertDialog open={showDisableAlert} onOpenChange={setShowDisableAlert}>
           <AlertDialogContent>
