@@ -1,7 +1,8 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Edit2, Check, X } from "lucide-react";
+import { Edit2 } from "lucide-react";
 import { BatchTableProps } from "@/types/batch";
+import { BatchStatusButton } from "./BatchStatusButton";
 
 export const BatchTable = ({ 
   currentBatches, 
@@ -33,20 +34,10 @@ export const BatchTable = ({
             <TableCell>{batch.username}</TableCell>
             <TableCell>{batch.max_students}</TableCell>
             <TableCell>
-              <Button
-                variant={batch.is_enabled ? "default" : "destructive"}
-                size="sm"
+              <BatchStatusButton
+                isEnabled={batch.is_enabled}
                 onClick={() => onStatusChange(batch)}
-                className={`transition-colors ${
-                  batch.is_enabled ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"
-                }`}
-              >
-                {batch.is_enabled ? (
-                  <Check className="h-4 w-4" />
-                ) : (
-                  <X className="h-4 w-4" />
-                )}
-              </Button>
+              />
             </TableCell>
             <TableCell>
               <div className="flex space-x-2">

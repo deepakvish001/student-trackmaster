@@ -9,6 +9,8 @@ export interface Batch {
   username: string;
   max_students: number;
   is_enabled: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface BatchFormData {
