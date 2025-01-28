@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, BookOpen, AlertOctagon } from 'lucide-react';
+import { Users, BookOpen, AlertOctagon, UserCheck, UserX, Calendar } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Link } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,9 @@ export default function Dashboard() {
   const [totalBatches, setTotalBatches] = useState(0);
   const [totalStudents, setTotalStudents] = useState(0);
   const [activeStudents, setActiveStudents] = useState(0);
+  const [inactiveStudents, setInactiveStudents] = useState(0);
+  const [recentBatches, setRecentBatches] = useState(0);
+  const [batchesAtCapacity, setBatchesAtCapacity] = useState(0);
 
   useEffect(() => {
     fetchStats();
@@ -74,6 +77,40 @@ export default function Dashboard() {
       .eq('is_enabled', true);
     
     setActiveStudents(activeStudentsData?.length || 0);
+
+    // Calculate inactive students
+    setInactiveStudents(totalStudents - activeStudents);
+
+    // Fetch recent batches (created in the last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const { data: recentBatchesData } = await supabase
+      .from('batches')
+      .select('id', { count: 'exact' })
+      .gte('created_at', thirtyDaysAgo.toISOString());
+
+    setRecentBatches(recentBatchesData?.length || 0);
+
+    // Fetch batches at capacity
+    const { data: batchesAtCapacityData } = await supabase
+      .from('batches')
+      .select('id, max_students');
+
+    if (batchesAtCapacityData) {
+      const promises = batchesAtCapacityData.map(async (batch) => {
+        const { data: studentsInBatch } = await supabase
+          .from('students')
+          .select('id', { count: 'exact' })
+          .eq('batch_id', batch.id);
+        
+        return studentsInBatch?.length >= batch.max_students;
+      });
+
+      const results = await Promise.all(promises);
+      const atCapacityCount = results.filter(Boolean).length;
+      setBatchesAtCapacity(atCapacityCount);
+    }
   };
 
   const stats = [
@@ -88,10 +125,18 @@ export default function Dashboard() {
     {
       title: 'Active Students',
       value: activeStudents.toString(),
-      icon: AlertOctagon,
+      icon: UserCheck,
       color: 'bg-[#00c0ef]',
       link: '/students/view',
       description: 'Currently active students'
+    },
+    {
+      title: 'Inactive Students',
+      value: inactiveStudents.toString(),
+      icon: UserX,
+      color: 'bg-[#f56954]',
+      link: '/students/view',
+      description: 'Currently inactive students'
     },
     {
       title: 'Total Batches',
@@ -101,11 +146,27 @@ export default function Dashboard() {
       link: '/batches',
       description: 'Total number of batches'
     },
+    {
+      title: 'Recent Batches',
+      value: recentBatches.toString(),
+      icon: Calendar,
+      color: 'bg-[#605ca8]',
+      link: '/batches',
+      description: 'Batches created in last 30 days'
+    },
+    {
+      title: 'Full Batches',
+      value: batchesAtCapacity.toString(),
+      icon: AlertOctagon,
+      color: 'bg-[#d81b60]',
+      link: '/batches',
+      description: 'Batches at maximum capacity'
+    }
   ];
 
   return (
     <DashboardLayout>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
           <Card key={stat.title} className={`border-none ${stat.color} text-white hover:opacity-90 transition-opacity`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
