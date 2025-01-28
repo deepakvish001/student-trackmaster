@@ -12,24 +12,31 @@ interface FingerprintCaptureProps {
 export function FingerprintCapture({ index, value, onChange }: FingerprintCaptureProps) {
   const [isCapturing, setIsCapturing] = useState(false);
   const [serviceStatus, setServiceStatus] = useState<'checking' | 'running' | 'not-running'>('checking');
+  const [deviceInfo, setDeviceInfo] = useState<any>(null);
 
-  // Check service status on component mount
+  // Check service and device status on component mount
   useEffect(() => {
-    checkServiceStatus();
+    checkServiceAndDevice();
+    // Poll service status every 5 seconds
+    const interval = setInterval(checkServiceAndDevice, 5000);
+    return () => clearInterval(interval);
   }, []);
 
-  const checkServiceStatus = async () => {
+  const checkServiceAndDevice = async () => {
     try {
       const response = await fetch('http://localhost:11100/rd/info');
-      if (response.ok) {
-        setServiceStatus('running');
-        return true;
-      } else {
+      if (!response.ok) {
         setServiceStatus('not-running');
         return false;
       }
+      
+      const info = await response.json();
+      setDeviceInfo(info);
+      setServiceStatus('running');
+      console.log("Device Info:", info);
+      return true;
     } catch (error) {
-      console.error('Service check error:', error);
+      console.error('Service/Device check error:', error);
       setServiceStatus('not-running');
       return false;
     }
@@ -39,18 +46,18 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
     try {
       setIsCapturing(true);
       
-      // First check if the service is running
-      const isServiceRunning = await checkServiceStatus();
+      // First check if the service is running and device is connected
+      const isReady = await checkServiceAndDevice();
       
-      if (!isServiceRunning) {
-        toast.error("Please ensure Mantra RD Service is running on port 11100");
-        console.log("Service Status Check Failed - Service not running on port 11100");
+      if (!isReady) {
+        toast.error("Please ensure Mantra RD Service is running and device is connected");
+        console.log("Service/Device Status Check Failed");
         return;
       }
 
       console.log("Attempting to capture fingerprint...");
       
-      // Capture fingerprint
+      // Capture fingerprint with high quality settings
       const captureResponse = await fetch('http://localhost:11100/rd/capture', {
         method: 'POST',
         headers: {
@@ -58,9 +65,11 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
         },
         body: JSON.stringify({
           "Template": "1",
-          "Quality": "60",
-          "TimeOut": "10000",
-          "Format": "ISO"
+          "Quality": "60", // Higher quality as per Mantra docs
+          "TimeOut": "15000", // 15 seconds timeout
+          "Format": "ISO",
+          "PidType": "0", // Regular capture
+          "DeviceId": deviceInfo?.DeviceInfo?.DeviceId || ""
         })
       });
 
@@ -72,6 +81,7 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
       console.log("Capture Response:", data);
       
       if (data.ErrorCode === "0") {
+        // Store the ISO template
         onChange(data.Data);
         toast.success(`Fingerprint ${index + 1} captured successfully!`);
       } else {
@@ -101,16 +111,21 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
       </div>
       <div className="text-center font-medium">Finger {index + 1}</div>
       <div className="text-sm text-gray-500">
-        Service Status: {
-          serviceStatus === 'checking' ? 'Checking...' :
-          serviceStatus === 'running' ? 'Running' :
-          'Not Running'
+        Status: {
+          serviceStatus === 'checking' ? 'Checking service...' :
+          serviceStatus === 'running' ? 'Service Running' :
+          'Service Not Running'
         }
+        {deviceInfo && serviceStatus === 'running' && (
+          <div className="text-xs text-green-500">
+            Device: {deviceInfo.DeviceInfo?.DeviceName || 'Unknown'}
+          </div>
+        )}
       </div>
       <Button
         type="button"
         onClick={captureFingerprint}
-        disabled={isCapturing || serviceStatus === 'not-running'}
+        disabled={isCapturing || serviceStatus !== 'running'}
         className="w-full bg-primary hover:bg-primary/90 transition-colors"
       >
         <Fingerprint className="mr-2 h-4 w-4" />
