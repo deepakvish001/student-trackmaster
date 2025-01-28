@@ -11,7 +11,8 @@ import {
   SidebarMenuItem,
   SidebarMenuSub,
   SidebarMenuSubItem,
-  SidebarMenuSubButton
+  SidebarMenuSubButton,
+  SidebarTrigger
 } from '@/components/ui/sidebar';
 import { Home, Users, BookOpen, Download, LogOut, UserPlus, List } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
@@ -39,7 +40,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="min-h-screen flex w-full">
         <Sidebar className="bg-[#222d32] text-white">
           <div className="px-4 py-4 bg-[#367fa9]">
-            <h1 className="text-xl font-bold">AdminLTE USER</h1>
+            <h1 className="text-xl font-bold">Admin Dashboard</h1>
           </div>
           <div className="px-4 py-3 bg-[#1a2226] text-[#4b646f]">
             <span>User</span>
@@ -94,6 +95,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex-1 bg-[#ecf0f5] flex flex-col">
           <header className="bg-white border-b border-gray-200 px-4 py-4 flex justify-between items-center">
             <div className="flex items-center space-x-2">
+              <SidebarTrigger className="md:hidden" />
               <Link to="/" className="text-blue-600 hover:underline">Home</Link>
               <span className="text-gray-500">/</span>
               <span className="text-gray-900 capitalize">
@@ -111,7 +113,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </main>
 
           <footer className="mt-auto border-t border-gray-200 p-4 text-center text-sm text-gray-600 bg-white">
-            <p>© 2014-2024 AdminLTE.io. All rights reserved.</p>
+            <p>© 2014-2024 Admin Dashboard. All rights reserved.</p>
             <p>Version 3.2.0</p>
           </footer>
         </div>
