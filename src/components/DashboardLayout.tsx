@@ -1,6 +1,18 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
+import { 
+  SidebarProvider, 
+  Sidebar, 
+  SidebarContent, 
+  SidebarGroup, 
+  SidebarGroupContent, 
+  SidebarMenu, 
+  SidebarMenuButton, 
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton
+} from '@/components/ui/sidebar';
 import { Home, Users, BookOpen, Download, LogOut, UserPlus, List } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -32,7 +44,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="px-4 py-3 bg-[#1a2226] text-[#4b646f]">
             <span>User</span>
           </div>
-          <SidebarContent>
+          <SidebarContent className="overflow-y-auto">
             <SidebarGroup>
               <SidebarGroupContent>
                 <SidebarMenu>
@@ -43,10 +55,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           <item.icon className="w-4 h-4" />
                           <span>{item.title}</span>
                         </SidebarMenuButton>
-                        <SidebarMenu className="ml-4">
+                        <SidebarMenuSub>
                           {item.submenu.map((subItem) => (
-                            <SidebarMenuItem key={subItem.path}>
-                              <SidebarMenuButton asChild>
+                            <SidebarMenuSubItem key={subItem.path}>
+                              <SidebarMenuSubButton asChild>
                                 <Link
                                   to={subItem.path}
                                   className={location.pathname === subItem.path ? 'bg-[#1e282c]' : ''}
@@ -54,10 +66,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                   <subItem.icon className="w-4 h-4" />
                                   <span>{subItem.title}</span>
                                 </Link>
-                              </SidebarMenuButton>
-                            </SidebarMenuItem>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
                           ))}
-                        </SidebarMenu>
+                        </SidebarMenuSub>
                       </SidebarMenuItem>
                     ) : (
                       <SidebarMenuItem key={item.path}>
@@ -79,7 +91,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </SidebarContent>
         </Sidebar>
 
-        <div className="flex-1 bg-[#ecf0f5]">
+        <div className="flex-1 bg-[#ecf0f5] flex flex-col">
           <header className="bg-white border-b border-gray-200 px-4 py-4 flex justify-between items-center">
             <div className="flex items-center space-x-2">
               <Link to="/" className="text-blue-600 hover:underline">Home</Link>
@@ -94,9 +106,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </Button>
           </header>
 
-          <main className="p-6">{children}</main>
+          <main className="flex-1 p-6 overflow-auto">
+            {children}
+          </main>
 
-          <footer className="border-t border-gray-200 p-4 text-center text-sm text-gray-600">
+          <footer className="mt-auto border-t border-gray-200 p-4 text-center text-sm text-gray-600 bg-white">
             <p>© 2014-2024 AdminLTE.io. All rights reserved.</p>
             <p>Version 3.2.0</p>
           </footer>

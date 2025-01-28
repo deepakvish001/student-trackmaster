@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingBag, Users, AlertOctagon } from 'lucide-react';
+import { Users, BookOpen, AlertOctagon } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Link } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 export default function Dashboard() {
   const [totalBatches, setTotalBatches] = useState(0);
   const [totalStudents, setTotalStudents] = useState(0);
-  const [remainingBatches, setRemainingBatches] = useState(0);
+  const [activeStudents, setActiveStudents] = useState(0);
 
   useEffect(() => {
     fetchStats();
@@ -67,31 +67,39 @@ export default function Dashboard() {
     
     setTotalStudents(studentsData?.length || 0);
 
-    // Calculate remaining batches (example calculation)
-    setRemainingBatches(10 - (batchesData?.length || 0)); // Assuming max 10 batches
+    // Fetch active students
+    const { data: activeStudentsData } = await supabase
+      .from('students')
+      .select('id', { count: 'exact' })
+      .eq('is_enabled', true);
+    
+    setActiveStudents(activeStudentsData?.length || 0);
   };
 
   const stats = [
-    {
-      title: 'Total Batches',
-      value: totalBatches.toString(),
-      icon: ShoppingBag,
-      color: 'bg-[#00c0ef]',
-      link: '/batches',
-    },
     {
       title: 'Total Students',
       value: totalStudents.toString(),
       icon: Users,
       color: 'bg-[#00a65a]',
       link: '/students/view',
+      description: 'Total registered students'
     },
     {
-      title: 'Remaining Batches',
-      value: remainingBatches.toString(),
+      title: 'Active Students',
+      value: activeStudents.toString(),
       icon: AlertOctagon,
+      color: 'bg-[#00c0ef]',
+      link: '/students/view',
+      description: 'Currently active students'
+    },
+    {
+      title: 'Total Batches',
+      value: totalBatches.toString(),
+      icon: BookOpen,
       color: 'bg-[#f39c12]',
       link: '/batches',
+      description: 'Total number of batches'
     },
   ];
 
@@ -106,6 +114,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <p className="text-lg">{stat.title}</p>
+              <p className="text-sm opacity-75 mb-4">{stat.description}</p>
               <Link 
                 to={stat.link} 
                 className="mt-4 block text-sm text-white/80 hover:text-white hover:underline"
