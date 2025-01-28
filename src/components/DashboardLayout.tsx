@@ -38,11 +38,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <Sidebar className="bg-[#222d32] text-white">
-          <div className="px-4 py-4 bg-[#367fa9]">
-            <h1 className="text-xl font-bold">Admin Dashboard</h1>
+        <Sidebar className="bg-[#1A1F2C] text-white">
+          <div className="px-4 py-4 bg-[#8B5CF6]">
+            <h1 className="text-xl font-bold text-white">Admin Dashboard</h1>
           </div>
-          <div className="px-4 py-3 bg-[#1a2226] text-[#4b646f]">
+          <div className="px-4 py-3 bg-[#221F26] text-white/70">
             <span>User</span>
           </div>
           <SidebarContent className="overflow-y-auto">
@@ -52,7 +52,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   {menuItems.map((item) => (
                     item.submenu ? (
                       <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton className="w-full">
+                        <SidebarMenuButton className="w-full hover:bg-[#2A2F3E] text-white">
                           <item.icon className="w-4 h-4" />
                           <span>{item.title}</span>
                         </SidebarMenuButton>
@@ -62,7 +62,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                               <SidebarMenuSubButton asChild>
                                 <Link
                                   to={subItem.path}
-                                  className={location.pathname === subItem.path ? 'bg-[#1e282c]' : ''}
+                                  className={`${location.pathname === subItem.path ? 'bg-[#2A2F3E]' : ''} text-white hover:bg-[#2A2F3E]`}
                                 >
                                   <subItem.icon className="w-4 h-4" />
                                   <span>{subItem.title}</span>
@@ -77,7 +77,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <SidebarMenuButton asChild>
                           <Link
                             to={item.path}
-                            className={location.pathname === item.path ? 'bg-[#1e282c]' : ''}
+                            className={`${location.pathname === item.path ? 'bg-[#2A2F3E]' : ''} text-white hover:bg-[#2A2F3E]`}
                           >
                             <item.icon className="w-4 h-4" />
                             <span>{item.title}</span>
