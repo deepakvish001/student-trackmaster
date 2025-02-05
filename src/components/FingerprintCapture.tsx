@@ -24,7 +24,18 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
 
   const checkServiceAndDevice = async () => {
     try {
-      const response = await fetch('http://localhost:11100/rd/info');
+      // The Mantra RD Service runs on port 11100
+      const response = await fetch('http://localhost:11100/rd/info', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          "RequestType": "RDSERVICE",
+          "Method": "INFO"
+        })
+      });
+
       if (!response.ok) {
         setServiceStatus('not-running');
         return false;
@@ -51,25 +62,24 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
       
       if (!isReady) {
         toast.error("Please ensure Mantra RD Service is running and device is connected");
-        console.log("Service/Device Status Check Failed");
         return;
       }
 
       console.log("Attempting to capture fingerprint...");
       
-      // Capture fingerprint with high quality settings
+      // Capture fingerprint using Mantra RD Service API
       const captureResponse = await fetch('http://localhost:11100/rd/capture', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          "Template": "1",
-          "Quality": "60", // Higher quality as per Mantra docs
-          "TimeOut": "15000", // 15 seconds timeout
           "Format": "ISO",
-          "PidType": "0", // Regular capture
-          "DeviceId": deviceInfo?.DeviceInfo?.DeviceId || ""
+          "Quality": "60",
+          "Timeout": "10000",
+          "PidType": "0",
+          "DeviceId": deviceInfo?.DeviceInfo?.DeviceId || "",
+          "Type": "CAPTURE"
         })
       });
 
