@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Fingerprint } from "lucide-react";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface FingerprintCaptureProps {
   index: number;
@@ -15,17 +16,25 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
   const [serviceStatus, setServiceStatus] = useState<'checking' | 'running' | 'not-running'>('checking');
   const [deviceInfo, setDeviceInfo] = useState<any>(null);
   const [lastError, setLastError] = useState<string>("");
+  const [isSecureContext, setIsSecureContext] = useState(false);
 
-  // Check service and device status on component mount
   useEffect(() => {
+    // Check if we're in a secure context (HTTPS)
+    setIsSecureContext(window.location.protocol === 'https:');
     checkServiceAndDevice();
-    // Poll service status every 5 seconds
     const interval = setInterval(checkServiceAndDevice, 5000);
     return () => clearInterval(interval);
   }, []);
 
   const checkServiceAndDevice = async () => {
     try {
+      // If we're in HTTPS, show appropriate message
+      if (window.location.protocol === 'https:') {
+        setServiceStatus('not-running');
+        setLastError("Please access this page using HTTP (not HTTPS) when running locally");
+        return false;
+      }
+
       console.log("Checking RD service status...");
       const response = await fetch('http://localhost:11100/rd/info', {
         method: 'POST',
@@ -135,6 +144,14 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
 
   return (
     <div className="flex flex-col items-center space-y-4 animate-fade-in">
+      {isSecureContext && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>
+            To use the fingerprint scanner, please access this page using HTTP instead of HTTPS. 
+            Try using <strong>http://localhost:5173</strong> or your local development URL.
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="w-40 h-40 border-2 border-gray-300 rounded-lg flex items-center justify-center bg-white hover:border-primary transition-colors">
         {value ? (
           <img 
