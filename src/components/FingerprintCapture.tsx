@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Fingerprint } from "lucide-react";
@@ -24,13 +25,19 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
 
   const checkServiceAndDevice = async () => {
     try {
-      // The Mantra RD Service runs on port 11100
       const response = await fetch('http://localhost:11100/rd/info', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
+          "Device": "Mantra",
+          "PGCount": "1",
+          "PTimeout": "20000",
+          "PidVer": "2.0",
+          "Timeout": "11000",
+          "Env": "P",
           "RequestType": "RDSERVICE",
           "Method": "INFO"
         })
@@ -67,19 +74,25 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
 
       console.log("Attempting to capture fingerprint...");
       
-      // Capture fingerprint using Mantra RD Service API
+      // Capture fingerprint using Mantra RD Service API with correct parameters
       const captureResponse = await fetch('http://localhost:11100/rd/capture', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
+          "Device": "Mantra",
+          "PGCount": "1",
+          "PTimeout": "20000",
+          "PidVer": "2.0",
+          "Timeout": "11000",
+          "Env": "P",
           "Format": "ISO",
           "Quality": "60",
-          "Timeout": "10000",
+          "Type": "CAPTURE",
           "PidType": "0",
-          "DeviceId": deviceInfo?.DeviceInfo?.DeviceId || "",
-          "Type": "CAPTURE"
+          "DeviceId": deviceInfo?.DeviceInfo?.DeviceId || ""
         })
       });
 
