@@ -14,6 +14,7 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
   const [isCapturing, setIsCapturing] = useState(false);
   const [serviceStatus, setServiceStatus] = useState<'checking' | 'running' | 'not-running'>('checking');
   const [deviceInfo, setDeviceInfo] = useState<any>(null);
+  const [lastError, setLastError] = useState<string>("");
 
   // Check service and device status on component mount
   useEffect(() => {
@@ -25,6 +26,7 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
 
   const checkServiceAndDevice = async () => {
     try {
+      console.log("Checking RD service status...");
       const response = await fetch('http://localhost:11100/rd/info', {
         method: 'POST',
         headers: {
@@ -44,18 +46,30 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Service check failed:", errorText);
         setServiceStatus('not-running');
+        setLastError(`Service error: ${errorText}`);
         return false;
       }
       
       const info = await response.json();
+      console.log("Device Info received:", info);
+      
+      if (info.ErrorCode !== "0") {
+        setServiceStatus('not-running');
+        setLastError(`Device error: ${info.ErrorDescription}`);
+        return false;
+      }
+
       setDeviceInfo(info);
       setServiceStatus('running');
-      console.log("Device Info:", info);
+      setLastError("");
       return true;
     } catch (error) {
       console.error('Service/Device check error:', error);
       setServiceStatus('not-running');
+      setLastError(error instanceof Error ? error.message : 'Unknown error');
       return false;
     }
   };
@@ -68,13 +82,12 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
       const isReady = await checkServiceAndDevice();
       
       if (!isReady) {
-        toast.error("Please ensure Mantra RD Service is running and device is connected");
+        toast.error(`Device not ready: ${lastError}`);
         return;
       }
 
-      console.log("Attempting to capture fingerprint...");
+      console.log("Starting fingerprint capture...");
       
-      // Capture fingerprint using Mantra RD Service API with correct parameters
       const captureResponse = await fetch('http://localhost:11100/rd/capture', {
         method: 'POST',
         headers: {
@@ -97,14 +110,15 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
       });
 
       if (!captureResponse.ok) {
-        throw new Error('Failed to capture fingerprint');
+        const errorText = await captureResponse.text();
+        throw new Error(`Capture failed: ${errorText}`);
       }
 
       const data = await captureResponse.json();
       console.log("Capture Response:", data);
       
       if (data.ErrorCode === "0") {
-        // Store the ISO template
+        // Successfully captured fingerprint
         onChange(data.Data);
         toast.success(`Fingerprint ${index + 1} captured successfully!`);
       } else {
@@ -113,7 +127,7 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
       }
     } catch (error) {
       console.error('Fingerprint capture error:', error);
-      toast.error("Failed to capture fingerprint. Please ensure device is connected and service is running.");
+      toast.error(error instanceof Error ? error.message : "Failed to capture fingerprint");
     } finally {
       setIsCapturing(false);
     }
@@ -142,6 +156,11 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
         {deviceInfo && serviceStatus === 'running' && (
           <div className="text-xs text-green-500">
             Device: {deviceInfo.DeviceInfo?.DeviceName || 'Unknown'}
+          </div>
+        )}
+        {lastError && (
+          <div className="text-xs text-red-500 mt-1">
+            {lastError}
           </div>
         )}
       </div>
