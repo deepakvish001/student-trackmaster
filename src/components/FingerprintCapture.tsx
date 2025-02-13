@@ -55,20 +55,14 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Service check failed:", errorText);
-        setServiceStatus('not-running');
-        setLastError(`Service error: ${errorText}`);
-        return false;
+        throw new Error(`Service error: ${response.status} ${response.statusText}`);
       }
       
       const info = await response.json();
       console.log("Device Info received:", info);
       
       if (info.ErrorCode !== "0") {
-        setServiceStatus('not-running');
-        setLastError(`Device error: ${info.ErrorDescription}`);
-        return false;
+        throw new Error(`Device error: ${info.ErrorDescription}`);
       }
 
       setDeviceInfo(info);
@@ -91,7 +85,7 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
       const isReady = await checkServiceAndDevice();
       
       if (!isReady) {
-        toast.error(`Device not ready: ${lastError}`);
+        toast.error(`Device not ready: ${lastError}. Please check device connection and try again.`);
         return;
       }
 
@@ -119,8 +113,7 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
       });
 
       if (!captureResponse.ok) {
-        const errorText = await captureResponse.text();
-        throw new Error(`Capture failed: ${errorText}`);
+        throw new Error(`Capture failed: ${captureResponse.status} ${captureResponse.statusText}`);
       }
 
       const data = await captureResponse.json();
@@ -131,8 +124,7 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
         onChange(data.Data);
         toast.success(`Fingerprint ${index + 1} captured successfully!`);
       } else {
-        toast.error(`Error capturing fingerprint: ${data.ErrorDescription}`);
-        console.error("Capture Error:", data.ErrorDescription);
+        throw new Error(`Error capturing fingerprint: ${data.ErrorDescription}`);
       }
     } catch (error) {
       console.error('Fingerprint capture error:', error);
