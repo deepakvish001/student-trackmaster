@@ -1,9 +1,8 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Fingerprint } from "lucide-react";
 import { toast } from "sonner";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 
 interface FingerprintCaptureProps {
@@ -17,69 +16,14 @@ interface VerificationResponse {
   message: string;
 }
 
+interface MxFaceResponse {
+  code: number;
+  message: string;
+  errorMessage?: string;
+}
+
 export function FingerprintCapture({ index, value, onChange }: FingerprintCaptureProps) {
   const [isCapturing, setIsCapturing] = useState(false);
-  const [serviceStatus, setServiceStatus] = useState<'checking' | 'running' | 'not-running'>('checking');
-  const [deviceInfo, setDeviceInfo] = useState<any>(null);
-  const [lastError, setLastError] = useState<string>("");
-  const [isSecureContext, setIsSecureContext] = useState(false);
-
-  useEffect(() => {
-    setIsSecureContext(window.location.protocol === 'https:');
-    checkServiceAndDevice();
-    const interval = setInterval(checkServiceAndDevice, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const checkServiceAndDevice = async () => {
-    try {
-      if (window.location.protocol === 'https:') {
-        setServiceStatus('not-running');
-        setLastError("Please access this page using HTTP (not HTTPS) when running locally");
-        return false;
-      }
-
-      console.log("Checking RD service status...");
-      const response = await fetch('http://localhost:11100/rd/info', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          "Device": "Mantra",
-          "PGCount": "1",
-          "PTimeout": "20000",
-          "PidVer": "2.0",
-          "Timeout": "11000",
-          "Env": "P",
-          "RequestType": "RDSERVICE",
-          "Method": "INFO"
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Service error: ${response.status} ${response.statusText}`);
-      }
-      
-      const info = await response.json();
-      console.log("Device Info received:", info);
-      
-      if (info.ErrorCode !== "0") {
-        throw new Error(`Device error: ${info.ErrorDescription}`);
-      }
-
-      setDeviceInfo(info);
-      setServiceStatus('running');
-      setLastError("");
-      return true;
-    } catch (error) {
-      console.error('Service/Device check error:', error);
-      setServiceStatus('not-running');
-      setLastError(error instanceof Error ? error.message : 'Unknown error');
-      return false;
-    }
-  };
 
   const verifyFingerprint = async (capturedData: string): Promise<VerificationResponse> => {
     try {
@@ -99,59 +43,67 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
     }
   };
 
+  const enrollFingerprint = async (fingerprintData: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('enroll-fingerprint', {
+        body: {
+          fingerPrint: fingerprintData,
+          externalId: `finger_${index + 1}`,
+          group: 'students'
+        }
+      });
+
+      if (error) throw error;
+      return data as MxFaceResponse;
+    } catch (error) {
+      console.error('Fingerprint enrollment error:', error);
+      throw error;
+    }
+  };
+
   const captureFingerprint = async () => {
     try {
       setIsCapturing(true);
+
+      // Request user's permission to use the camera (which we'll use to capture the fingerprint)
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const videoTrack = stream.getVideoTracks()[0];
       
-      const isReady = await checkServiceAndDevice();
+      // Create a video element to display the camera feed
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      await video.play();
+
+      // Create a canvas to capture the frame
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext('2d');
       
-      if (!isReady) {
-        toast.error(`Device not ready: ${lastError}. Please check device connection and try again.`);
-        return;
+      if (!context) {
+        throw new Error('Failed to get canvas context');
       }
 
-      console.log("Starting fingerprint capture...");
+      // Capture a frame from the video
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      const captureResponse = await fetch('http://localhost:11100/rd/capture', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          "Device": "Mantra",
-          "PGCount": "1",
-          "PTimeout": "20000",
-          "PidVer": "2.0",
-          "Timeout": "11000",
-          "Env": "P",
-          "Format": "ISO",
-          "Quality": "60",
-          "Type": "CAPTURE",
-          "PidType": "0",
-          "DeviceId": deviceInfo?.DeviceInfo?.DeviceId || ""
-        })
-      });
+      // Convert the captured frame to base64
+      const capturedData = canvas.toDataURL('image/jpeg').split(',')[1];
 
-      if (!captureResponse.ok) {
-        throw new Error(`Capture failed: ${captureResponse.status} ${captureResponse.statusText}`);
-      }
-
-      const data = await captureResponse.json();
-      console.log("Capture Response:", data);
+      // Stop the video stream
+      videoTrack.stop();
       
-      if (data.ErrorCode === "0") {
-        // Verify the captured fingerprint
-        const verificationResult = await verifyFingerprint(data.Data);
-        
-        if (verificationResult.success) {
-          onChange(data.Data);
-          toast.success(`Fingerprint ${index + 1} captured successfully!`);
-        } else {
-          toast.error(`Fingerprint verification failed: ${verificationResult.message}`);
-        }
+      console.log("Captured fingerprint data, enrolling...");
+      
+      // Enroll the fingerprint
+      const enrollmentResult = await enrollFingerprint(capturedData);
+      
+      if (enrollmentResult.code === 200) {
+        // Store the fingerprint data
+        onChange(capturedData);
+        toast.success(`Fingerprint ${index + 1} captured and enrolled successfully!`);
       } else {
-        throw new Error(`Error capturing fingerprint: ${data.ErrorDescription}`);
+        throw new Error(enrollmentResult.errorMessage || enrollmentResult.message);
       }
     } catch (error) {
       console.error('Fingerprint capture error:', error);
@@ -163,14 +115,6 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
 
   return (
     <div className="flex flex-col items-center space-y-4 animate-fade-in">
-      {isSecureContext && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>
-            To use the fingerprint scanner, please access this page using HTTP instead of HTTPS. 
-            Try using <strong>http://localhost:5173</strong> or your local development URL.
-          </AlertDescription>
-        </Alert>
-      )}
       <div className="w-40 h-40 border-2 border-gray-300 rounded-lg flex items-center justify-center bg-white hover:border-primary transition-colors">
         {value ? (
           <img 
@@ -183,27 +127,10 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
         )}
       </div>
       <div className="text-center font-medium">Finger {index + 1}</div>
-      <div className="text-sm text-gray-500">
-        Status: {
-          serviceStatus === 'checking' ? 'Checking service...' :
-          serviceStatus === 'running' ? 'Service Running' :
-          'Service Not Running'
-        }
-        {deviceInfo && serviceStatus === 'running' && (
-          <div className="text-xs text-green-500">
-            Device: {deviceInfo.DeviceInfo?.DeviceName || 'Unknown'}
-          </div>
-        )}
-        {lastError && (
-          <div className="text-xs text-red-500 mt-1">
-            {lastError}
-          </div>
-        )}
-      </div>
       <Button
         type="button"
         onClick={captureFingerprint}
-        disabled={isCapturing || serviceStatus !== 'running'}
+        disabled={isCapturing}
         className="w-full bg-primary hover:bg-primary/90 transition-colors"
       >
         <Fingerprint className="mr-2 h-4 w-4" />
