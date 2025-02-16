@@ -12,6 +12,11 @@ interface FingerprintCaptureProps {
   onChange: (value: string) => void;
 }
 
+interface VerificationResponse {
+  success: boolean;
+  message: string;
+}
+
 export function FingerprintCapture({ index, value, onChange }: FingerprintCaptureProps) {
   const [isCapturing, setIsCapturing] = useState(false);
   const [serviceStatus, setServiceStatus] = useState<'checking' | 'running' | 'not-running'>('checking');
@@ -76,7 +81,7 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
     }
   };
 
-  const verifyFingerprint = async (capturedData: string) => {
+  const verifyFingerprint = async (capturedData: string): Promise<VerificationResponse> => {
     try {
       const { data, error } = await supabase.rpc('verify_fingerprint', {
         fingerprint_data: capturedData,
@@ -84,7 +89,10 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
       });
 
       if (error) throw error;
-      return data;
+      
+      // Type assertion since we know the structure of our RPC function's response
+      const result = data as { success: boolean; message: string };
+      return result;
     } catch (error) {
       console.error('Fingerprint verification error:', error);
       return { success: false, message: 'Failed to verify fingerprint' };
