@@ -100,7 +100,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      verify_fingerprint: {
+        Args: {
+          fingerprint_data: string
+          target_fingerprint: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
