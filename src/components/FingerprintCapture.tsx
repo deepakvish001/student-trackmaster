@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Fingerprint } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FingerprintCaptureProps {
   index: number;
@@ -19,7 +20,6 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
   const [isSecureContext, setIsSecureContext] = useState(false);
 
   useEffect(() => {
-    // Check if we're in a secure context (HTTPS)
     setIsSecureContext(window.location.protocol === 'https:');
     checkServiceAndDevice();
     const interval = setInterval(checkServiceAndDevice, 5000);
@@ -28,7 +28,6 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
 
   const checkServiceAndDevice = async () => {
     try {
-      // If we're in HTTPS, show appropriate message
       if (window.location.protocol === 'https:') {
         setServiceStatus('not-running');
         setLastError("Please access this page using HTTP (not HTTPS) when running locally");
@@ -77,11 +76,25 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
     }
   };
 
+  const verifyFingerprint = async (capturedData: string) => {
+    try {
+      const { data, error } = await supabase.rpc('verify_fingerprint', {
+        fingerprint_data: capturedData,
+        target_fingerprint: value || ''
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Fingerprint verification error:', error);
+      return { success: false, message: 'Failed to verify fingerprint' };
+    }
+  };
+
   const captureFingerprint = async () => {
     try {
       setIsCapturing(true);
       
-      // First check if the service is running and device is connected
       const isReady = await checkServiceAndDevice();
       
       if (!isReady) {
@@ -120,9 +133,15 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
       console.log("Capture Response:", data);
       
       if (data.ErrorCode === "0") {
-        // Successfully captured fingerprint
-        onChange(data.Data);
-        toast.success(`Fingerprint ${index + 1} captured successfully!`);
+        // Verify the captured fingerprint
+        const verificationResult = await verifyFingerprint(data.Data);
+        
+        if (verificationResult.success) {
+          onChange(data.Data);
+          toast.success(`Fingerprint ${index + 1} captured successfully!`);
+        } else {
+          toast.error(`Fingerprint verification failed: ${verificationResult.message}`);
+        }
       } else {
         throw new Error(`Error capturing fingerprint: ${data.ErrorDescription}`);
       }
