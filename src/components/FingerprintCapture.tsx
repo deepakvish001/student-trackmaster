@@ -25,24 +25,44 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
   const [serviceStatus, setServiceStatus] = useState<'checking' | 'running' | 'not-running'>('checking');
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
   const [lastError, setLastError] = useState<string>("");
+  const [rdServiceUrl, setRdServiceUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    checkServiceAndDevice();
-    const interval = setInterval(checkServiceAndDevice, 5000);
-    return () => clearInterval(interval);
+    // Try to get the stored RD service URL from localStorage
+    const savedUrl = localStorage.getItem('rdServiceUrl');
+    if (savedUrl) {
+      setRdServiceUrl(savedUrl);
+      checkServiceAndDevice(savedUrl);
+    }
   }, []);
 
-  const checkServiceAndDevice = async () => {
+  useEffect(() => {
+    if (!rdServiceUrl) return;
+    
+    const interval = setInterval(() => checkServiceAndDevice(rdServiceUrl), 5000);
+    return () => clearInterval(interval);
+  }, [rdServiceUrl]);
+
+  const promptForServiceUrl = async () => {
+    const url = prompt("Please enter your local RD Service URL (e.g., http://localhost:11100)", "http://localhost:11100");
+    if (url) {
+      localStorage.setItem('rdServiceUrl', url);
+      setRdServiceUrl(url);
+      await checkServiceAndDevice(url);
+    }
+  };
+
+  const checkServiceAndDevice = async (serviceUrl: string) => {
     try {
       console.log("Checking Mantra RD service status...");
-      const response = await fetch('http://localhost:11100/rd/info', {
+      const response = await fetch(`${serviceUrl}/rd/info`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          "Device": "Mantra.MFSM", // Specific device type for Mantra RS Service
+          "Device": "Mantra.MFSM",
           "PGCount": "1",
           "PTimeout": "20000",
           "PidVer": "2.0",
@@ -77,10 +97,15 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
   };
 
   const captureFingerprint = async () => {
+    if (!rdServiceUrl) {
+      await promptForServiceUrl();
+      return;
+    }
+
     try {
       setIsCapturing(true);
       
-      const isReady = await checkServiceAndDevice();
+      const isReady = await checkServiceAndDevice(rdServiceUrl);
       
       if (!isReady) {
         toast.error(`Device not ready: ${lastError}. Please check device connection and try again.`);
@@ -89,7 +114,7 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
 
       console.log("Starting fingerprint capture...");
       
-      const captureResponse = await fetch('http://localhost:11100/rd/capture', {
+      const captureResponse = await fetch(`${rdServiceUrl}/rd/capture`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -108,7 +133,7 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
           "PidType": "0",
           "DeviceId": deviceInfo?.DeviceInfo?.DeviceId || "",
           "Demo": false,
-          "ReturnImage": true // This ensures we get the image data back
+          "ReturnImage": true
         })
       });
 
@@ -120,10 +145,8 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
       console.log("Capture Response:", data);
       
       if (data.ErrorCode === "0") {
-        // Extract and process the fingerprint image data
         const pidData = data.Data ? JSON.parse(data.Data) : null;
         if (pidData && pidData.Skey && pidData.Pid) {
-          // Store the captured fingerprint data
           onChange(pidData.Pid);
           toast.success(`Fingerprint ${index + 1} captured successfully!`);
         } else {
@@ -140,12 +163,6 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
     }
   };
 
-  const ErrorMessage = ({ message }: { message: string }) => (
-    <div className="text-sm text-red-500 mt-1">
-      {message}
-    </div>
-  );
-
   return (
     <div className="flex flex-col items-center space-y-4 animate-fade-in">
       <div className="w-40 h-40 border-2 border-gray-300 rounded-lg flex items-center justify-center bg-white hover:border-primary transition-colors">
@@ -160,27 +177,44 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
         )}
       </div>
       <div className="text-center font-medium">Finger {index + 1}</div>
-      <div className="text-sm text-gray-500">
-        Status: {
-          serviceStatus === 'checking' ? 'Checking service...' :
-          serviceStatus === 'running' ? 'Service Running' :
-          'Service Not Running'
-        }
-        {deviceInfo && serviceStatus === 'running' && (
-          <div className="text-xs text-green-500">
-            Device: {deviceInfo.DeviceInfo?.DeviceName || 'Unknown'}
-          </div>
-        )}
-        {lastError && <ErrorMessage message={lastError} />}
-      </div>
+      
+      {!rdServiceUrl && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            Please configure your local RD Service URL to capture fingerprints.
+            Click the capture button to set it up.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {rdServiceUrl && (
+        <div className="text-sm text-gray-500">
+          Status: {
+            serviceStatus === 'checking' ? 'Checking service...' :
+            serviceStatus === 'running' ? 'Service Running' :
+            'Service Not Running'
+          }
+          {deviceInfo && serviceStatus === 'running' && (
+            <div className="text-xs text-green-500">
+              Device: {deviceInfo.DeviceInfo?.DeviceName || 'Unknown'}
+            </div>
+          )}
+          {lastError && (
+            <div className="text-sm text-red-500 mt-1">
+              {lastError}
+            </div>
+          )}
+        </div>
+      )}
+      
       <Button
         type="button"
         onClick={captureFingerprint}
-        disabled={isCapturing || serviceStatus !== 'running'}
+        disabled={isCapturing || (rdServiceUrl && serviceStatus !== 'running')}
         className="w-full bg-primary hover:bg-primary/90 transition-colors rounded-md"
       >
         <Fingerprint className="mr-2 h-4 w-4" />
-        {isCapturing ? "Capturing..." : "Capture"}
+        {!rdServiceUrl ? "Configure Device" : isCapturing ? "Capturing..." : "Capture"}
       </Button>
     </div>
   );
