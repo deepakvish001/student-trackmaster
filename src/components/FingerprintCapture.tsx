@@ -25,10 +25,8 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
   const [serviceStatus, setServiceStatus] = useState<'checking' | 'running' | 'not-running'>('checking');
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
   const [lastError, setLastError] = useState<string>("");
-  const [isSecureContext, setIsSecureContext] = useState(false);
 
   useEffect(() => {
-    setIsSecureContext(window.location.protocol === 'https:');
     checkServiceAndDevice();
     const interval = setInterval(checkServiceAndDevice, 5000);
     return () => clearInterval(interval);
@@ -36,13 +34,7 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
 
   const checkServiceAndDevice = async () => {
     try {
-      if (window.location.protocol === 'https:') {
-        setServiceStatus('not-running');
-        setLastError("Please access this page using HTTP (not HTTPS) when running locally");
-        return false;
-      }
-
-      console.log("Checking RD service status...");
+      console.log("Checking Mantra RD service status...");
       const response = await fetch('http://localhost:11100/rd/info', {
         method: 'POST',
         headers: {
@@ -50,7 +42,7 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          "Device": "Mantra",
+          "Device": "Mantra.MFSM", // Specific device type for Mantra RS Service
           "PGCount": "1",
           "PTimeout": "20000",
           "PidVer": "2.0",
@@ -104,7 +96,7 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          "Device": "Mantra",
+          "Device": "Mantra.MFSM",
           "PGCount": "1",
           "PTimeout": "20000",
           "PidVer": "2.0",
@@ -114,7 +106,9 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
           "Quality": "60",
           "Type": "CAPTURE",
           "PidType": "0",
-          "DeviceId": deviceInfo?.DeviceInfo?.DeviceId || ""
+          "DeviceId": deviceInfo?.DeviceInfo?.DeviceId || "",
+          "Demo": false,
+          "ReturnImage": true // This ensures we get the image data back
         })
       });
 
@@ -126,9 +120,15 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
       console.log("Capture Response:", data);
       
       if (data.ErrorCode === "0") {
-        // Store the captured fingerprint data
-        onChange(data.Data);
-        toast.success(`Fingerprint ${index + 1} captured successfully!`);
+        // Extract and process the fingerprint image data
+        const pidData = data.Data ? JSON.parse(data.Data) : null;
+        if (pidData && pidData.Skey && pidData.Pid) {
+          // Store the captured fingerprint data
+          onChange(pidData.Pid);
+          toast.success(`Fingerprint ${index + 1} captured successfully!`);
+        } else {
+          throw new Error("Invalid fingerprint data received");
+        }
       } else {
         throw new Error(`Error capturing fingerprint: ${data.ErrorDescription}`);
       }
@@ -146,27 +146,15 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
     </div>
   );
 
-  const FingerprintImage = ({ image }: { image: string }) => (
-    <img 
-      src="/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png"
-      alt="Captured Fingerprint"
-      className="w-32 h-32 object-contain animate-scale-in"
-    />
-  );
-
   return (
     <div className="flex flex-col items-center space-y-4 animate-fade-in">
-      {isSecureContext && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>
-            To use the fingerprint scanner, please access this page using HTTP instead of HTTPS. 
-            Try using <strong>http://localhost:5173</strong> or your local development URL.
-          </AlertDescription>
-        </Alert>
-      )}
       <div className="w-40 h-40 border-2 border-gray-300 rounded-lg flex items-center justify-center bg-white hover:border-primary transition-colors">
         {value ? (
-          <FingerprintImage image={value} />
+          <img 
+            src="/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png"
+            alt={`Fingerprint ${index + 1}`}
+            className="w-32 h-32 object-contain animate-scale-in"
+          />
         ) : (
           <div className="text-gray-400">No Print</div>
         )}
