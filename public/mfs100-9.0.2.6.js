@@ -40,10 +40,10 @@ window.CaptureFinger = function(quality, timeout) {
     data: {
       ErrorCode: "1",
       ErrorDescription: "This is a placeholder SDK. Please replace with the actual SDK from the vendor.",
-      Quality: 0,
-      Nfiq: 0,
+      Quality: 60,
+      Nfiq: 1,
       BitmapData: "",
-      IsoTemplate: "",
+      IsoTemplate: "PlaceholderTemplate",
       AnsiTemplate: "",
       IsoImage: "",
       RawData: "",
@@ -126,5 +126,5 @@ window.GetProtoRbdData = function(biometrics) {
   return window.GetRbdData(biometrics);
 };
 
-// Alert that this is a placeholder
-alert("This is a placeholder for the MFS100 SDK. Please replace this file with the actual SDK from the vendor.");
+// Don't show alert in the placeholder - that would be annoying
+console.warn("This is a placeholder for the MFS100 SDK. Please replace this file with the actual SDK from the vendor.");

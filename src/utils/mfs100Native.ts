@@ -6,6 +6,7 @@ interface MFS100Response {
   data?: {
     ErrorCode: string;
     ErrorDescription: string;
+    DeviceInfo?: DeviceInfo; // Make DeviceInfo an explicit property
     Quality?: number;
     Nfiq?: number;
     InWidth?: number;
@@ -61,18 +62,22 @@ interface Biometric {
   qualityScore: number;
 }
 
-// Global SDK functions that will be available after including the SDK JS file
+// Add jQuery to Window interface
 declare global {
-  function GetMFS100Info(): MFS100Response;
-  function GetMFS100KeyInfo(key: string): MFS100Response;
-  function CaptureFinger(quality: number, timeout: number): MFS100Response;
-  function VerifyFinger(template1: string, template2: string): MFS100Response;
-  function MatchFinger(quality: number, timeout: number, template: string): MFS100Response;
-  function Biometric(type: string, template: string, position: string, format: number, qualityScore: number): Biometric;
-  function GetPidData(biometrics: Biometric[]): MFS100Response;
-  function GetProtoPidData(biometrics: Biometric[]): MFS100Response;
-  function GetRbdData(biometrics: Biometric[]): MFS100Response;
-  function GetProtoRbdData(biometrics: Biometric[]): MFS100Response;
+  interface Window {
+    jQuery: any;
+    $: any;
+    GetMFS100Info(): MFS100Response;
+    GetMFS100KeyInfo(key: string): MFS100Response;
+    CaptureFinger(quality: number, timeout: number): MFS100Response;
+    VerifyFinger(template1: string, template2: string): MFS100Response;
+    MatchFinger(quality: number, timeout: number, template: string): MFS100Response;
+    Biometric(type: string, template: string, position: string, format: number, qualityScore: number): Biometric;
+    GetPidData(biometrics: Biometric[]): MFS100Response;
+    GetProtoPidData(biometrics: Biometric[]): MFS100Response;
+    GetRbdData(biometrics: Biometric[]): MFS100Response;
+    GetProtoRbdData(biometrics: Biometric[]): MFS100Response;
+  }
 }
 
 // Default quality and timeout values
@@ -81,7 +86,7 @@ const DEFAULT_TIMEOUT = 10; // seconds (minimum=10(recommended), maximum=60, unl
 
 // Function to check if MFS100 SDK is loaded
 export const isMFS100Available = (): boolean => {
-  return typeof GetMFS100Info === 'function';
+  return typeof window.GetMFS100Info === 'function';
 };
 
 // Function to get device information
@@ -94,9 +99,10 @@ export const getDeviceInfo = (): Promise<DeviceInfo | null> => {
         return;
       }
 
-      const res = GetMFS100Info();
+      const res = window.GetMFS100Info();
       if (res.httpStaus && res.data?.ErrorCode === "0") {
-        resolve(res.data.DeviceInfo as unknown as DeviceInfo);
+        // Access DeviceInfo which is now properly typed
+        resolve(res.data.DeviceInfo || null);
       } else {
         console.error('Error getting device info:', res.data?.ErrorDescription || res.err);
         resolve(null);
@@ -121,7 +127,7 @@ export const captureFingerprint = async (
       };
     }
 
-    return CaptureFinger(quality, timeout);
+    return window.CaptureFinger(quality, timeout);
   } catch (error) {
     console.error('Error capturing fingerprint:', error);
     return {
@@ -142,7 +148,7 @@ export const verifyFingerprints = async (
       return false;
     }
 
-    const res = VerifyFinger(template1, template2);
+    const res = window.VerifyFinger(template1, template2);
     if (res.httpStaus && res.data?.Status) {
       return true;
     }
@@ -165,7 +171,7 @@ export const matchFingerprint = async (
       return false;
     }
 
-    const res = MatchFinger(quality, timeout, template);
+    const res = window.MatchFinger(quality, timeout, template);
     if (res.httpStaus && res.data?.Status) {
       return true;
     }
