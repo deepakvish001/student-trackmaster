@@ -33,7 +33,10 @@ serve(async (req) => {
     }
     
     console.log(`Enrolling fingerprint for externalId: ${externalId} in group: ${group}`);
+    console.log(`Fingerprint template length: ${fingerPrint.length}`);
     
+    // For MFS100 native SDK integration, the fingerprint data is already in the correct format
+    // We can directly use it to enroll in the API
     const response = await fetch('https://fingerprintapi.mxface.ai/api/FingerPrint/Enroll', {
       method: 'POST',
       headers: {

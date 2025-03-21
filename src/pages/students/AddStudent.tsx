@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FingerprintCapture } from "@/components/FingerprintCapture";
+import { MFS100FingerprintCapture } from "@/components/MFS100FingerprintCapture";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -173,11 +174,36 @@ export default function AddStudent() {
                   />
                 </div>
 
-                <Tabs defaultValue="usb" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
+                <Tabs defaultValue="mfs100" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="mfs100">MFS100 Native SDK</TabsTrigger>
                     <TabsTrigger value="usb">USB Fingerprint Scanner</TabsTrigger>
                     <TabsTrigger value="rd">Mantra RD Service</TabsTrigger>
                   </TabsList>
+                  
+                  <TabsContent value="mfs100" className="mt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                      {[0, 1, 2, 3, 4].map((index) => (
+                        <FormField
+                          key={index}
+                          control={form.control}
+                          name={`fingerprints.${index}`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <MFS100FingerprintCapture
+                                  index={index}
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </TabsContent>
                   
                   <TabsContent value="usb" className="mt-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
