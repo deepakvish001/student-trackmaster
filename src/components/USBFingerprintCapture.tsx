@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Fingerprint, Usb, AlertCircle, Check, X } from "lucide-react";
+import { Fingerprint, Usb, AlertCircle, Check, X, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -12,7 +12,9 @@ import {
   fingerprintToBase64,
   isWebUSBSupported,
   isQualityAcceptable,
-  templateToBase64
+  templateToBase64,
+  matchFingerprints,
+  getDeviceInfo
 } from "@/utils/usbFingerprint";
 
 interface USBFingerprintCaptureProps {
@@ -37,6 +39,11 @@ export function USBFingerprintCapture({ index, value, onChange }: USBFingerprint
   const [lastError, setLastError] = useState<string>("");
   const [captureQuality, setCaptureQuality] = useState<number | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [fingerData, setFingerData] = useState({
+    template: "",
+    quality: 0,
+    imageBase64: ""
+  });
 
   useEffect(() => {
     // Check if WebUSB is supported
@@ -114,6 +121,11 @@ export function USBFingerprintCapture({ index, value, onChange }: USBFingerprint
       if (success) {
         setDeviceStatus(null);
         setCaptureQuality(null);
+        setFingerData({
+          template: "",
+          quality: 0,
+          imageBase64: ""
+        });
         toast.success("Device uninitialized successfully");
       } else {
         throw new Error("Failed to uninitialize device");
@@ -176,10 +188,12 @@ export function USBFingerprintCapture({ index, value, onChange }: USBFingerprint
       
       // Also store the template for future matching
       const templateBase64 = templateToBase64(fingerprint);
-      if (templateBase64) {
-        // In a real app, you might want to store this template separately
-        console.log("Template captured:", templateBase64.substring(0, 20) + "...");
-      }
+      
+      setFingerData({
+        template: templateBase64 || "",
+        quality: fingerprint.quality,
+        imageBase64: base64Data
+      });
       
       onChange(base64Data);
       toast.success(`Fingerprint ${index + 1} captured successfully! (Quality: ${fingerprint.quality})`);
@@ -187,6 +201,51 @@ export function USBFingerprintCapture({ index, value, onChange }: USBFingerprint
       console.error('Fingerprint capture error:', error);
       setLastError(error instanceof Error ? error.message : 'Failed to capture fingerprint');
       toast.error(error instanceof Error ? error.message : "Failed to capture fingerprint");
+    } finally {
+      setIsCapturing(false);
+    }
+  };
+  
+  const verifyFingerprint = async () => {
+    if (!value || !deviceStatus?.connected) {
+      toast.error("No fingerprint captured or device not connected");
+      return;
+    }
+    
+    try {
+      setIsCapturing(true);
+      
+      const devices = await listMFS100Devices();
+      if (devices.length === 0) {
+        throw new Error("No authorized devices found");
+      }
+      
+      toast.info("Place your finger for verification");
+      const currentFinger = await captureFingerprint(devices[0]);
+      
+      if (!currentFinger || !currentFinger.template) {
+        throw new Error("Failed to capture fingerprint for verification");
+      }
+      
+      if (!fingerData.template) {
+        throw new Error("No template available for matching");
+      }
+      
+      // This is a simplified approach since we don't have direct access to the stored template
+      // In real implementation, you might want to compare with the stored template from database
+      const templateBuffer = Buffer.from(fingerData.template, 'base64');
+      const currentBuffer = Buffer.from(templateToBase64(currentFinger) || "", 'base64');
+      
+      const matchResult = await matchFingerprints(templateBuffer, currentBuffer, devices[0]);
+      
+      if (matchResult.matched) {
+        toast.success(`Fingerprint verified successfully! (Score: ${matchResult.score})`);
+      } else {
+        toast.error(`Fingerprint does not match (Score: ${matchResult.score})`);
+      }
+    } catch (error) {
+      console.error('Fingerprint verification error:', error);
+      toast.error(error instanceof Error ? error.message : "Failed to verify fingerprint");
     } finally {
       setIsCapturing(false);
     }
@@ -266,6 +325,18 @@ export function USBFingerprintCapture({ index, value, onChange }: USBFingerprint
             <Fingerprint className="mr-2 h-4 w-4" />
             {isCapturing ? "Capturing..." : "Capture Fingerprint"}
           </Button>
+          
+          {value && (
+            <Button
+              type="button"
+              onClick={verifyFingerprint}
+              disabled={isCapturing || !deviceStatus?.connected || !browserSupport || !value}
+              className="w-full bg-green-600 hover:bg-green-700 transition-colors rounded-md"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Verify Fingerprint
+            </Button>
+          )}
           
           <div className="text-xs text-gray-500">
             Status: {deviceStatus?.connected ? 'Device Connected' : 'No Device Connected'}

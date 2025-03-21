@@ -14,18 +14,20 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
-// Import the new USBFingerprintCapture component
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { USBFingerprintCapture } from "@/components/USBFingerprintCapture";
 import { BatchSelector } from "@/components/BatchSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FingerprintCapture } from "@/components/FingerprintCapture";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
-  mobile: z.string().min(10, "Mobile number must be at least 10 digits"),
+  mobile: z.string().min(10, "Mobile number must be at least 10 digits").max(15, "Mobile number must not exceed 15 digits"),
   batchId: z.string().min(1, "Please select a batch"),
   address: z.string().min(5, "Address must be at least 5 characters"),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
   fingerprints: z.array(z.string()).length(5, "All 5 fingerprints are required"),
 });
 
@@ -38,6 +40,7 @@ export default function AddStudent() {
       mobile: "",
       batchId: "",
       address: "",
+      email: "",
       fingerprints: ["", "", "", "", ""],
     },
   });
@@ -72,6 +75,9 @@ export default function AddStudent() {
         </div>
 
         <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle>Student Registration with Fingerprint</CardTitle>
+          </CardHeader>
           <CardContent className="pt-6">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -146,35 +152,87 @@ export default function AddStudent() {
                       </FormItem>
                     )}
                   />
+                  
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email (Optional)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="email"
+                            placeholder="Enter Email" 
+                            {...field}
+                            className="hover:border-primary focus:border-primary transition-colors"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                  {[0, 1, 2, 3, 4].map((index) => (
-                    <FormField
-                      key={index}
-                      control={form.control}
-                      name={`fingerprints.${index}`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <USBFingerprintCapture
-                              index={index}
-                              value={field.value}
-                              onChange={field.onChange}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  ))}
-                </div>
+                <Tabs defaultValue="usb" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="usb">USB Fingerprint Scanner</TabsTrigger>
+                    <TabsTrigger value="rd">Mantra RD Service</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="usb" className="mt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                      {[0, 1, 2, 3, 4].map((index) => (
+                        <FormField
+                          key={index}
+                          control={form.control}
+                          name={`fingerprints.${index}`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <USBFingerprintCapture
+                                  index={index}
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="rd" className="mt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                      {[0, 1, 2, 3, 4].map((index) => (
+                        <FormField
+                          key={index}
+                          control={form.control}
+                          name={`fingerprints.${index}`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <FingerprintCapture
+                                  index={index}
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </TabsContent>
+                </Tabs>
 
                 <Button 
                   type="submit" 
-                  className="w-32 bg-primary hover:bg-primary/90 transition-colors animate-fade-in"
+                  className="w-full md:w-32 bg-primary hover:bg-primary/90 transition-colors animate-fade-in"
                 >
-                  Submit
+                  Register Student
                 </Button>
               </form>
             </Form>

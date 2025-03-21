@@ -15,6 +15,25 @@ serve(async (req) => {
   try {
     const { fingerPrint, externalId, group } = await req.json();
     
+    if (!fingerPrint) {
+      return new Response(
+        JSON.stringify({ 
+          code: 400, 
+          message: 'Bad Request',
+          errorMessage: 'Missing fingerprint data' 
+        }),
+        { 
+          headers: { 
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          },
+          status: 400,
+        },
+      );
+    }
+    
+    console.log(`Enrolling fingerprint for externalId: ${externalId} in group: ${group}`);
+    
     const response = await fetch('https://fingerprintapi.mxface.ai/api/FingerPrint/Enroll', {
       method: 'POST',
       headers: {
