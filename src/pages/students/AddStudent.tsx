@@ -1,3 +1,4 @@
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -14,7 +15,8 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
-import { FingerprintCapture } from "@/components/FingerprintCapture";
+// Import the new USBFingerprintCapture component
+import { USBFingerprintCapture } from "@/components/USBFingerprintCapture";
 import { BatchSelector } from "@/components/BatchSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -155,7 +157,7 @@ export default function AddStudent() {
                       render={({ field }) => (
                         <FormItem>
                           <FormControl>
-                            <FingerprintCapture
+                            <USBFingerprintCapture
                               index={index}
                               value={field.value}
                               onChange={field.onChange}
