@@ -8,14 +8,19 @@ import { Navigate } from 'react-router-dom';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login, user, isLoading } = useAuth();
+  const [isSignUp, setIsSignUp] = useState(false);
+  const { login, signUp, user, isLoading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await login(email, password);
+      if (isSignUp) {
+        await signUp(email, password);
+      } else {
+        await login(email, password);
+      }
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('Auth failed:', error);
     }
   };
 
@@ -28,9 +33,11 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Welcome back</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">
+            {isSignUp ? 'Create Account' : 'Welcome back'}
+          </CardTitle>
           <CardDescription className="text-center">
-            Enter your credentials to access your account
+            {isSignUp ? 'Enter your details to create an account' : 'Enter your credentials to access your account'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -54,7 +61,15 @@ export default function Login() {
               />
             </div>
             <Button type="submit" className="w-full">
-              Sign in
+              {isSignUp ? 'Create Account' : 'Sign in'}
+            </Button>
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="w-full" 
+              onClick={() => setIsSignUp(!isSignUp)}
+            >
+              {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
             </Button>
           </form>
         </CardContent>
