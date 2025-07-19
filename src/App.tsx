@@ -31,7 +31,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
     return <div>Loading...</div>;
   }
 
-  return !user ? <>{children}</> : <Navigate to="/dashboard" />;
+  return !user ? <>{children}</> : <Navigate to="/" />;
 }
 
 const AppRoutes = () => (
@@ -45,7 +45,7 @@ const AppRoutes = () => (
       }
     />
     <Route
-      path="/dashboard"
+      path="/"
       element={
         <PrivateRoute>
           <Dashboard />
@@ -84,7 +84,6 @@ const AppRoutes = () => (
         </PrivateRoute>
       }
     />
-    <Route path="/" element={<Navigate to="/dashboard" replace />} />
   </Routes>
 );
 

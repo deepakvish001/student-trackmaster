@@ -22,7 +22,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const location = useLocation();
 
   const menuItems = [
-    { title: 'Dashboard', icon: Home, path: '/dashboard' },
+    { title: 'Dashboard', icon: Home, path: '/' },
     {
       title: 'Student List',
       icon: Users,

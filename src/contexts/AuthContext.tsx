@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
 
       toast.success('Successfully logged in');
-      navigate('/dashboard');
+      navigate('/');
     } catch (error: any) {
       toast.error(error.message || 'Login failed. Please check your credentials.');
       throw error;

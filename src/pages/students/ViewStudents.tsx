@@ -114,7 +114,7 @@ export default function ViewStudents() {
         .from("students")
         .update({
           student_name: values.student_name,
-          batch_id: parseInt(values.batch_id),
+          batch_id: values.batch_id,
         })
         .eq("id", editingStudent.id);
 

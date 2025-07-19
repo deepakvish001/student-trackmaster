@@ -25,7 +25,7 @@ export function BatchSelector({ value, onChange }: BatchSelectorProps) {
         .order('batch_name');
       
       if (error) throw error;
-      return data as Batch[];
+      return data;
     },
   });
 

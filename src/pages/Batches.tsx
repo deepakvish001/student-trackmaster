@@ -58,7 +58,7 @@ export default function Batches() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       batch_name: "",
-      serial_number: 1,
+      serial_number: "",
       admin_name: "",
       username: "",
       max_students: 1,
@@ -205,7 +205,7 @@ export default function Batches() {
     }
   };
 
-  const toggleStatus = async (id: number, currentStatus: boolean) => {
+  const toggleStatus = async (id: string, currentStatus: boolean) => {
     if (!user) return;
 
     try {
@@ -248,7 +248,7 @@ export default function Batches() {
                     setEditingBatch(null);
                     form.reset({
                       batch_name: "",
-                      serial_number: 1,
+                      serial_number: "",
                       admin_name: "",
                       username: "",
                       max_students: 1,

@@ -50,7 +50,7 @@ export default function AddStudent() {
     try {
       const { error } = await supabase.from('students').insert({
         student_name: values.name,
-        batch_id: parseInt(values.batchId),
+        batch_id: values.batchId,
         finger_1: values.fingerprints[0],
         finger_2: values.fingerprints[1],
         finger_3: values.fingerprints[2],

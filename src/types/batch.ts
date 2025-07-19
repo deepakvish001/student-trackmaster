@@ -2,9 +2,9 @@ import { UseFormReturn } from "react-hook-form";
 import { ChangeEvent } from "react";
 
 export interface Batch {
-  id: number;
+  id: string;
   batch_name: string;
-  serial_number: number;
+  serial_number: string;
   admin_name: string;
   username: string;
   max_students: number;
@@ -15,7 +15,7 @@ export interface Batch {
 
 export interface BatchFormData {
   batch_name: string;
-  serial_number: number;
+  serial_number: string;
   admin_name: string;
   username: string;
   max_students: number;

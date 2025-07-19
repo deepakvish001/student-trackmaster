@@ -21,7 +21,7 @@ export default function Login() {
 
   // Redirect if already logged in
   if (!isLoading && user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return (
