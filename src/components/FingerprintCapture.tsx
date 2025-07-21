@@ -1,9 +1,10 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Fingerprint } from "lucide-react";
+import { Fingerprint, Wifi, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { FingerprintDisplay } from "./FingerprintDisplay";
 
 interface FingerprintCaptureProps {
   index: number;
@@ -26,6 +27,8 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
   const [lastError, setLastError] = useState<string>("");
   const [rdServiceUrl, setRdServiceUrl] = useState<string | null>(null);
+  const [capturedImage, setCapturedImage] = useState<string>("");
+  const [captureQuality, setCaptureQuality] = useState<number | null>(null);
 
   useEffect(() => {
     // Try to get the stored RD service URL from localStorage
@@ -36,12 +39,18 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
     }
   }, []);
 
+  // Real-time service monitoring
+  const monitorService = useCallback(async () => {
+    if (!rdServiceUrl) return;
+    await checkServiceAndDevice(rdServiceUrl);
+  }, [rdServiceUrl]);
+
   useEffect(() => {
     if (!rdServiceUrl) return;
     
-    const interval = setInterval(() => checkServiceAndDevice(rdServiceUrl), 5000);
+    const interval = setInterval(monitorService, 3000);
     return () => clearInterval(interval);
-  }, [rdServiceUrl]);
+  }, [monitorService]);
 
   const promptForServiceUrl = async () => {
     const url = prompt("Please enter your local RD Service URL (e.g., http://localhost:11100)", "http://localhost:11100");
@@ -147,8 +156,18 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
       if (data.ErrorCode === "0") {
         const pidData = data.Data ? JSON.parse(data.Data) : null;
         if (pidData && pidData.Skey && pidData.Pid) {
+          // Extract quality if available
+          const quality = pidData.Quality || null;
+          setCaptureQuality(quality);
+          
+          // Create fingerprint image if available
+          if (pidData.Bitmap) {
+            const fingerprintImage = `data:image/bmp;base64,${pidData.Bitmap}`;
+            setCapturedImage(fingerprintImage);
+          }
+          
           onChange(pidData.Pid);
-          toast.success(`Fingerprint ${index + 1} captured successfully!`);
+          toast.success(`Fingerprint ${index + 1} captured successfully!${quality ? ` (Quality: ${quality})` : ''}`);
         } else {
           throw new Error("Invalid fingerprint data received");
         }
@@ -165,18 +184,21 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
 
   return (
     <div className="flex flex-col items-center space-y-4 animate-fade-in">
-      <div className="w-40 h-40 border-2 border-gray-300 rounded-lg flex items-center justify-center bg-white hover:border-primary transition-colors">
-        {value ? (
-          <img 
-            src="/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png"
-            alt={`Fingerprint ${index + 1}`}
-            className="w-32 h-32 object-contain animate-scale-in"
-          />
+      <FingerprintDisplay 
+        value={capturedImage || value}
+        index={index}
+        quality={captureQuality}
+        isCapturing={isCapturing}
+      />
+      
+      {/* Service connection status */}
+      <div className="flex items-center space-x-2 text-sm">
+        {serviceStatus === 'running' ? (
+          <><Wifi className="h-4 w-4 text-green-500" /><span className="text-green-500">RD Service Connected</span></>
         ) : (
-          <div className="text-gray-400">No Print</div>
+          <><WifiOff className="h-4 w-4 text-red-500" /><span className="text-red-500">RD Service Disconnected</span></>
         )}
       </div>
-      <div className="text-center font-medium">Finger {index + 1}</div>
       
       {!rdServiceUrl && (
         <Alert variant="destructive">
@@ -188,19 +210,19 @@ export function FingerprintCapture({ index, value, onChange }: FingerprintCaptur
       )}
       
       {rdServiceUrl && (
-        <div className="text-sm text-gray-500">
-          Status: {
-            serviceStatus === 'checking' ? 'Checking service...' :
+        <div className="text-xs text-gray-500 text-center">
+          <div>Status: {
+            serviceStatus === 'checking' ? 'Checking...' :
             serviceStatus === 'running' ? 'Service Running' :
             'Service Not Running'
-          }
+          }</div>
           {deviceInfo && serviceStatus === 'running' && (
-            <div className="text-xs text-green-500">
+            <div className="text-xs text-green-500 mt-1">
               Device: {deviceInfo.DeviceInfo?.DeviceName || 'Unknown'}
             </div>
           )}
           {lastError && (
-            <div className="text-sm text-red-500 mt-1">
+            <div className="text-xs text-red-500 mt-1">
               {lastError}
             </div>
           )}

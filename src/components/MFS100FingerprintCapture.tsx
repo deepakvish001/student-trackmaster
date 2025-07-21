@@ -1,9 +1,10 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Fingerprint, Info, AlertCircle, Check, X, RefreshCw } from "lucide-react";
+import { Fingerprint, Info, AlertCircle, Check, X, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { FingerprintDisplay } from "./FingerprintDisplay";
 import { 
   isMFS100Available, 
   initializeMFS100, 
@@ -25,6 +26,27 @@ export function MFS100FingerprintCapture({ index, value, onChange }: MFS100Finge
   const [lastError, setLastError] = useState<string>("");
   const [captureQuality, setCaptureQuality] = useState<number | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [deviceConnected, setDeviceConnected] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string>("");
+
+  // Real-time device detection
+  const checkDeviceConnection = useCallback(async () => {
+    if (!sdkLoaded) return;
+    
+    try {
+      const info = await getDeviceInfo();
+      setDeviceConnected(!!info);
+      if (info && !deviceInfo) {
+        setDeviceInfo(info);
+        toast.success("MFS100 device connected");
+      } else if (!info && deviceInfo) {
+        setDeviceInfo(null);
+        toast.warning("MFS100 device disconnected");
+      }
+    } catch (error) {
+      setDeviceConnected(false);
+    }
+  }, [sdkLoaded, deviceInfo]);
 
   useEffect(() => {
     const loadSDK = async () => {
@@ -42,12 +64,22 @@ export function MFS100FingerprintCapture({ index, value, onChange }: MFS100Finge
     loadSDK();
   }, []);
 
+  // Real-time device monitoring
+  useEffect(() => {
+    if (!sdkLoaded) return;
+    
+    const interval = setInterval(checkDeviceConnection, 2000);
+    return () => clearInterval(interval);
+  }, [checkDeviceConnection]);
+
   const fetchDeviceInfo = async () => {
     const info = await getDeviceInfo();
     if (info) {
       setDeviceInfo(info);
-      toast.success("MFS100 device detected");
+      setDeviceConnected(true);
+      setLastError("");
     } else {
+      setDeviceConnected(false);
       setLastError("Could not get device information. Make sure the device is properly connected.");
     }
   };
@@ -79,6 +111,9 @@ export function MFS100FingerprintCapture({ index, value, onChange }: MFS100Finge
       }
       
       if (result.data.IsoTemplate) {
+        // Create a fingerprint image from the captured data
+        const fingerprintImage = generateFingerprintImage(result.data);
+        setCapturedImage(fingerprintImage);
         onChange(result.data.IsoTemplate);
         toast.success(`Fingerprint ${index + 1} captured successfully! (Quality: ${quality})`);
       } else {
@@ -91,6 +126,43 @@ export function MFS100FingerprintCapture({ index, value, onChange }: MFS100Finge
     } finally {
       setIsCapturing(false);
     }
+  };
+
+  // Generate a visual representation of the fingerprint
+  const generateFingerprintImage = (data: any): string => {
+    if (data.Bitmap) {
+      return `data:image/bmp;base64,${data.Bitmap}`;
+    }
+    
+    // Fallback: create a simple canvas representation
+    const canvas = document.createElement('canvas');
+    canvas.width = 200;
+    canvas.height = 200;
+    const ctx = canvas.getContext('2d');
+    
+    if (ctx) {
+      // Fill with white background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 200, 200);
+      
+      // Draw fingerprint pattern
+      ctx.fillStyle = '#000000';
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(`Fingerprint ${index + 1}`, 100, 100);
+      ctx.fillText(`Quality: ${captureQuality}`, 100, 120);
+      
+      // Add some fingerprint-like lines
+      for (let i = 0; i < 20; i++) {
+        ctx.beginPath();
+        ctx.arc(100, 100, 20 + i * 3, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(0, 0, 0, ${0.3 - i * 0.01})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+    
+    return canvas.toDataURL('image/png');
   };
   
   const verifyFingerprint = async () => {
@@ -131,33 +203,22 @@ export function MFS100FingerprintCapture({ index, value, onChange }: MFS100Finge
 
   return (
     <div className="flex flex-col items-center space-y-4 animate-fade-in">
-      <div className="w-40 h-40 border-2 border-gray-300 rounded-lg flex items-center justify-center bg-white hover:border-primary transition-colors">
-        {value ? (
-          <div className="relative w-full h-full">
-            <img 
-              src="/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png"
-              alt={`Fingerprint ${index + 1}`}
-              className="w-32 h-32 object-contain m-auto animate-scale-in"
-            />
-            {captureQuality !== null && (
-              <div className={`absolute bottom-1 right-1 rounded-full p-1 ${
-                captureQuality >= 60 ? 'bg-green-500' : 
-                captureQuality >= 40 ? 'bg-yellow-500' : 'bg-red-500'
-              }`}>
-                {captureQuality >= 60 ? (
-                  <Check className="h-4 w-4 text-white" />
-                ) : (
-                  <AlertCircle className="h-4 w-4 text-white" />
-                )}
-              </div>
-            )}
-          </div>
+      <FingerprintDisplay 
+        value={capturedImage || value}
+        index={index}
+        quality={captureQuality}
+        isCapturing={isCapturing}
+      />
+      
+      {/* Device connection status */}
+      <div className="flex items-center space-x-2 text-sm">
+        {deviceConnected ? (
+          <><Wifi className="h-4 w-4 text-green-500" /><span className="text-green-500">Device Connected</span></>
         ) : (
-          <div className="text-gray-400">No Print</div>
+          <><WifiOff className="h-4 w-4 text-red-500" /><span className="text-red-500">Device Disconnected</span></>
         )}
       </div>
-      <div className="text-center font-medium">Finger {index + 1}</div>
-      
+
       {!sdkLoaded && !isInitializing && (
         <Alert variant="destructive" className="mt-2">
           <AlertCircle className="h-4 w-4" />
@@ -172,18 +233,18 @@ export function MFS100FingerprintCapture({ index, value, onChange }: MFS100Finge
         <Button
           type="button"
           onClick={handleCaptureFingerprint}
-          disabled={isCapturing || !sdkLoaded}
+          disabled={isCapturing || !sdkLoaded || !deviceConnected}
           className="w-full bg-primary hover:bg-primary/90 transition-colors rounded-md"
         >
           <Fingerprint className="mr-2 h-4 w-4" />
-          {isCapturing ? "Capturing..." : "Capture Fingerprint"}
+          {isCapturing ? "Capturing..." : deviceConnected ? "Capture Fingerprint" : "Connect Device"}
         </Button>
         
         {value && (
           <Button
             type="button"
             onClick={verifyFingerprint}
-            disabled={isCapturing || !sdkLoaded || !value}
+            disabled={isCapturing || !sdkLoaded || !deviceConnected || !value}
             className="w-full bg-green-600 hover:bg-green-700 transition-colors rounded-md"
           >
             <RefreshCw className="mr-2 h-4 w-4" />
@@ -191,24 +252,17 @@ export function MFS100FingerprintCapture({ index, value, onChange }: MFS100Finge
           </Button>
         )}
         
-        <div className="text-xs text-gray-500">
-          Status: {sdkLoaded ? 'SDK Loaded' : isInitializing ? 'Initializing...' : 'SDK Not Loaded'}
+        <div className="text-xs text-gray-500 text-center">
+          <div>SDK: {sdkLoaded ? 'Loaded' : isInitializing ? 'Loading...' : 'Not Loaded'}</div>
           {deviceInfo && (
             <div className="text-xs text-green-500 mt-1">
-              {`${deviceInfo.Make || ''} ${deviceInfo.Model || ''} (S/N: ${deviceInfo.SerialNo || ''})`}
+              {`${deviceInfo.Make || ''} ${deviceInfo.Model || ''}`}
+              {deviceInfo.SerialNo && <div>S/N: {deviceInfo.SerialNo}</div>}
             </div>
           )}
           {lastError && (
             <div className="text-xs text-red-500 mt-1">
               {lastError}
-            </div>
-          )}
-          {captureQuality !== null && (
-            <div className={`text-xs mt-1 ${
-              captureQuality >= 60 ? 'text-green-500' : 
-              captureQuality >= 40 ? 'text-yellow-500' : 'text-red-500'
-            }`}>
-              Fingerprint Quality: {captureQuality}
             </div>
           )}
         </div>

@@ -19,7 +19,10 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  Eye,
+  Fingerprint,
 } from "lucide-react";
+import { StudentFingerprintView } from "@/components/StudentFingerprintView";
 import {
   Dialog,
   DialogContent,
@@ -230,11 +233,51 @@ export default function ViewStudents() {
                 >
                   <TableCell className="font-medium">{student.student_name}</TableCell>
                   <TableCell>{student.batches?.batch_name}</TableCell>
-                  <TableCell>{student.finger_1 ? "✓" : "✗"}</TableCell>
-                  <TableCell>{student.finger_2 ? "✓" : "✗"}</TableCell>
-                  <TableCell>{student.finger_3 ? "✓" : "✗"}</TableCell>
-                  <TableCell>{student.finger_4 ? "✓" : "✗"}</TableCell>
-                  <TableCell>{student.finger_5 ? "✓" : "✗"}</TableCell>
+                   <TableCell>
+                     <div className="flex items-center space-x-1">
+                       {student.finger_1 ? (
+                         <Fingerprint className="h-4 w-4 text-green-500" />
+                       ) : (
+                         <X className="h-4 w-4 text-red-500" />
+                       )}
+                     </div>
+                   </TableCell>
+                   <TableCell>
+                     <div className="flex items-center space-x-1">
+                       {student.finger_2 ? (
+                         <Fingerprint className="h-4 w-4 text-green-500" />
+                       ) : (
+                         <X className="h-4 w-4 text-red-500" />
+                       )}
+                     </div>
+                   </TableCell>
+                   <TableCell>
+                     <div className="flex items-center space-x-1">
+                       {student.finger_3 ? (
+                         <Fingerprint className="h-4 w-4 text-green-500" />
+                       ) : (
+                         <X className="h-4 w-4 text-red-500" />
+                       )}
+                     </div>
+                   </TableCell>
+                   <TableCell>
+                     <div className="flex items-center space-x-1">
+                       {student.finger_4 ? (
+                         <Fingerprint className="h-4 w-4 text-green-500" />
+                       ) : (
+                         <X className="h-4 w-4 text-red-500" />
+                       )}
+                     </div>
+                   </TableCell>
+                   <TableCell>
+                     <div className="flex items-center space-x-1">
+                       {student.finger_5 ? (
+                         <Fingerprint className="h-4 w-4 text-green-500" />
+                       ) : (
+                         <X className="h-4 w-4 text-red-500" />
+                       )}
+                     </div>
+                   </TableCell>
                   <TableCell>
                     <Button
                       variant={student.is_enabled ? "default" : "destructive"}
@@ -244,24 +287,44 @@ export default function ViewStudents() {
                       {student.is_enabled ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
                     </Button>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setEditingStudent(student);
-                              form.reset({
-                                student_name: student.student_name,
-                                batch_id: student.batch_id?.toString(),
-                              });
-                            }}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
+                   <TableCell>
+                     <div className="flex space-x-2">
+                       {/* View Fingerprints Dialog */}
+                       <Dialog>
+                         <DialogTrigger asChild>
+                           <Button variant="outline" size="sm">
+                             <Eye className="h-4 w-4" />
+                           </Button>
+                         </DialogTrigger>
+                         <DialogContent className="max-w-4xl">
+                           <DialogHeader>
+                             <DialogTitle>
+                               {student.student_name} - Fingerprint Records
+                             </DialogTitle>
+                           </DialogHeader>
+                           <div className="mt-4">
+                             <StudentFingerprintView student={student} showQuality={false} />
+                           </div>
+                         </DialogContent>
+                       </Dialog>
+                       
+                       {/* Edit Student Dialog */}
+                       <Dialog>
+                         <DialogTrigger asChild>
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             onClick={() => {
+                               setEditingStudent(student);
+                               form.reset({
+                                 student_name: student.student_name,
+                                 batch_id: student.batch_id?.toString(),
+                               });
+                             }}
+                           >
+                             <Edit2 className="h-4 w-4" />
+                           </Button>
+                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
                             <DialogTitle>Edit Student</DialogTitle>

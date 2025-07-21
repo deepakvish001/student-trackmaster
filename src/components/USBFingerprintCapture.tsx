@@ -1,9 +1,10 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Fingerprint, Usb, AlertCircle, Check, X, RefreshCw } from "lucide-react";
+import { Fingerprint, Usb, AlertCircle, Check, X, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { FingerprintDisplay } from "./FingerprintDisplay";
 import {
   connectToMFS100,
   listMFS100Devices,
@@ -44,12 +45,43 @@ export function USBFingerprintCapture({ index, value, onChange }: USBFingerprint
     quality: 0,
     imageBase64: ""
   });
+  const [isMonitoring, setIsMonitoring] = useState(false);
+
+  // Real-time device monitoring
+  const monitorDevices = useCallback(async () => {
+    if (!browserSupport) return;
+    
+    try {
+      const devices = await listMFS100Devices();
+      if (devices.length > 0 && !deviceStatus?.connected) {
+        const device = devices[0];
+        setDeviceStatus({
+          connected: true,
+          deviceId: device.id,
+          manufacturer: device.manufacturer,
+          serialNumber: device.serialNumber,
+          model: device.model,
+          info: device.info
+        });
+        toast.success("MFS100 USB device connected");
+      } else if (devices.length === 0 && deviceStatus?.connected) {
+        setDeviceStatus(null);
+        toast.warning("MFS100 USB device disconnected");
+      }
+    } catch (error) {
+      if (deviceStatus?.connected) {
+        setDeviceStatus(null);
+        console.log("Device monitoring error:", error);
+      }
+    }
+  }, [browserSupport, deviceStatus?.connected]);
 
   useEffect(() => {
     // Check if WebUSB is supported
     setBrowserSupport(isWebUSBSupported());
     
     if (isWebUSBSupported()) {
+      setIsMonitoring(true);
       // Try to list already authorized devices
       listMFS100Devices().then(devices => {
         if (devices.length > 0) {
@@ -70,6 +102,14 @@ export function USBFingerprintCapture({ index, value, onChange }: USBFingerprint
       setLastError("WebUSB is not supported in this browser. Please use Chrome or Edge.");
     }
   }, []);
+
+  // Real-time device monitoring
+  useEffect(() => {
+    if (!isMonitoring || !browserSupport) return;
+    
+    const interval = setInterval(monitorDevices, 3000);
+    return () => clearInterval(interval);
+  }, [monitorDevices, isMonitoring, browserSupport]);
 
   const handleInitDevice = async () => {
     try {
@@ -195,6 +235,7 @@ export function USBFingerprintCapture({ index, value, onChange }: USBFingerprint
         imageBase64: base64Data
       });
       
+      // Store the actual image data for display
       onChange(base64Data);
       toast.success(`Fingerprint ${index + 1} captured successfully! (Quality: ${fingerprint.quality})`);
     } catch (error) {
@@ -253,32 +294,21 @@ export function USBFingerprintCapture({ index, value, onChange }: USBFingerprint
 
   return (
     <div className="flex flex-col items-center space-y-4 animate-fade-in">
-      <div className="w-40 h-40 border-2 border-gray-300 rounded-lg flex items-center justify-center bg-white hover:border-primary transition-colors">
-        {value ? (
-          <div className="relative w-full h-full">
-            <img 
-              src="/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png"
-              alt={`Fingerprint ${index + 1}`}
-              className="w-32 h-32 object-contain m-auto animate-scale-in"
-            />
-            {captureQuality !== null && (
-              <div className={`absolute bottom-1 right-1 rounded-full p-1 ${
-                captureQuality >= 60 ? 'bg-green-500' : 
-                captureQuality >= 40 ? 'bg-yellow-500' : 'bg-red-500'
-              }`}>
-                {captureQuality >= 60 ? (
-                  <Check className="h-4 w-4 text-white" />
-                ) : (
-                  <AlertCircle className="h-4 w-4 text-white" />
-                )}
-              </div>
-            )}
-          </div>
+      <FingerprintDisplay 
+        value={fingerData.imageBase64 || value}
+        index={index}
+        quality={captureQuality}
+        isCapturing={isCapturing}
+      />
+      
+      {/* Device connection status */}
+      <div className="flex items-center space-x-2 text-sm">
+        {deviceStatus?.connected ? (
+          <><Wifi className="h-4 w-4 text-green-500" /><span className="text-green-500">USB Device Connected</span></>
         ) : (
-          <div className="text-gray-400">No Print</div>
+          <><WifiOff className="h-4 w-4 text-red-500" /><span className="text-red-500">USB Device Disconnected</span></>
         )}
       </div>
-      <div className="text-center font-medium">Finger {index + 1}</div>
       
       {!browserSupport && (
         <Alert variant="destructive" className="mt-2">
@@ -338,8 +368,8 @@ export function USBFingerprintCapture({ index, value, onChange }: USBFingerprint
             </Button>
           )}
           
-          <div className="text-xs text-gray-500">
-            Status: {deviceStatus?.connected ? 'Device Connected' : 'No Device Connected'}
+          <div className="text-xs text-gray-500 text-center">
+            <div>Status: {deviceStatus?.connected ? 'Device Connected' : 'No Device Connected'}</div>
             {deviceStatus?.connected && (
               <div className="text-xs text-green-500 mt-1">
                 {deviceStatus.info || `${deviceStatus.manufacturer} (${deviceStatus.deviceId})`}
@@ -348,14 +378,6 @@ export function USBFingerprintCapture({ index, value, onChange }: USBFingerprint
             {lastError && (
               <div className="text-xs text-red-500 mt-1">
                 {lastError}
-              </div>
-            )}
-            {captureQuality !== null && (
-              <div className={`text-xs mt-1 ${
-                captureQuality >= 60 ? 'text-green-500' : 
-                captureQuality >= 40 ? 'text-yellow-500' : 'text-red-500'
-              }`}>
-                Fingerprint Quality: {captureQuality}
               </div>
             )}
           </div>
