@@ -6,7 +6,7 @@ interface MFS100Response {
   data?: {
     ErrorCode: string;
     ErrorDescription: string;
-    DeviceInfo?: DeviceInfo; // Make DeviceInfo an explicit property
+    DeviceInfo?: DeviceInfo;
     Quality?: number;
     Nfiq?: number;
     InWidth?: number;
@@ -81,30 +81,42 @@ declare global {
 }
 
 // Default quality and timeout values
-const DEFAULT_QUALITY = 60; // (1 to 100) (recommended minimum 55)
-const DEFAULT_TIMEOUT = 10; // seconds (minimum=10(recommended), maximum=60, unlimited=0)
+const DEFAULT_QUALITY = 60;
+const DEFAULT_TIMEOUT = 15; // Increased timeout for better capture
+
+// Global state to track initialization
+let isSDKInitialized = false;
+let isInitializing = false;
 
 // Function to check if MFS100 SDK is loaded
 export const isMFS100Available = (): boolean => {
   return typeof window.GetMFS100Info === 'function';
 };
 
-// Function to get device information
+// Enhanced device info with better error handling
 export const getDeviceInfo = (): Promise<DeviceInfo | null> => {
   return new Promise((resolve) => {
     try {
       if (!isMFS100Available()) {
-        console.error('MFS100 SDK not loaded');
+        console.log('MFS100 SDK not available');
         resolve(null);
         return;
       }
 
       const res = window.GetMFS100Info();
+      console.log('Device info response:', res);
+      
       if (res.httpStaus && res.data?.ErrorCode === "0") {
-        // Access DeviceInfo which is now properly typed
-        resolve(res.data.DeviceInfo || null);
+        const deviceInfo = res.data.DeviceInfo;
+        if (deviceInfo) {
+          console.log('Device connected:', deviceInfo);
+          resolve(deviceInfo);
+        } else {
+          console.log('No device info in response');
+          resolve(null);
+        }
       } else {
-        console.error('Error getting device info:', res.data?.ErrorDescription || res.err);
+        console.log('Device error:', res.data?.ErrorDescription || res.err);
         resolve(null);
       }
     } catch (error) {
@@ -114,7 +126,7 @@ export const getDeviceInfo = (): Promise<DeviceInfo | null> => {
   });
 };
 
-// Function to capture fingerprint
+// Enhanced fingerprint capture with better error handling
 export const captureFingerprint = async (
   quality = DEFAULT_QUALITY,
   timeout = DEFAULT_TIMEOUT
@@ -127,12 +139,16 @@ export const captureFingerprint = async (
       };
     }
 
-    return window.CaptureFinger(quality, timeout);
+    console.log(`Capturing fingerprint with quality: ${quality}, timeout: ${timeout}`);
+    const result = window.CaptureFinger(quality, timeout);
+    console.log('Capture result:', result);
+    
+    return result;
   } catch (error) {
     console.error('Error capturing fingerprint:', error);
     return {
       httpStaus: false,
-      err: error instanceof Error ? error.message : 'Unknown error'
+      err: error instanceof Error ? error.message : 'Unknown capture error'
     };
   }
 };
@@ -149,6 +165,8 @@ export const verifyFingerprints = async (
     }
 
     const res = window.VerifyFinger(template1, template2);
+    console.log('Verification result:', res);
+    
     if (res.httpStaus && res.data?.Status) {
       return true;
     }
@@ -182,33 +200,47 @@ export const matchFingerprint = async (
   }
 };
 
-// Load the MFS100 SDK script dynamically
+// Improved SDK loading with cleanup
 export const loadMFS100SDK = (): Promise<boolean> => {
   return new Promise((resolve) => {
     if (isMFS100Available()) {
+      console.log('MFS100 SDK already loaded');
       resolve(true);
       return;
     }
 
+    // Remove existing script if any
+    const existingScript = document.querySelector('script[src*="mfs100-9.0.2.6.js"]');
+    if (existingScript) {
+      existingScript.remove();
+    }
+
     const script = document.createElement('script');
-    script.src = '/mfs100-9.0.2.6.js'; // Need to include this file in the public folder
+    script.src = '/mfs100-9.0.2.6.js';
     script.async = true;
+    
     script.onload = () => {
       console.log('MFS100 SDK loaded successfully');
-      resolve(true);
+      // Wait a bit for the SDK to initialize
+      setTimeout(() => {
+        resolve(true);
+      }, 1000);
     };
+    
     script.onerror = () => {
       console.error('Failed to load MFS100 SDK');
       resolve(false);
     };
-    document.body.appendChild(script);
+    
+    document.head.appendChild(script);
   });
 };
 
-// Load jQuery if needed (MFS100 SDK might depend on it)
+// Load jQuery if needed
 export const loadJQuery = (): Promise<boolean> => {
   return new Promise((resolve) => {
     if (window.jQuery) {
+      console.log('jQuery already loaded');
       resolve(true);
       return;
     }
@@ -216,30 +248,66 @@ export const loadJQuery = (): Promise<boolean> => {
     const script = document.createElement('script');
     script.src = 'https://code.jquery.com/jquery-1.12.4.min.js';
     script.async = true;
+    
     script.onload = () => {
       console.log('jQuery loaded successfully');
       resolve(true);
     };
+    
     script.onerror = () => {
       console.error('Failed to load jQuery');
       resolve(false);
     };
-    document.body.appendChild(script);
+    
+    document.head.appendChild(script);
   });
 };
 
-// Initialize the SDK and dependencies
+// Enhanced initialization with retry logic
 export const initializeMFS100 = async (): Promise<boolean> => {
+  if (isInitializing) {
+    console.log('Already initializing...');
+    return isSDKInitialized;
+  }
+
+  if (isSDKInitialized && isMFS100Available()) {
+    console.log('SDK already initialized');
+    return true;
+  }
+
+  isInitializing = true;
+  
   try {
+    console.log('Initializing MFS100 SDK...');
+    
+    // Load jQuery first
     const jqueryLoaded = await loadJQuery();
     if (!jqueryLoaded) {
+      console.error('Failed to load jQuery');
       return false;
     }
     
+    // Load MFS100 SDK
     const sdkLoaded = await loadMFS100SDK();
-    return sdkLoaded;
+    if (!sdkLoaded) {
+      console.error('Failed to load MFS100 SDK');
+      return false;
+    }
+    
+    // Test device connection
+    const deviceInfo = await getDeviceInfo();
+    if (deviceInfo) {
+      console.log('Device connected during initialization:', deviceInfo);
+    }
+    
+    isSDKInitialized = true;
+    console.log('MFS100 initialization complete');
+    
+    return true;
   } catch (error) {
     console.error('Error initializing MFS100:', error);
     return false;
+  } finally {
+    isInitializing = false;
   }
 };
