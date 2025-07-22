@@ -30,6 +30,7 @@ const formSchema = z.object({
   address: z.string().min(5, "Address must be at least 5 characters"),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
   fingerprints: z.array(z.string()).length(5, "All 5 fingerprints are required"),
+  fingerprintImages: z.array(z.string()).optional(), // New field for fingerprint images
 });
 
 export default function AddStudent() {
@@ -43,8 +44,16 @@ export default function AddStudent() {
       address: "",
       email: "",
       fingerprints: ["", "", "", "", ""],
+      fingerprintImages: ["", "", "", "", ""], // Initialize image array
     },
   });
+
+  // Handle fingerprint image changes
+  const handleFingerprintImageChange = (index: number, imageData: string) => {
+    const currentImages = form.getValues("fingerprintImages") || ["", "", "", "", ""];
+    currentImages[index] = imageData;
+    form.setValue("fingerprintImages", currentImages);
+  };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
@@ -56,6 +65,11 @@ export default function AddStudent() {
         finger_3: values.fingerprints[2],
         finger_4: values.fingerprints[3],
         finger_5: values.fingerprints[4],
+        finger_1_image: values.fingerprintImages?.[0] || null,
+        finger_2_image: values.fingerprintImages?.[1] || null,
+        finger_3_image: values.fingerprintImages?.[2] || null,
+        finger_4_image: values.fingerprintImages?.[3] || null,
+        finger_5_image: values.fingerprintImages?.[4] || null,
       });
 
       if (error) throw error;
@@ -195,6 +209,7 @@ export default function AddStudent() {
                                   index={index}
                                   value={field.value}
                                   onChange={field.onChange}
+                                  onImageChange={(imageData) => handleFingerprintImageChange(index, imageData)}
                                 />
                               </FormControl>
                               <FormMessage />

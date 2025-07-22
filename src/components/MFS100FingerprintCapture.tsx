@@ -17,9 +17,15 @@ interface MFS100FingerprintCaptureProps {
   index: number;
   value: string;
   onChange: (value: string) => void;
+  onImageChange?: (imageData: string) => void; // New prop for image data
 }
 
-export function MFS100FingerprintCapture({ index, value, onChange }: MFS100FingerprintCaptureProps) {
+export function MFS100FingerprintCapture({ 
+  index, 
+  value, 
+  onChange, 
+  onImageChange 
+}: MFS100FingerprintCaptureProps) {
   const [isCapturing, setIsCapturing] = useState(false);
   const [sdkLoaded, setSdkLoaded] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState<any>(null);
@@ -84,6 +90,46 @@ export function MFS100FingerprintCapture({ index, value, onChange }: MFS100Finge
     }
   };
 
+  // Convert bitmap data to proper image format
+  const processFingerprintImage = (bitmapData: string, width: number, height: number): string => {
+    try {
+      if (!bitmapData) return "";
+      
+      // Create a canvas to process the bitmap data
+      const canvas = document.createElement('canvas');
+      canvas.width = width || 256;
+      canvas.height = height || 256;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) return "";
+      
+      // Convert base64 bitmap to image data
+      const imageData = ctx.createImageData(canvas.width, canvas.height);
+      const binaryData = atob(bitmapData);
+      
+      // Process bitmap data (assuming grayscale format)
+      for (let i = 0; i < binaryData.length && i < imageData.data.length / 4; i++) {
+        const pixelValue = binaryData.charCodeAt(i);
+        const pixelIndex = i * 4;
+        
+        // Set RGB values (grayscale)
+        imageData.data[pixelIndex] = pixelValue;     // Red
+        imageData.data[pixelIndex + 1] = pixelValue; // Green
+        imageData.data[pixelIndex + 2] = pixelValue; // Blue
+        imageData.data[pixelIndex + 3] = 255;        // Alpha
+      }
+      
+      // Put the processed image data on canvas
+      ctx.putImageData(imageData, 0, 0);
+      
+      // Return as base64 PNG
+      return canvas.toDataURL('image/png');
+    } catch (error) {
+      console.error('Error processing fingerprint image:', error);
+      return "";
+    }
+  };
+
   const handleCaptureFingerprint = async () => {
     try {
       if (!sdkLoaded) {
@@ -111,11 +157,41 @@ export function MFS100FingerprintCapture({ index, value, onChange }: MFS100Finge
       }
       
       if (result.data.IsoTemplate) {
-        // Create a fingerprint image from the captured data
-        const fingerprintImage = generateFingerprintImage(result.data);
+        // Process the actual fingerprint image from bitmap data
+        let fingerprintImage = "";
+        
+        if (result.data.BitmapData) {
+          // Use the actual bitmap data from MFS100
+          fingerprintImage = processFingerprintImage(
+            result.data.BitmapData,
+            result.data.InWidth,
+            result.data.InHeight
+          );
+        } else if (result.data.IsoImage) {
+          // Use ISO image if available
+          fingerprintImage = `data:image/png;base64,${result.data.IsoImage}`;
+        }
+        
+        // Set the captured image
         setCapturedImage(fingerprintImage);
+        
+        // Call the image change callback if provided
+        if (onImageChange && fingerprintImage) {
+          onImageChange(fingerprintImage);
+        }
+        
+        // Set the template data for matching
         onChange(result.data.IsoTemplate);
+        
         toast.success(`Fingerprint ${index + 1} captured successfully! (Quality: ${quality})`);
+        
+        console.log('Captured fingerprint data:', {
+          template: result.data.IsoTemplate?.length,
+          image: fingerprintImage ? 'Generated' : 'Not available',
+          quality: quality,
+          width: result.data.InWidth,
+          height: result.data.InHeight
+        });
       } else {
         throw new Error("No template data received from device");
       }
@@ -126,43 +202,6 @@ export function MFS100FingerprintCapture({ index, value, onChange }: MFS100Finge
     } finally {
       setIsCapturing(false);
     }
-  };
-
-  // Generate a visual representation of the fingerprint
-  const generateFingerprintImage = (data: any): string => {
-    if (data.Bitmap) {
-      return `data:image/bmp;base64,${data.Bitmap}`;
-    }
-    
-    // Fallback: create a simple canvas representation
-    const canvas = document.createElement('canvas');
-    canvas.width = 200;
-    canvas.height = 200;
-    const ctx = canvas.getContext('2d');
-    
-    if (ctx) {
-      // Fill with white background
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, 200, 200);
-      
-      // Draw fingerprint pattern
-      ctx.fillStyle = '#000000';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(`Fingerprint ${index + 1}`, 100, 100);
-      ctx.fillText(`Quality: ${captureQuality}`, 100, 120);
-      
-      // Add some fingerprint-like lines
-      for (let i = 0; i < 20; i++) {
-        ctx.beginPath();
-        ctx.arc(100, 100, 20 + i * 3, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(0, 0, 0, ${0.3 - i * 0.01})`;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
-    }
-    
-    return canvas.toDataURL('image/png');
   };
   
   const verifyFingerprint = async () => {
@@ -204,7 +243,7 @@ export function MFS100FingerprintCapture({ index, value, onChange }: MFS100Finge
   return (
     <div className="flex flex-col items-center space-y-4 animate-fade-in">
       <FingerprintDisplay 
-        value={capturedImage || value}
+        value={capturedImage || "/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png"}
         index={index}
         quality={captureQuality}
         isCapturing={isCapturing}

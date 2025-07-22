@@ -1,3 +1,4 @@
+
 import { FingerprintDisplay } from "./FingerprintDisplay";
 
 interface StudentFingerprintViewProps {
@@ -7,17 +8,37 @@ interface StudentFingerprintViewProps {
     finger_3?: string;
     finger_4?: string;
     finger_5?: string;
+    finger_1_image?: string;
+    finger_2_image?: string;
+    finger_3_image?: string;
+    finger_4_image?: string;
+    finger_5_image?: string;
   };
   showQuality?: boolean;
 }
 
 export function StudentFingerprintView({ student, showQuality = false }: StudentFingerprintViewProps) {
   const fingerprints = [
-    student.finger_1,
-    student.finger_2,
-    student.finger_3,
-    student.finger_4,
-    student.finger_5
+    {
+      template: student.finger_1,
+      image: student.finger_1_image
+    },
+    {
+      template: student.finger_2,
+      image: student.finger_2_image
+    },
+    {
+      template: student.finger_3,
+      image: student.finger_3_image
+    },
+    {
+      template: student.finger_4,
+      image: student.finger_4_image
+    },
+    {
+      template: student.finger_5,
+      image: student.finger_5_image
+    }
   ];
 
   return (
@@ -25,7 +46,7 @@ export function StudentFingerprintView({ student, showQuality = false }: Student
       {fingerprints.map((fingerprint, index) => (
         <div key={index} className="flex justify-center">
           <FingerprintDisplay
-            value={fingerprint || ""}
+            value={fingerprint.image || fingerprint.template || ""}
             index={index}
             showQuality={showQuality}
           />
