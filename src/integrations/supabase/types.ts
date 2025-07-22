@@ -55,10 +55,15 @@ export type Database = {
           batch_id: string
           created_at: string
           finger_1: string | null
+          finger_1_image: string | null
           finger_2: string | null
+          finger_2_image: string | null
           finger_3: string | null
+          finger_3_image: string | null
           finger_4: string | null
+          finger_4_image: string | null
           finger_5: string | null
+          finger_5_image: string | null
           id: string
           is_enabled: boolean
           student_name: string
@@ -68,10 +73,15 @@ export type Database = {
           batch_id: string
           created_at?: string
           finger_1?: string | null
+          finger_1_image?: string | null
           finger_2?: string | null
+          finger_2_image?: string | null
           finger_3?: string | null
+          finger_3_image?: string | null
           finger_4?: string | null
+          finger_4_image?: string | null
           finger_5?: string | null
+          finger_5_image?: string | null
           id?: string
           is_enabled?: boolean
           student_name: string
@@ -81,10 +91,15 @@ export type Database = {
           batch_id?: string
           created_at?: string
           finger_1?: string | null
+          finger_1_image?: string | null
           finger_2?: string | null
+          finger_2_image?: string | null
           finger_3?: string | null
+          finger_3_image?: string | null
           finger_4?: string | null
+          finger_4_image?: string | null
           finger_5?: string | null
+          finger_5_image?: string | null
           id?: string
           is_enabled?: boolean
           student_name?: string

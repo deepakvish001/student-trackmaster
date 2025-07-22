@@ -42,16 +42,24 @@ export function StudentFingerprintView({ student, showQuality = false }: Student
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-      {fingerprints.map((fingerprint, index) => (
-        <div key={index} className="flex justify-center">
-          <FingerprintDisplay
-            value={fingerprint.image || fingerprint.template || ""}
-            index={index}
-            showQuality={showQuality}
-          />
-        </div>
-      ))}
+    <div className="space-y-4">
+      <div className="text-center text-sm text-gray-600 mb-4">
+        Fingerprint images captured from MFS100 device
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {fingerprints.map((fingerprint, index) => (
+          <div key={index} className="flex justify-center">
+            <FingerprintDisplay
+              value={fingerprint.image || fingerprint.template || ""}
+              index={index}
+              showQuality={showQuality}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="text-xs text-gray-500 text-center mt-4">
+        {fingerprints.filter(f => f.image).length} of 5 fingerprints have captured images
+      </div>
     </div>
   );
 }
