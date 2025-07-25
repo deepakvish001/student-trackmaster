@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, Hand, ArrowRight, RotateCcw, Eye } from "lucide-react";
+import { CheckCircle2, Circle, Hand, ArrowRight, RotateCcw, Eye, Wifi, WifiOff } from "lucide-react";
 import { EnhancedMFS100Capture } from "./EnhancedMFS100Capture";
 
 interface FingerprintGuidanceSystemProps {
@@ -22,11 +22,12 @@ export function FingerprintGuidanceSystem({
 }: FingerprintGuidanceSystemProps) {
   const [currentFinger, setCurrentFinger] = useState(0);
   const [acceptedFingers, setAcceptedFingers] = useState<boolean[]>([false, false, false, false, false]);
+  const [deviceConnected, setDeviceConnected] = useState(false);
 
   const fingerNames = [
     "Right Thumb",
-    "Right Index",
-    "Right Middle", 
+    "Right Index", 
+    "Right Middle",
     "Left Index",
     "Left Thumb"
   ];
@@ -44,12 +45,10 @@ export function FingerprintGuidanceSystem({
   const handleFingerAccepted = (index: number) => {
     console.log(`Finger ${index + 1} accepted, advancing to next...`);
     
-    // Mark finger as accepted
     const newAccepted = [...acceptedFingers];
     newAccepted[index] = true;
     setAcceptedFingers(newAccepted);
     
-    // Find next unaccepted finger
     const nextUnacceptedIndex = newAccepted.findIndex((accepted, i) => !accepted);
     
     if (nextUnacceptedIndex !== -1) {
@@ -69,7 +68,6 @@ export function FingerprintGuidanceSystem({
     setCurrentFinger(0);
     setAcceptedFingers([false, false, false, false, false]);
     
-    // Clear all fingerprints
     for (let i = 0; i < 5; i++) {
       onFingerprintChange(i, "");
       onImageChange?.(i, "");
@@ -84,148 +82,214 @@ export function FingerprintGuidanceSystem({
   };
 
   const handleFingerClick = (index: number) => {
-    // Allow switching to any finger except already accepted ones for recapture
     if (!acceptedFingers[index]) {
       console.log(`Manually switching to finger ${index + 1}`);
       setCurrentFinger(index);
     }
   };
 
+  const handleReconnect = () => {
+    setDeviceConnected(!deviceConnected);
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Progress Overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center space-x-2">
-              <Hand className="h-5 w-5" />
-              <span>Fingerprint Capture Progress</span>
+    <div className="space-y-8 p-6 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 rounded-2xl">
+      {/* Enhanced Progress Overview */}
+      <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center justify-between text-xl">
+            <span className="flex items-center space-x-3">
+              <div className="p-2 bg-primary/10 rounded-full">
+                <Hand className="h-6 w-6 text-primary" />
+              </div>
+              <span className="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent font-bold">
+                Fingerprint Enrollment Progress
+              </span>
             </span>
             <Button 
               variant="outline" 
               size="sm" 
               onClick={resetCapture}
               disabled={acceptedFingers.every(accepted => !accepted)}
+              className="hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all duration-200"
             >
               <RotateCcw className="h-4 w-4 mr-2" />
               Reset All
             </Button>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           <div className="flex items-center space-x-4">
-            <Progress value={getProgressPercentage()} className="flex-1" />
-            <Badge variant={getProgressPercentage() === 100 ? "default" : "secondary"}>
-              {acceptedFingers.filter(Boolean).length}/5 Accepted
+            <Progress 
+              value={getProgressPercentage()} 
+              className="flex-1 h-3 bg-gray-100"
+            />
+            <Badge 
+              variant={getProgressPercentage() === 100 ? "default" : "secondary"}
+              className="px-4 py-2 text-sm font-semibold"
+            >
+              {acceptedFingers.filter(Boolean).length}/5 Completed
             </Badge>
-          </div>
-          
-          {/* Finger Status Grid */}
-          <div className="grid grid-cols-5 gap-2">
-            {fingerNames.map((name, index) => {
-              const status = getFingerStatus(index);
-              return (
-                <div 
-                  key={index}
-                  className={`text-center p-2 rounded-lg border-2 transition-all cursor-pointer ${
-                    status === 'current'
-                      ? 'border-primary bg-primary/10' 
-                      : status === 'accepted'
-                        ? 'border-green-500 bg-green-50'
-                        : status === 'captured'
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                  onClick={() => handleFingerClick(index)}
-                >
-                  <div className="flex justify-center mb-1">
-                    {status === 'accepted' ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-500" />
-                    ) : status === 'captured' ? (
-                      <Eye className="h-5 w-5 text-blue-500" />
-                    ) : status === 'current' ? (
-                      <Circle className="h-5 w-5 text-primary animate-pulse" />
-                    ) : (
-                      <Circle className="h-5 w-5 text-gray-400" />
-                    )}
-                  </div>
-                  <div className="text-xs font-medium">{name}</div>
-                  {status === 'captured' && !acceptedFingers[index] && (
-                    <div className="text-xs text-blue-600 mt-1">Review</div>
-                  )}
-                </div>
-              );
-            })}
           </div>
         </CardContent>
       </Card>
 
-      {/* Current Finger Capture */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>
-              {acceptedFingers[currentFinger] ? 'Completed: ' : 'Capture: '}
-              {fingerNames[currentFinger]}
-            </span>
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <span>Step {currentFinger + 1} of 5</span>
-              <ArrowRight className="h-4 w-4" />
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-center">
-            <EnhancedMFS100Capture
-              key={`finger-${currentFinger}-${acceptedFingers[currentFinger] ? 'accepted' : 'active'}`}
-              index={currentFinger}
-              value={fingerprints[currentFinger]}
-              onChange={(value) => handleFingerprintCaptured(currentFinger, value)}
-              onImageChange={(imageData) => handleImageCaptured(currentFinger, imageData)}
-              onAccepted={() => handleFingerAccepted(currentFinger)}
-              targetQuality={targetQuality}
-              fingerName={fingerNames[currentFinger]}
-            />
-          </div>
+      {/* Enhanced Fingerprint Grid Layout */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        {fingerNames.map((name, index) => {
+          const status = getFingerStatus(index);
+          const isDisconnected = !deviceConnected;
           
-          {/* Enhanced Instructions */}
-          <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-medium text-blue-900 mb-2">Enhanced Capture Process:</h4>
-            <ol className="text-sm text-blue-800 space-y-1">
-              <li>1. Ensure the MFS100 device is connected and service is running</li>
-              <li>2. Click "Capture" to activate scanner and place your <strong>{fingerNames[currentFinger]}</strong></li>
-              <li>3. <strong>Preview & Review:</strong> Check the captured fingerprint quality</li>
-              <li>4. Choose "Accept & Continue" if satisfied, or "Recapture" to try again</li>
-              <li>5. System automatically advances to next finger after acceptance</li>
-            </ol>
-            
-            {!acceptedFingers[currentFinger] && fingerprints[currentFinger] && (
-              <div className="mt-3 p-2 bg-blue-100 rounded text-sm font-medium text-blue-900">
-                💡 Fingerprint captured! Please review and accept to continue to the next finger.
+          return (
+            <Card 
+              key={index}
+              className={`relative transition-all duration-300 cursor-pointer hover:scale-105 ${
+                status === 'current'
+                  ? 'border-2 border-primary shadow-xl bg-primary/5 scale-105' 
+                  : status === 'accepted'
+                    ? 'border-2 border-green-500 shadow-lg bg-green-50'
+                    : status === 'captured'
+                      ? 'border-2 border-blue-500 shadow-lg bg-blue-50'
+                      : 'border border-gray-200 shadow-md hover:border-gray-300 bg-white'
+              }`}
+              onClick={() => handleFingerClick(index)}
+            >
+              {/* Status Badge */}
+              <div className="absolute -top-2 -right-2 z-10">
+                <Badge 
+                  variant={isDisconnected ? "destructive" : status === 'accepted' ? "default" : "secondary"}
+                  className="px-2 py-1 text-xs font-semibold"
+                >
+                  {isDisconnected ? (
+                    <>
+                      <div className="w-2 h-2 bg-red-500 rounded-full mr-1" />
+                      Disconnected
+                    </>
+                  ) : status === 'accepted' ? (
+                    <>
+                      <div className="w-2 h-2 bg-green-500 rounded-full mr-1" />
+                      Captured
+                    </>
+                  ) : status === 'captured' ? (
+                    <>
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mr-1" />
+                      Review
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full mr-1" />
+                      Ready
+                    </>
+                  )}
+                </Badge>
               </div>
-            )}
-            
-            {acceptedFingers[currentFinger] && (
-              <div className="mt-3 p-2 bg-green-100 rounded text-sm font-medium text-green-900">
-                ✅ {fingerNames[currentFinger]} accepted! Click on other fingers to switch or continue.
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+
+              <CardHeader className="text-center pb-2">
+                <CardTitle className="text-sm font-bold">
+                  Finger {index + 1}
+                </CardTitle>
+                <div className="text-xs text-gray-600 font-medium">
+                  {name}
+                </div>
+              </CardHeader>
+              
+              <CardContent className="text-center space-y-4 pb-4">
+                {/* Connection Status */}
+                <div className="flex items-center justify-center space-x-1">
+                  {isDisconnected ? (
+                    <WifiOff className="h-4 w-4 text-red-500" />
+                  ) : (
+                    <Wifi className="h-4 w-4 text-green-500" />
+                  )}
+                  <span className={`text-xs font-medium ${
+                    isDisconnected ? 'text-red-600' : 'text-green-600'
+                  }`}>
+                    {isDisconnected ? 'Disconnected' : 'Connected'}
+                  </span>
+                </div>
+
+                {/* Fingerprint Display Area */}
+                <div className={`mx-auto w-24 h-32 border-2 rounded-lg flex items-center justify-center transition-all duration-300 ${
+                  status === 'current'
+                    ? 'border-primary border-dashed animate-pulse bg-primary/5' 
+                    : status === 'accepted'
+                      ? 'border-green-500 bg-green-50'
+                      : status === 'captured'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-300 bg-gray-50'
+                }`}>
+                  <div className="flex flex-col items-center space-y-2 text-gray-400">
+                    {status === 'accepted' ? (
+                      <CheckCircle2 className="h-8 w-8 text-green-500" />
+                    ) : status === 'captured' ? (
+                      <Eye className="h-8 w-8 text-blue-500" />
+                    ) : status === 'current' ? (
+                      <Circle className="h-8 w-8 text-primary animate-pulse" />
+                    ) : (
+                      <>
+                        <svg className="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 1C8.5 1 5.7 3.8 5.7 7.3v3.4c0 .8.7 1.5 1.5 1.5s1.5-.7 1.5-1.5V7.3C8.7 5.1 10.1 3.7 12 3.7s3.3 1.4 3.3 3.6v3.4c0 .8.7 1.5 1.5 1.5s1.5-.7 1.5-1.5V7.3C18.3 3.8 15.5 1 12 1z"/>
+                          <path d="M12 14c-2.2 0-4 1.8-4 4s1.8 4 4 4 4-1.8 4-4-1.8-4-4-4z"/>
+                        </svg>
+                        <span className="text-xs">No Print</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-2">
+                  <Button
+                    size="sm"
+                    variant={status === 'current' ? "default" : "outline"}
+                    disabled={status === 'accepted'}
+                    className="w-full py-2 text-xs font-semibold transition-all duration-200"
+                  >
+                    {status === 'accepted' ? 'Captured ✓' : 'Capture'}
+                  </Button>
+                  
+                  {isDisconnected && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={handleReconnect}
+                      className="w-full py-1.5 text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300"
+                    >
+                      Reconnect
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
 
       {/* Completion Status */}
       {getProgressPercentage() === 100 && (
-        <Card className="border-green-500 bg-green-50">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-2">
-              <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
-              <h3 className="text-lg font-semibold text-green-800">
-                All Fingerprints Captured & Accepted Successfully!
+        <Card className="border-2 border-green-500 bg-gradient-to-r from-green-50 to-emerald-50 shadow-xl">
+          <CardContent className="pt-8 pb-6">
+            <div className="text-center space-y-4">
+              <div className="flex justify-center">
+                <div className="p-4 bg-green-100 rounded-full">
+                  <CheckCircle2 className="h-16 w-16 text-green-600" />
+                </div>
+              </div>
+              <h3 className="text-2xl font-bold text-green-800">
+                Enrollment Complete!
               </h3>
-              <p className="text-green-700">
-                All 5 fingerprints have been captured, reviewed, and accepted. You can now save the student registration.
+              <p className="text-green-700 text-lg max-w-2xl mx-auto">
+                All 5 fingerprints have been successfully captured and verified. 
+                The student registration is now ready to be saved.
               </p>
+              <div className="flex justify-center space-x-4 mt-6">
+                <Badge variant="default" className="px-4 py-2 text-sm">
+                  ✓ All Fingers Enrolled
+                </Badge>
+                <Badge variant="secondary" className="px-4 py-2 text-sm">
+                  Ready to Save
+                </Badge>
+              </div>
             </div>
           </CardContent>
         </Card>
