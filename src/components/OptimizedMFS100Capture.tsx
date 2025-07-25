@@ -16,6 +16,7 @@ interface OptimizedMFS100CaptureProps {
   onImageChange?: (imageData: string) => void;
   fingerName?: string;
   targetQuality?: number;
+  captureMode?: 'both' | 'image-only' | 'template-only';
 }
 
 export function OptimizedMFS100Capture({ 
@@ -24,7 +25,8 @@ export function OptimizedMFS100Capture({
   onChange, 
   onImageChange,
   fingerName = `Finger ${index + 1}`,
-  targetQuality = 60
+  targetQuality = 60,
+  captureMode = 'both'
 }: OptimizedMFS100CaptureProps) {
   const [isCapturing, setIsCapturing] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string>("");
@@ -81,24 +83,46 @@ export function OptimizedMFS100Capture({
       const quality = result.data.Quality || 0;
       setCaptureQuality(quality);
 
-      // Process image if available
+      // Process and prioritize image data
       let processedImage = "";
-      if (result.data.BitmapData) {
+      if (result.data.BitmapData && captureMode !== 'template-only') {
         processedImage = processFingerprintBitmap(
           result.data.BitmapData,
           result.data.InWidth || 256,
           result.data.InHeight || 256
         );
-        setCapturedImage(processedImage);
-        onImageChange?.(processedImage);
+        
+        if (processedImage) {
+          setCapturedImage(processedImage);
+          // Always call onImageChange when we have image data
+          onImageChange?.(processedImage);
+          console.log(`✅ Real fingerprint image captured for ${fingerName}`, {
+            quality,
+            imageDataLength: processedImage.length,
+            hasTemplate: !!result.data.IsoTemplate
+          });
+        }
       }
 
-      // Save template
-      if (result.data.IsoTemplate) {
+      // Handle template data based on capture mode
+      if (result.data.IsoTemplate && captureMode !== 'image-only') {
         onChange(result.data.IsoTemplate);
-        toast.success(`${fingerName} captured! Quality: ${quality}%`);
+      } else if (captureMode === 'image-only' && processedImage) {
+        // For image-only mode, save the image data as the primary value
+        onChange(processedImage);
+      }
+
+      // Success message based on what was captured
+      if (processedImage && result.data.IsoTemplate && captureMode === 'both') {
+        toast.success(`${fingerName} captured! Image and template saved. Quality: ${quality}%`);
+      } else if (processedImage && captureMode === 'image-only') {
+        toast.success(`${fingerName} image captured! Quality: ${quality}%`);
+      } else if (result.data.IsoTemplate && captureMode === 'template-only') {
+        toast.success(`${fingerName} template captured! Quality: ${quality}%`);
+      } else if (processedImage) {
+        toast.success(`${fingerName} image captured! Quality: ${quality}%`);
       } else {
-        throw new Error("No template data received");
+        throw new Error("No usable fingerprint data captured");
       }
 
     } catch (error) {
@@ -108,59 +132,78 @@ export function OptimizedMFS100Capture({
     } finally {
       setIsCapturing(false);
     }
-  }, [isConnected, isInitialized, targetQuality, fingerName, onChange, onImageChange]);
+  }, [isConnected, isInitialized, targetQuality, fingerName, onChange, onImageChange, captureMode]);
 
-  // Optimized bitmap processing
+  // Enhanced bitmap processing for clearer images
   const processFingerprintBitmap = useCallback((bitmapData: string, width: number, height: number): string => {
     try {
+      console.log(`Processing fingerprint bitmap for ${fingerName}:`, {
+        dataLength: bitmapData.length,
+        width,
+        height
+      });
+
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       
-      if (!ctx) return "";
+      if (!ctx) {
+        console.error('Failed to get canvas context');
+        return "";
+      }
       
       const binaryData = atob(bitmapData);
       const imageData = ctx.createImageData(width, height);
       const data = imageData.data;
       
-      // Optimized pixel processing
+      // Process each pixel with enhanced contrast and inversion
       const totalPixels = Math.min(binaryData.length, width * height);
       for (let i = 0; i < totalPixels; i++) {
-        const pixelValue = binaryData.charCodeAt(i);
-        const pixelIndex = i * 4;
+        // Get pixel value and invert it (MFS100 typically returns inverted images)
+        let pixelValue = 255 - binaryData.charCodeAt(i);
         
-        data[pixelIndex] = pixelValue;     
-        data[pixelIndex + 1] = pixelValue; 
-        data[pixelIndex + 2] = pixelValue; 
-        data[pixelIndex + 3] = 255;        
+        // Apply contrast enhancement
+        pixelValue = Math.min(255, Math.max(0, pixelValue * 1.2 + 10));
+        
+        const pixelIndex = i * 4;
+        data[pixelIndex] = pixelValue;     // Red
+        data[pixelIndex + 1] = pixelValue; // Green
+        data[pixelIndex + 2] = pixelValue; // Blue
+        data[pixelIndex + 3] = 255;        // Alpha
       }
       
       ctx.putImageData(imageData, 0, 0);
-      return canvas.toDataURL('image/png', 0.8);
+      const result = canvas.toDataURL('image/png', 1.0);
+      
+      console.log(`✅ Bitmap processed successfully for ${fingerName}, result length:`, result.length);
+      return result;
       
     } catch (error) {
       console.error('Bitmap processing error:', error);
       return "";
     }
-  }, []);
+  }, [fingerName]);
 
   const getStatusColor = () => {
     if (isChecking) return "bg-yellow-500";
     return isConnected ? "bg-green-500" : "bg-red-500";
   };
 
+  // Determine what to display - prioritize captured image over template
+  const displayValue = capturedImage || (captureMode === 'image-only' && value.startsWith('data:image/') ? value : "");
+
   return (
     <div className="flex flex-col items-center space-y-4">
       <FingerprintDisplay 
-        value={capturedImage || value}
+        value={displayValue}
         index={index}
         quality={captureQuality}
         isCapturing={isCapturing}
         showQuality={true}
       />
 
-      {/* Optimized Status Display */}
+      {/* Status Display */}
       <div className="flex items-center space-x-3">
         <div className="flex items-center space-x-2">
           {isConnected ? (
@@ -180,6 +223,12 @@ export function OptimizedMFS100Capture({
         {captureQuality && (
           <Badge variant={captureQuality >= 70 ? "default" : "secondary"}>
             Quality: {captureQuality}%
+          </Badge>
+        )}
+
+        {captureMode !== 'both' && (
+          <Badge variant="outline">
+            {captureMode === 'image-only' ? 'Image Only' : 'Template Only'}
           </Badge>
         )}
       </div>
@@ -226,10 +275,12 @@ export function OptimizedMFS100Capture({
       </Button>
 
       {/* Success Status */}
-      {value && capturedImage && (
+      {(capturedImage || value) && (
         <div className="flex items-center space-x-2 text-sm text-green-600">
           <CheckCircle className="h-4 w-4" />
-          <span>{fingerName} captured successfully</span>
+          <span>
+            {capturedImage ? 'Real fingerprint image captured' : 'Fingerprint data saved'}
+          </span>
         </div>
       )}
     </div>

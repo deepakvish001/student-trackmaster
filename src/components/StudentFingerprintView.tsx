@@ -42,6 +42,8 @@ export function StudentFingerprintView({ student, showQuality = false }: Student
   ];
 
   const hasCapturedFingerprints = fingerprints.some(f => f.image || f.template);
+  const realImagesCount = fingerprints.filter(f => f.image && f.image.startsWith('data:image/')).length;
+  const templatesOnlyCount = fingerprints.filter(f => f.template && !f.image).length;
 
   return (
     <div className="space-y-4">
@@ -73,19 +75,37 @@ export function StudentFingerprintView({ student, showQuality = false }: Student
           
           <div className="text-xs text-gray-500 text-center mt-4">
             <div className="flex justify-center items-center space-x-4">
-              <span>
-                {fingerprints.filter(f => f.image).length} images captured
-              </span>
-              <span>•</span>
-              <span>
-                {fingerprints.filter(f => f.template).length} templates saved
-              </span>
+              {realImagesCount > 0 && (
+                <span className="text-green-600 font-medium">
+                  {realImagesCount} real images captured
+                </span>
+              )}
+              {realImagesCount > 0 && templatesOnlyCount > 0 && <span>•</span>}
+              {templatesOnlyCount > 0 && (
+                <span className="text-blue-600">
+                  {templatesOnlyCount} template{templatesOnlyCount > 1 ? 's' : ''} only
+                </span>
+              )}
             </div>
-            {fingerprints.some(f => f.template && !f.image) && (
-              <div className="text-yellow-600 mt-2 text-xs">
-                ⚠️ Some fingerprints show "Template Saved" because only template data was captured without images.
-                <br />
-                To capture actual images, use the MFS100 device with proper image capture settings.
+            
+            {realImagesCount === 0 && templatesOnlyCount > 0 && (
+              <div className="text-orange-600 mt-3 p-3 bg-orange-50 rounded-lg text-xs">
+                <div className="font-medium mb-1">⚠️ No Real Fingerprint Images Found</div>
+                <div>
+                  This student only has template data saved. To see actual fingerprint images:
+                  <br />
+                  1. Use the "Edit Student" option
+                  <br />
+                  2. Recapture fingerprints with the MFS100 device
+                  <br />
+                  3. Ensure the device is properly connected and initialized
+                </div>
+              </div>
+            )}
+            
+            {realImagesCount > 0 && (
+              <div className="text-green-600 mt-2 p-2 bg-green-50 rounded-lg text-xs">
+                ✅ Real fingerprint images successfully captured and displayed
               </div>
             )}
           </div>
