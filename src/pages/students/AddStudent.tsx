@@ -22,6 +22,7 @@ import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FingerprintCapture } from "@/components/FingerprintCapture";
 import { MFS100FingerprintCapture } from "@/components/MFS100FingerprintCapture";
+import { FingerprintGuidanceSystem } from "@/components/FingerprintGuidanceSystem";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -30,7 +31,7 @@ const formSchema = z.object({
   address: z.string().min(5, "Address must be at least 5 characters"),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
   fingerprints: z.array(z.string()).length(5, "All 5 fingerprints are required"),
-  fingerprintImages: z.array(z.string()).optional(), // New field for fingerprint images
+  fingerprintImages: z.array(z.string()).optional(),
 });
 
 export default function AddStudent() {
@@ -44,9 +45,16 @@ export default function AddStudent() {
       address: "",
       email: "",
       fingerprints: ["", "", "", "", ""],
-      fingerprintImages: ["", "", "", "", ""], // Initialize image array
+      fingerprintImages: ["", "", "", "", ""],
     },
   });
+
+  // Handle fingerprint changes
+  const handleFingerprintChange = (index: number, value: string) => {
+    const currentFingerprints = form.getValues("fingerprints");
+    currentFingerprints[index] = value;
+    form.setValue("fingerprints", currentFingerprints);
+  };
 
   // Handle fingerprint image changes
   const handleFingerprintImageChange = (index: number, imageData: string) => {
@@ -57,6 +65,13 @@ export default function AddStudent() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
+      // Validate that all fingerprints are captured
+      const missingFingerprints = values.fingerprints.findIndex(fp => !fp);
+      if (missingFingerprints !== -1) {
+        toast.error(`Please capture all 5 fingerprints. Missing: Finger ${missingFingerprints + 1}`);
+        return;
+      }
+
       const { error } = await supabase.from('students').insert({
         student_name: values.name,
         batch_id: values.batchId,
@@ -74,7 +89,7 @@ export default function AddStudent() {
 
       if (error) throw error;
 
-      toast.success("Student added successfully!");
+      toast.success("Student registered successfully with all fingerprints!");
       navigate("/students");
     } catch (error) {
       console.error('Error adding student:', error);
@@ -86,16 +101,17 @@ export default function AddStudent() {
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-primary">Add Student</h2>
+          <h2 className="text-2xl font-bold text-primary">Add Student with Real-time Fingerprint Capture</h2>
         </div>
 
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
-            <CardTitle>Student Registration with Fingerprint</CardTitle>
+            <CardTitle>Student Registration with Enhanced MFS100 Capture</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                {/* Student Information Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
@@ -188,92 +204,97 @@ export default function AddStudent() {
                   />
                 </div>
 
-                <Tabs defaultValue="mfs100" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="mfs100">MFS100 Native SDK</TabsTrigger>
-                    <TabsTrigger value="usb">USB Fingerprint Scanner</TabsTrigger>
-                    <TabsTrigger value="rd">Mantra RD Service</TabsTrigger>
-                  </TabsList>
+                {/* Enhanced Fingerprint Capture Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Enhanced Fingerprint Capture</h3>
+                  <p className="text-sm text-gray-600">
+                    Connect your Mantra MFS100 device and follow the guided process to capture all 5 fingerprints in high quality.
+                  </p>
                   
-                  <TabsContent value="mfs100" className="mt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                      {[0, 1, 2, 3, 4].map((index) => (
-                        <FormField
-                          key={index}
-                          control={form.control}
-                          name={`fingerprints.${index}`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <MFS100FingerprintCapture
-                                  index={index}
-                                  value={field.value}
-                                  onChange={field.onChange}
-                                  onImageChange={(imageData) => handleFingerprintImageChange(index, imageData)}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      ))}
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="usb" className="mt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                      {[0, 1, 2, 3, 4].map((index) => (
-                        <FormField
-                          key={index}
-                          control={form.control}
-                          name={`fingerprints.${index}`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <USBFingerprintCapture
-                                  index={index}
-                                  value={field.value}
-                                  onChange={field.onChange}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      ))}
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="rd" className="mt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                      {[0, 1, 2, 3, 4].map((index) => (
-                        <FormField
-                          key={index}
-                          control={form.control}
-                          name={`fingerprints.${index}`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <FingerprintCapture
-                                  index={index}
-                                  value={field.value}
-                                  onChange={field.onChange}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      ))}
-                    </div>
-                  </TabsContent>
-                </Tabs>
+                  <Tabs defaultValue="enhanced" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3">
+                      <TabsTrigger value="enhanced">Enhanced MFS100 (Recommended)</TabsTrigger>
+                      <TabsTrigger value="standard">Standard MFS100</TabsTrigger>
+                      <TabsTrigger value="rd">Mantra RD Service</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="enhanced" className="mt-6">
+                      <FormField
+                        control={form.control}
+                        name="fingerprints"
+                        render={() => (
+                          <FormItem>
+                            <FormControl>
+                              <FingerprintGuidanceSystem
+                                fingerprints={form.watch("fingerprints")}
+                                onFingerprintChange={handleFingerprintChange}
+                                onImageChange={handleFingerprintImageChange}
+                                targetQuality={70}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </TabsContent>
+                    
+                    <TabsContent value="standard" className="mt-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                        {[0, 1, 2, 3, 4].map((index) => (
+                          <FormField
+                            key={index}
+                            control={form.control}
+                            name={`fingerprints.${index}`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormControl>
+                                  <MFS100FingerprintCapture
+                                    index={index}
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    onImageChange={(imageData) => handleFingerprintImageChange(index, imageData)}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        ))}
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="rd" className="mt-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                        {[0, 1, 2, 3, 4].map((index) => (
+                          <FormField
+                            key={index}
+                            control={form.control}
+                            name={`fingerprints.${index}`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormControl>
+                                  <FingerprintCapture
+                                    index={index}
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        ))}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </div>
 
                 <Button 
                   type="submit" 
-                  className="w-full md:w-32 bg-primary hover:bg-primary/90 transition-colors animate-fade-in"
+                  className="w-full md:w-auto bg-primary hover:bg-primary/90 transition-colors animate-fade-in"
+                  size="lg"
                 >
-                  Register Student
+                  Register Student with Fingerprints
                 </Button>
               </form>
             </Form>
