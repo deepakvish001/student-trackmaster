@@ -58,7 +58,7 @@ export function StudentFingerprintView({ student, showQuality = false }: Student
         ))}
       </div>
       <div className="text-xs text-gray-500 text-center mt-4">
-        {fingerprints.filter(f => f.image).length} of 5 fingerprints have captured images
+        {fingerprints.filter(f => f.image || f.template).length} of 5 fingerprints captured
       </div>
     </div>
   );

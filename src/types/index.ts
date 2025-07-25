@@ -1,3 +1,4 @@
+
 export interface Batch {
   id: number;
   batch_name: string;
@@ -19,6 +20,11 @@ export interface Student {
   finger_3: string | null;
   finger_4: string | null;
   finger_5: string | null;
+  finger_1_image?: string | null;
+  finger_2_image?: string | null;
+  finger_3_image?: string | null;
+  finger_4_image?: string | null;
+  finger_5_image?: string | null;
   is_enabled: boolean;
   created_at: string;
   updated_at: string;
