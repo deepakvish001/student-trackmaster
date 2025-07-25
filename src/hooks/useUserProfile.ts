@@ -38,14 +38,16 @@ export function useUserProfile() {
       setIsLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
-        .from('user_profiles' as any)
+      const { data, error } = await (supabase as any)
+        .from('user_profiles')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
-        throw error;
+        console.error('Error fetching profile:', error);
+        setError(error.message);
+        return;
       }
 
       if (!data) {
@@ -57,6 +59,7 @@ export function useUserProfile() {
         await updateLastLogin();
       }
     } catch (err) {
+      console.error('Profile fetch error:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch profile');
     } finally {
       setIsLoading(false);
@@ -67,8 +70,8 @@ export function useUserProfile() {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('user_profiles' as any)
+      const { data, error } = await (supabase as any)
+        .from('user_profiles')
         .insert({
           user_id: user.id,
           full_name: user.email?.split('@')[0] || 'User',
@@ -78,9 +81,15 @@ export function useUserProfile() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating profile:', error);
+        setError(error.message);
+        return;
+      }
+      
       setProfile(data as UserProfile);
     } catch (err) {
+      console.error('Profile creation error:', err);
       setError(err instanceof Error ? err.message : 'Failed to create profile');
     }
   };
@@ -89,8 +98,8 @@ export function useUserProfile() {
     if (!user) return;
 
     try {
-      await supabase
-        .from('user_profiles' as any)
+      await (supabase as any)
+        .from('user_profiles')
         .update({ last_login_at: new Date().toISOString() })
         .eq('user_id', user.id);
     } catch (err) {
@@ -103,19 +112,25 @@ export function useUserProfile() {
 
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from('user_profiles' as any)
+      const { data, error } = await (supabase as any)
+        .from('user_profiles')
         .update(updates)
         .eq('user_id', user.id)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating profile:', error);
+        setError(error.message);
+        throw new Error(error.message);
+      }
+      
       setProfile(data as UserProfile);
       return data as UserProfile;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update profile');
-      throw err;
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update profile';
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }

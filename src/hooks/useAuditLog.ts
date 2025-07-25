@@ -26,7 +26,7 @@ export function useAuditLog() {
     newValues?: any
   ) => {
     try {
-      const { error } = await supabase.rpc('log_audit_event', {
+      const { error } = await supabase.rpc('log_audit_event' as any, {
         p_action: action,
         p_table_name: tableName,
         p_record_id: recordId,
@@ -56,14 +56,18 @@ export function useAuditLog() {
     try {
       setIsLoading(true);
       
-      // Use raw SQL to query audit_logs table
-      const { data, error } = await supabase
-        .from('audit_logs' as any)
+      // Use raw SQL query for audit_logs table
+      const { data, error } = await (supabase as any)
+        .from('audit_logs')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(filters.limit || 50);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching audit logs:', error);
+        return [];
+      }
+      
       return (data || []) as AuditLogEntry[];
     } catch (err) {
       console.error('Failed to fetch audit logs:', err);

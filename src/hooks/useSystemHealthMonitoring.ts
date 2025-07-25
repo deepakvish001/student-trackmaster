@@ -49,7 +49,7 @@ export function useSystemHealthMonitoring(autoCheck = true, interval = 30000) {
     responseTime?: number
   ) => {
     try {
-      const { error } = await supabase.rpc('record_health_check', {
+      const { error } = await supabase.rpc('record_health_check' as any, {
         p_check_type: checkType,
         p_status: status,
         p_details: details,
@@ -171,13 +171,17 @@ export function useSystemHealthMonitoring(autoCheck = true, interval = 30000) {
 
   const fetchRecentChecks = async () => {
     try {
-      const { data, error } = await supabase
-        .from('system_health_logs' as any)
+      const { data, error } = await (supabase as any)
+        .from('system_health_logs')
         .select('*')
         .order('checked_at', { ascending: false })
         .limit(20);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching health checks:', error);
+        return;
+      }
+      
       setRecentChecks((data || []) as HealthCheck[]);
     } catch (err) {
       console.error('Failed to fetch recent health checks:', err);

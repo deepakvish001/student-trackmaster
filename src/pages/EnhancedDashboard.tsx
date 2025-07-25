@@ -33,15 +33,24 @@ export default function EnhancedDashboard() {
   const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
-      const [studentsRes, batchesRes, profilesRes] = await Promise.all([
+      const [studentsRes, batchesRes] = await Promise.all([
         supabase.from('students').select('id, created_at, batch_id').eq('is_enabled', true),
-        supabase.from('batches').select('id, created_at, max_students').eq('is_enabled', true),
-        supabase.from('user_profiles').select('id, role, last_login_at')
+        supabase.from('batches').select('id, created_at, max_students').eq('is_enabled', true)
       ]);
 
       const students = studentsRes.data || [];
       const batches = batchesRes.data || [];
-      const profiles = profilesRes.data || [];
+
+      // Get user profiles data with error handling
+      let profiles = [];
+      try {
+        const profilesRes = await (supabase as any)
+          .from('user_profiles')
+          .select('id, role, last_login_at');
+        profiles = profilesRes.data || [];
+      } catch (err) {
+        console.warn('Could not fetch user profiles:', err);
+      }
 
       // Calculate batch utilization
       const batchUtilization = await Promise.all(
