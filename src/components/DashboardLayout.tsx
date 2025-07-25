@@ -1,97 +1,105 @@
-import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
-import { Button } from '@/components/ui/button';
-import { 
-  SidebarProvider, 
-  Sidebar, 
-  SidebarContent, 
-  SidebarGroup, 
-  SidebarGroupContent, 
-  SidebarMenu, 
-  SidebarMenuButton, 
+import React from 'react';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton,
+  SidebarMenuButton,
   SidebarTrigger,
-  SidebarSeparator
-} from '@/components/ui/sidebar';
-import { Home, Users, BookOpen, Download, LogOut, UserPlus, List, Plus } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+  SidebarProvider,
+  SidebarGroup,
+  SidebarGroupContent,
+} from "@/components/ui/sidebar"
+import { Button } from "@/components/ui/button"
+import {
+  Menu,
+  Bell,
+  LayoutDashboard,
+  Users,
+  GraduationCap,
+  Download,
+  TestTube,
+  LogOut,
+  User,
+  Plus
+} from "lucide-react"
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { logout } = useEnhancedAuth();
+interface DashboardLayoutProps {
+  children: React.ReactNode;
+}
+
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
+  const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuth();
 
   const menuItems = [
-    { title: 'Dashboard', icon: Home, path: '/dashboard' },
-    {
-      title: 'Student List',
-      icon: Users,
-      submenu: [
-        { title: 'Add Student', icon: UserPlus, path: '/students/add' },
-        { title: 'View Student', icon: List, path: '/students/view' },
-      ],
-    },
-    { title: 'Batch List', icon: BookOpen, path: '/batches' },
-    { title: 'Download', icon: Download, path: '/downloads' },
+    { title: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { title: 'Student List', path: '/students/list', icon: Users },
+    { title: 'View Students', path: '/students', icon: Users },
+    { title: 'Batches', path: '/batches', icon: GraduationCap },
+    { title: 'Downloads', path: '/downloads', icon: Download },
+    { title: 'Testing', path: '/testing', icon: TestTube },
   ];
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <Sidebar className="bg-[#1A1F2C] text-white">
-          <div className="px-4 py-4 bg-[#8B5CF6]">
-            <h1 className="text-xl font-bold text-white">Admin Dashboard</h1>
-          </div>
-          <div className="px-4 py-3 bg-[#221F26] text-white/70">
-            <span>User</span>
-          </div>
-          <SidebarContent className="overflow-y-auto">
+      <div className="min-h-screen flex w-full bg-gray-50">
+        <Sidebar className="bg-[#1E2532] border-r border-gray-700">
+          <SidebarHeader className="p-4 border-b border-gray-700">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                <User className="w-6 h-6 text-[#1E2532]" />
+              </div>
+              <div className="text-white">
+                <div className="font-medium">AdminLTE USER</div>
+              </div>
+            </div>
+          </SidebarHeader>
+
+          <SidebarContent>
+            {/* User Section */}
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <div className="px-4 py-2 text-white font-medium">User</div>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {/* Main Menu */}
             <SidebarGroup>
               <SidebarGroupContent>
                 <SidebarMenu>
                   {menuItems.map((item) => (
-                    item.submenu ? (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton className="w-full hover:bg-[#2A2F3E] text-white">
+                    <SidebarMenuItem key={item.path}>
+                      <SidebarMenuButton asChild>
+                        <Link
+                          to={item.path}
+                          className={`${(location.pathname === item.path || (item.path === '/dashboard' && (location.pathname === '/' || location.pathname === '/dashboard'))) ? 'bg-[#2A2F3E]' : ''} text-white hover:bg-[#2A2F3E]`}
+                        >
                           <item.icon className="w-4 h-4" />
                           <span>{item.title}</span>
-                        </SidebarMenuButton>
-                        <SidebarMenuSub>
-                          {item.submenu.map((subItem) => (
-                            <SidebarMenuSubItem key={subItem.path}>
-                              <SidebarMenuSubButton asChild>
-                                <Link
-                                  to={subItem.path}
-                                  className={`${location.pathname === subItem.path ? 'bg-[#2A2F3E]' : ''} text-white hover:bg-[#2A2F3E]`}
-                                >
-                                  <subItem.icon className="w-4 h-4" />
-                                  <span>{subItem.title}</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
-                        </SidebarMenuSub>
-                      </SidebarMenuItem>
-                    ) : (
-                      <SidebarMenuItem key={item.path}>
-                        <SidebarMenuButton asChild>
-                          <Link
-                            to={item.path}
-                            className={`${(location.pathname === item.path || (item.path === '/dashboard' && (location.pathname === '/' || location.pathname === '/dashboard'))) ? 'bg-[#2A2F3E]' : ''} text-white hover:bg-[#2A2F3E]`}
-                          >
-                            <item.icon className="w-4 h-4" />
-                            <span>{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    )
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-            
-            <SidebarSeparator />
+
+            {/* Add New Student Button */}
             <SidebarGroup>
               <SidebarGroupContent>
                 <div className="px-2 py-2">
@@ -102,7 +110,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           ? 'bg-[#8B5CF6] border-[#8B5CF6] shadow-lg' 
                           : 'bg-transparent border-[#8B5CF6] hover:bg-[#8B5CF6] hover:shadow-md'
                       }`}
-                      variant="outline"
                     >
                       <Plus className="w-5 h-5" />
                       <span className="font-medium">Add New Student</span>
@@ -112,32 +119,46 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
-        </Sidebar>
 
-        <div className="flex-1 bg-[#ecf0f5] flex flex-col">
-          <header className="bg-white border-b border-gray-200 px-4 py-4 flex justify-between items-center">
-            <div className="flex items-center space-x-2">
-              <SidebarTrigger className="md:hidden" />
-              <Link to="/dashboard" className="text-blue-600 hover:underline">Home</Link>
-              <span className="text-gray-500">/</span>
-              <span className="text-gray-900 capitalize">
-                {location.pathname === '/' ? 'dashboard' : location.pathname.split('/').pop()?.replace('-', ' ')}
-              </span>
-            </div>
-            <Button variant="ghost" onClick={logout}>
+          <SidebarFooter className="p-4 border-t border-gray-700">
+            <Button
+              onClick={handleLogout}
+              variant="ghost"
+              className="w-full justify-start text-white hover:bg-[#2A2F3E]"
+            >
               <LogOut className="w-4 h-4 mr-2" />
               Logout
             </Button>
-          </header>
+          </SidebarFooter>
+        </Sidebar>
 
-          <main className="flex-1 p-6 overflow-auto">
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <header className="bg-white shadow-sm border-b px-6 py-4">
+            <div className="flex items-center justify-between">
+              <SidebarTrigger className="lg:hidden" />
+              <div className="flex items-center space-x-4">
+                <Button variant="ghost" size="sm">
+                  <Menu className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="sm">
+                  <Bell className="w-4 h-4" />
+                </Button>
+                <Button 
+                  onClick={handleLogout}
+                  variant="ghost" 
+                  size="sm"
+                  className="text-gray-600 hover:text-gray-900"
+                >
+                  Logout
+                </Button>
+              </div>
+            </div>
+          </header>
+          
+          <main className="flex-1 overflow-auto p-6">
             {children}
           </main>
-
-          <footer className="mt-auto border-t border-gray-200 p-4 text-center text-sm text-gray-600 bg-white">
-            <p>© 2014-2024 Admin Dashboard. All rights reserved.</p>
-            <p>Version 3.2.0</p>
-          </footer>
         </div>
       </div>
     </SidebarProvider>

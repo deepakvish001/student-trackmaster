@@ -1,100 +1,125 @@
-
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import React from "react";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient as TanstackQueryClient, QueryClientProvider as TanstackQueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { EnhancedAuthProvider } from "@/contexts/EnhancedAuthContext";
+import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Batches from "./pages/Batches";
+import Downloads from "./pages/Downloads";
+import Testing from "./pages/Testing";
 import AddStudent from "./pages/students/AddStudent";
 import EnhancedAddStudent from "./pages/students/EnhancedAddStudent";
 import ViewStudents from "./pages/students/ViewStudents";
-import Downloads from "./pages/Downloads";
-import Testing from "./pages/Testing";
-import { ProtectedRoute } from "./components/ProtectedRoute";
+import StudentList from "./pages/students/StudentList";
+import { AuthProvider } from "./contexts/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 
-const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
+function App() {
+  return (
+    <QueryClient>
       <BrowserRouter>
-        <EnhancedAuthProvider>
+        <AuthProvider>
+          <Toaster />
           <Routes>
-            <Route 
-              path="/" 
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } 
-            />
             <Route path="/login" element={<Login />} />
-            <Route 
-              path="/dashboard" 
+            <Route
+              path="/"
               element={
                 <ProtectedRoute>
                   <Dashboard />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/batches" 
+            <Route
+              path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <Batches />
+                  <Dashboard />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/students/add" 
-              element={
-                <ProtectedRoute>
-                  <AddStudent />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/students/enhanced-add" 
-              element={
-                <ProtectedRoute>
-                  <EnhancedAddStudent />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/students/view" 
+            <Route
+              path="/students"
               element={
                 <ProtectedRoute>
                   <ViewStudents />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/downloads" 
+            <Route
+              path="/students/list"
+              element={
+                <ProtectedRoute>
+                  <StudentList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/students/add"
+              element={
+                <ProtectedRoute>
+                  <AddStudent />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/students/enhanced-add"
+              element={
+                <ProtectedRoute>
+                  <EnhancedAddStudent />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/batches"
+              element={
+                <ProtectedRoute>
+                  <Batches />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/downloads"
               element={
                 <ProtectedRoute>
                   <Downloads />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/testing" 
+            <Route
+              path="/testing"
               element={
                 <ProtectedRoute>
                   <Testing />
                 </ProtectedRoute>
-              } 
+              }
             />
           </Routes>
-        </EnhancedAuthProvider>
+        </AuthProvider>
       </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+    </QueryClient>
+  );
+}
+
+const QueryClient = ({ children }: { children: React.ReactNode }) => {
+  const [queryClient] = React.useState(
+    () =>
+      new TanstackQueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 5 * 1000,
+          },
+        },
+      }),
+  );
+
+  return (
+    <TanstackQueryClientProvider client={queryClient}>
+      {children}
+    </TanstackQueryClientProvider>
+  );
+};
 
 export default App;
