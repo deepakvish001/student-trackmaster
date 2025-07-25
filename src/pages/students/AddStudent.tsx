@@ -1,3 +1,4 @@
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
@@ -24,7 +25,7 @@ import { MFS100FingerprintCapture } from "@/components/MFS100FingerprintCapture"
 import { FingerprintGuidanceSystem } from "@/components/FingerprintGuidanceSystem";
 import { validateStudentData } from "@/utils/securityValidation";
 import { sanitizeTextInput, sanitizeEmail, sanitizePhoneNumber, logSecurityEvent } from "@/utils/inputSanitization";
-import { useAuth } from "@/contexts/AuthContext";
+import { useEnhancedAuth } from "@/contexts/EnhancedAuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Shield, Loader2, AlertTriangle } from "lucide-react";
 
@@ -40,7 +41,7 @@ const formSchema = z.object({
 
 export default function AddStudent() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user } = useEnhancedAuth();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
