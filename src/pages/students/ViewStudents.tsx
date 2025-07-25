@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -7,14 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Progress } from '@/components/ui/progress';
-import { StudentFingerprintView } from '@/components/StudentFingerprintView';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Users, 
   Search, 
   Filter, 
-  Eye, 
+  Download, 
+  RefreshCw, 
   Shield, 
   Activity,
   Clock,
@@ -23,19 +21,21 @@ import {
   Fingerprint,
   User,
   GraduationCap,
-  MapPin,
   Phone,
   Mail,
   Calendar,
-  Download
+  Eye,
+  Edit,
+  Trash2,
+  Plus
 } from 'lucide-react';
 
 export default function ViewStudents() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBatch, setSelectedBatch] = useState('all');
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [sortBy, setSortBy] = useState<'student_name' | 'created_at'>('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Real-time clock update
   useEffect(() => {
@@ -46,28 +46,29 @@ export default function ViewStudents() {
   }, []);
 
   const { data: students = [], isLoading, refetch } = useQuery({
-    queryKey: ['students', searchTerm, selectedBatch],
+    queryKey: ['students', searchTerm, selectedBatch, sortBy, sortOrder],
     queryFn: async () => {
       let query = supabase
         .from('students')
         .select(`
           *,
           batches:batch_id (
-            batch_name,
-            batch_code
+            batch_name
           )
         `)
         .eq('is_enabled', true);
 
       if (searchTerm) {
-        query = query.or(`student_name.ilike.%${searchTerm}%,mobile.ilike.%${searchTerm}%`);
+        query = query.ilike('student_name', `%${searchTerm}%`);
       }
 
       if (selectedBatch !== 'all') {
         query = query.eq('batch_id', selectedBatch);
       }
 
-      const { data, error } = await query.order('created_at', { ascending: false });
+      query = query.order(sortBy, { ascending: sortOrder === 'asc' });
+
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
@@ -75,11 +76,11 @@ export default function ViewStudents() {
   });
 
   const { data: batches = [] } = useQuery({
-    queryKey: ['batches-list'],
+    queryKey: ['batches'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('batches')
-        .select('id, batch_name, batch_code')
+        .select('id, batch_name')
         .eq('is_enabled', true);
       if (error) throw error;
       return data || [];
@@ -89,24 +90,31 @@ export default function ViewStudents() {
   // Real-time statistics
   const stats = {
     totalStudents: students.length,
-    activeStudents: students.filter(s => s.is_enabled).length,
     completeBiometrics: students.filter(s => [s.finger_1, s.finger_2, s.finger_3, s.finger_4, s.finger_5].filter(Boolean).length === 5).length,
-    recentAdditions: students.filter(s => {
-      const createdDate = new Date(s.created_at);
-      const today = new Date();
-      const diffTime = Math.abs(today.getTime() - createdDate.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return diffDays <= 7;
-    }).length
+    partialBiometrics: students.filter(s => {
+      const count = [s.finger_1, s.finger_2, s.finger_3, s.finger_4, s.finger_5].filter(Boolean).length;
+      return count > 0 && count < 5;
+    }).length,
+    noBiometrics: students.filter(s => [s.finger_1, s.finger_2, s.finger_3, s.finger_4, s.finger_5].filter(Boolean).length === 0).length
   };
 
-  const getSecurityLevel = (student: any) => {
+  const getSecurityBadge = (student: any) => {
     const fingerprintCount = [student.finger_1, student.finger_2, student.finger_3, student.finger_4, student.finger_5]
       .filter(Boolean).length;
     
-    if (fingerprintCount === 5) return { level: 'HIGH', color: 'text-electric-blue bg-electric-blue/10 border-electric-blue/30' };
-    if (fingerprintCount >= 3) return { level: 'MEDIUM', color: 'text-sunset-orange bg-sunset-orange/10 border-sunset-orange/30' };
-    return { level: 'LOW', color: 'text-pink-rose bg-pink-rose/10 border-pink-rose/30' };
+    if (fingerprintCount === 5) 
+      return <Badge className="bg-electric-blue/20 text-electric-blue border-electric-blue/30 font-bold">SECURE</Badge>;
+    if (fingerprintCount >= 3) 
+      return <Badge className="bg-sunset-orange/20 text-sunset-orange border-sunset-orange/30 font-bold">PARTIAL</Badge>;
+    if (fingerprintCount > 0) 
+      return <Badge className="bg-pink-rose/20 text-pink-rose border-pink-rose/30 font-bold">LIMITED</Badge>;
+    return <Badge className="bg-muted/20 text-muted-foreground border-muted/30 font-bold">NONE</Badge>;
+  };
+
+  const getCompletionPercentage = (student: any) => {
+    const fingerprintCount = [student.finger_1, student.finger_2, student.finger_3, student.finger_4, student.finger_5]
+      .filter(Boolean).length;
+    return (fingerprintCount / 5) * 100;
   };
 
   if (isLoading) {
@@ -115,7 +123,7 @@ export default function ViewStudents() {
         <div className="min-h-screen bg-gradient-to-br from-surface-dark via-surface-darker to-background flex items-center justify-center">
           <div className="glass-card p-12 text-center space-y-6">
             <div className="animate-spin w-16 h-16 border-4 border-electric-blue/30 border-t-electric-blue rounded-full mx-auto"></div>
-            <div className="text-2xl font-bold text-electric-blue animate-pulse">Loading Students...</div>
+            <div className="text-2xl font-bold text-electric-blue animate-pulse">Loading Student Data...</div>
           </div>
         </div>
       </DashboardLayout>
@@ -126,7 +134,7 @@ export default function ViewStudents() {
     <DashboardLayout>
       <div className="min-h-screen bg-gradient-to-br from-surface-dark via-surface-darker to-background">
         <div className="space-y-8 p-6 animate-fade-in-up">
-          {/* Enhanced Header with Real-time Data */}
+          {/* Enhanced Header */}
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
             <div className="space-y-3">
               <h1 className="text-5xl font-bold bg-gradient-to-r from-electric-blue via-emerald-green to-pink-rose bg-clip-text text-transparent">
@@ -140,9 +148,15 @@ export default function ViewStudents() {
                   </span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Activity className="h-5 w-5 text-emerald-green" />
+                  <Database className="h-5 w-5 text-emerald-green" />
                   <span className="text-emerald-green font-semibold">
-                    Live Data: {stats.totalStudents} Records
+                    {stats.totalStudents} Active Students
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Shield className="h-5 w-5 text-sunset-orange" />
+                  <span className="text-sunset-orange font-semibold">
+                    {stats.completeBiometrics} Secured
                   </span>
                 </div>
               </div>
@@ -153,146 +167,170 @@ export default function ViewStudents() {
                 onClick={() => refetch()}
                 className="bg-gradient-to-r from-electric-blue to-vibrant-purple hover:scale-105 transition-all duration-300 shadow-glow"
               >
-                <Database className="h-4 w-4 mr-2" />
+                <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh Data
               </Button>
               <Button
-                onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-                variant="outline"
-                className="glass border-electric-blue/30 text-electric-blue hover:bg-electric-blue/10"
+                className="bg-gradient-to-r from-emerald-green to-lime-green hover:scale-105 transition-all duration-300 shadow-green-glow"
               >
-                <Eye className="h-4 w-4 mr-2" />
-                {viewMode === 'grid' ? 'List View' : 'Grid View'}
+                <Plus className="h-4 w-4 mr-2" />
+                Add Student
+              </Button>
+              <Button
+                variant="outline"
+                className="glass border-sunset-orange/30 text-sunset-orange hover:bg-sunset-orange/10"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export Data
               </Button>
             </div>
           </div>
 
           {/* Real-time Statistics Dashboard */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="glass-card border-electric-blue/20 hover-lift overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <Card className="glass-card border-electric-blue/20 hover-lift">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-2">
-                    <p className="text-xs text-electric-blue font-bold uppercase tracking-wider">Total Students</p>
-                    <p className="text-4xl font-bold text-electric-blue">{stats.totalStudents}</p>
-                    <p className="text-sm text-muted-foreground">In Database</p>
+                    <p className="text-xs text-electric-blue font-bold uppercase tracking-wide">Complete Security</p>
+                    <p className="text-3xl font-bold text-electric-blue">{stats.completeBiometrics}</p>
+                    <div className="text-xs text-muted-foreground">
+                      {stats.totalStudents > 0 ? Math.round((stats.completeBiometrics / stats.totalStudents) * 100) : 0}% of total
+                    </div>
                   </div>
-                  <div className="p-4 rounded-2xl bg-electric-blue/20">
-                    <Users className="h-8 w-8 text-electric-blue" />
-                  </div>
+                  <Fingerprint className="h-8 w-8 text-electric-blue" />
                 </div>
-                <Progress value={100} className="mt-4 h-2 bg-electric-blue" />
               </CardContent>
             </Card>
 
-            <Card className="glass-card border-emerald-green/20 hover-lift overflow-hidden">
+            <Card className="glass-card border-sunset-orange/20 hover-lift">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-2">
-                    <p className="text-xs text-emerald-green font-bold uppercase tracking-wider">Active Students</p>
-                    <p className="text-4xl font-bold text-emerald-green">{stats.activeStudents}</p>
-                    <p className="text-sm text-muted-foreground">Currently Active</p>
+                    <p className="text-xs text-sunset-orange font-bold uppercase tracking-wide">Partial Security</p>
+                    <p className="text-3xl font-bold text-sunset-orange">{stats.partialBiometrics}</p>
+                    <div className="text-xs text-muted-foreground">
+                      {stats.totalStudents > 0 ? Math.round((stats.partialBiometrics / stats.totalStudents) * 100) : 0}% of total
+                    </div>
                   </div>
-                  <div className="p-4 rounded-2xl bg-emerald-green/20">
-                    <Activity className="h-8 w-8 text-emerald-green" />
-                  </div>
+                  <Shield className="h-8 w-8 text-sunset-orange" />
                 </div>
-                <Progress value={(stats.activeStudents / stats.totalStudents) * 100} className="mt-4 h-2 bg-emerald-green" />
               </CardContent>
             </Card>
 
-            <Card className="glass-card border-sunset-orange/20 hover-lift overflow-hidden">
+            <Card className="glass-card border-pink-rose/20 hover-lift">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-2">
-                    <p className="text-xs text-sunset-orange font-bold uppercase tracking-wider">Complete Biometrics</p>
-                    <p className="text-4xl font-bold text-sunset-orange">{stats.completeBiometrics}</p>
-                    <p className="text-sm text-muted-foreground">5/5 Fingerprints</p>
+                    <p className="text-xs text-pink-rose font-bold uppercase tracking-wide">Needs Attention</p>
+                    <p className="text-3xl font-bold text-pink-rose">{stats.noBiometrics}</p>
+                    <div className="text-xs text-muted-foreground">
+                      {stats.totalStudents > 0 ? Math.round((stats.noBiometrics / stats.totalStudents) * 100) : 0}% of total
+                    </div>
                   </div>
-                  <div className="p-4 rounded-2xl bg-sunset-orange/20">
-                    <Fingerprint className="h-8 w-8 text-sunset-orange" />
-                  </div>
+                  <Activity className="h-8 w-8 text-pink-rose" />
                 </div>
-                <Progress value={(stats.completeBiometrics / stats.totalStudents) * 100} className="mt-4 h-2 bg-sunset-orange" />
               </CardContent>
             </Card>
 
-            <Card className="glass-card border-pink-rose/20 hover-lift overflow-hidden">
+            <Card className="glass-card border-emerald-green/20 hover-lift">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-2">
-                    <p className="text-xs text-pink-rose font-bold uppercase tracking-wider">This Week</p>
-                    <p className="text-4xl font-bold text-pink-rose">{stats.recentAdditions}</p>
-                    <p className="text-sm text-muted-foreground">New Additions</p>
+                    <p className="text-xs text-emerald-green font-bold uppercase tracking-wide">Total Students</p>
+                    <p className="text-3xl font-bold text-emerald-green">{stats.totalStudents}</p>
+                    <div className="text-xs text-muted-foreground">
+                      Active in system
+                    </div>
                   </div>
-                  <div className="p-4 rounded-2xl bg-pink-rose/20">
-                    <TrendingUp className="h-8 w-8 text-pink-rose" />
-                  </div>
+                  <Users className="h-8 w-8 text-emerald-green" />
                 </div>
-                <Progress value={(stats.recentAdditions / stats.totalStudents) * 100} className="mt-4 h-2 bg-pink-rose" />
               </CardContent>
             </Card>
           </div>
 
-          {/* Enhanced Search and Filters */}
+          {/* Enhanced Search and Filter Section */}
           <Card className="glass-card border-foreground/10">
             <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-electric-blue" />
-                  <Input
-                    placeholder="🔍 Search students by name or mobile..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-12 glass bg-surface-darker border-electric-blue/30 text-foreground placeholder:text-muted-foreground/70 focus:border-electric-blue focus:ring-electric-blue/20 h-12 text-base font-medium"
-                  />
+              <div className="flex flex-col md:flex-row gap-4 items-end">
+                <div className="flex-1 space-y-2">
+                  <label className="text-sm font-semibold text-electric-blue">Search Students</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-electric-blue" />
+                    <Input
+                      placeholder="🔍 Search by student name..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-12 glass bg-surface-darker border-electric-blue/30 text-foreground placeholder:text-muted-foreground/70 focus:border-electric-blue focus:ring-electric-blue/20 h-12 text-base"
+                    />
+                  </div>
                 </div>
-                <div className="relative">
-                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-emerald-green" />
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-emerald-green">Filter by Batch</label>
+                  <div className="relative">
+                    <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-emerald-green" />
+                    <select
+                      value={selectedBatch}
+                      onChange={(e) => setSelectedBatch(e.target.value)}
+                      className="pl-12 pr-8 py-3 glass bg-surface-darker border-emerald-green/30 text-foreground rounded-lg focus:border-emerald-green h-12 min-w-[200px]"
+                    >
+                      <option value="all">All Batches</option>
+                      {batches.map((batch) => (
+                        <option key={batch.id} value={batch.id}>
+                          {batch.batch_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-sunset-orange">Sort By</label>
                   <select
-                    value={selectedBatch}
-                    onChange={(e) => setSelectedBatch(e.target.value)}
-                    className="pl-12 pr-8 py-3 glass bg-surface-darker border-emerald-green/30 text-foreground rounded-lg focus:border-emerald-green focus:ring-emerald-green/20 h-12 text-base font-medium min-w-[200px]"
+                    value={`${sortBy}-${sortOrder}`}
+                    onChange={(e) => {
+                      const [field, order] = e.target.value.split('-');
+                      setSortBy(field as any);
+                      setSortOrder(order as any);
+                    }}
+                    className="px-4 py-3 glass bg-surface-darker border-sunset-orange/30 text-foreground rounded-lg focus:border-sunset-orange h-12 min-w-[160px]"
                   >
-                    <option value="all">All Batches</option>
-                    {batches.map((batch) => (
-                      <option key={batch.id} value={batch.id}>
-                        {batch.batch_name} ({batch.batch_code})
-                      </option>
-                    ))}
+                    <option value="created_at-desc">Newest First</option>
+                    <option value="created_at-asc">Oldest First</option>
+                    <option value="student_name-asc">Name A-Z</option>
+                    <option value="student_name-desc">Name Z-A</option>
                   </select>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Enhanced Students Display */}
+          {/* Enhanced Student Grid */}
           {students.length === 0 ? (
-            <Card className="glass-card border-pink-rose/20 text-center p-12">
-              <div className="space-y-4">
+            <Card className="glass-card border-pink-rose/20 text-center p-16">
+              <div className="space-y-6">
                 <div className="w-24 h-24 bg-pink-rose/20 rounded-full flex items-center justify-center mx-auto">
                   <Users className="h-12 w-12 text-pink-rose" />
                 </div>
-                <h3 className="text-2xl font-bold text-pink-rose">No Students Found</h3>
-                <p className="text-muted-foreground">Try adjusting your search criteria or add new students.</p>
+                <div>
+                  <h3 className="text-3xl font-bold text-pink-rose mb-2">No Students Found</h3>
+                  <p className="text-muted-foreground text-lg">Try adjusting your search criteria or add new students.</p>
+                </div>
+                <Button className="bg-gradient-to-r from-emerald-green to-lime-green hover:scale-105 transition-all duration-300 shadow-green-glow">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add First Student
+                </Button>
               </div>
             </Card>
           ) : (
-            <div className={`grid gap-6 ${viewMode === 'grid' 
-              ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
-              : 'grid-cols-1'}`}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {students.map((student) => {
-                const security = getSecurityLevel(student);
-                const fingerprintCount = [student.finger_1, student.finger_2, student.finger_3, student.finger_4, student.finger_5]
-                  .filter(Boolean).length;
-
+                const completionPercentage = getCompletionPercentage(student);
+                
                 return (
-                  <Card 
-                    key={student.id} 
-                    className="glass-card border-foreground/10 hover-lift hover-glow interactive-card cursor-pointer"
-                    onClick={() => setSelectedStudent(student)}
-                  >
-                    <CardHeader className="pb-3">
+                  <Card key={student.id} className="glass-card border-foreground/10 hover-lift hover-glow interactive-card overflow-hidden">
+                    <CardHeader className="bg-gradient-to-br from-electric-blue/10 via-emerald-green/10 to-pink-rose/10 pb-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                           <div className="w-12 h-12 bg-gradient-to-br from-electric-blue to-vibrant-purple rounded-xl flex items-center justify-center">
@@ -300,149 +338,72 @@ export default function ViewStudents() {
                           </div>
                           <div>
                             <CardTitle className="text-lg text-foreground font-bold">{student.student_name}</CardTitle>
-                            <p className="text-sm text-muted-foreground flex items-center">
-                              <Phone className="h-3 w-3 mr-1" />
-                              {student.mobile}
-                            </p>
+                            <p className="text-sm text-muted-foreground">ID: {student.id.slice(0, 8)}</p>
                           </div>
                         </div>
-                        <Badge className={`font-bold px-3 py-1 ${security.color} border`}>
-                          {security.level}
-                        </Badge>
+                        {getSecurityBadge(student)}
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    
+                    <CardContent className="p-6 space-y-4">
                       <div className="space-y-3">
                         {student.batches && (
-                          <div className="flex items-center space-x-2 text-sm">
+                          <div className="flex items-center space-x-2">
                             <GraduationCap className="h-4 w-4 text-emerald-green" />
-                            <span className="text-emerald-green font-semibold">{student.batches.batch_name}</span>
+                            <span className="text-sm text-emerald-green font-semibold">{student.batches.batch_name}</span>
                           </div>
                         )}
                         
-                        <div className="flex items-center space-x-2 text-sm">
-                          <Calendar className="h-4 w-4 text-sunset-orange" />
-                          <span className="text-sunset-orange">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-foreground font-medium">Biometric Progress</span>
+                            <span className="text-sm font-bold text-electric-blue">
+                              {Math.round(completionPercentage)}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-surface-darker/50 rounded-full h-2">
+                            <div 
+                              className="bg-gradient-to-r from-electric-blue to-emerald-green h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${completionPercentage}%` }}
+                            ></div>
+                          </div>
+                          <div className="text-xs text-muted-foreground text-center">
+                            {[student.finger_1, student.finger_2, student.finger_3, student.finger_4, student.finger_5]
+                              .filter(Boolean).length} / 5 fingerprints captured
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center space-x-1">
+                            <Calendar className="h-3 w-3 text-sunset-orange" />
+                            <span className="text-muted-foreground">Enrolled:</span>
+                          </div>
+                          <span className="text-sunset-orange font-medium">
                             {new Date(student.created_at).toLocaleDateString()}
                           </span>
                         </div>
-
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Fingerprint className="h-4 w-4 text-vibrant-purple" />
-                            <span className="text-sm text-vibrant-purple font-semibold">
-                              {fingerprintCount}/5 Fingerprints
-                            </span>
-                          </div>
-                          <Progress value={(fingerprintCount / 5) * 100} className="w-20 h-2" />
-                        </div>
                       </div>
                     </CardContent>
+                    
+                    <div className="px-6 pb-6">
+                      <div className="flex items-center justify-between pt-4 border-t border-foreground/10">
+                        <Button size="sm" variant="outline" className="glass border-electric-blue/30 text-electric-blue hover:bg-electric-blue/10">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" className="glass border-emerald-green/30 text-emerald-green hover:bg-emerald-green/10">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" className="glass border-sunset-orange/30 text-sunset-orange hover:bg-sunset-orange/10">
+                          <Fingerprint className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" className="glass border-pink-rose/30 text-pink-rose hover:bg-pink-rose/10">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
                   </Card>
                 );
               })}
-            </div>
-          )}
-
-          {/* Enhanced Student Detail Modal */}
-          {selectedStudent && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-              <Card className="glass-card border-foreground/20 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                <CardHeader className="bg-gradient-to-r from-electric-blue/10 via-emerald-green/10 to-pink-rose/10">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-electric-blue to-vibrant-purple rounded-2xl flex items-center justify-center">
-                        <User className="h-8 w-8 text-white" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-3xl text-foreground font-bold">{selectedStudent.student_name}</CardTitle>
-                        <p className="text-lg text-muted-foreground">Student Profile</p>
-                      </div>
-                    </div>
-                    <Button
-                      onClick={() => setSelectedStudent(null)}
-                      variant="ghost"
-                      className="text-foreground hover:bg-foreground/10"
-                    >
-                      ✕
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-8 space-y-8">
-                  {/* Student Information */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <h3 className="text-xl font-bold text-electric-blue flex items-center">
-                        <User className="h-5 w-5 mr-2" />
-                        Personal Information
-                      </h3>
-                      <div className="space-y-3 glass-card p-4 border-electric-blue/20">
-                        <div className="flex items-center space-x-3">
-                          <Phone className="h-4 w-4 text-emerald-green" />
-                          <span className="text-foreground font-medium">{selectedStudent.mobile}</span>
-                        </div>
-                        {selectedStudent.email && (
-                          <div className="flex items-center space-x-3">
-                            <Mail className="h-4 w-4 text-sunset-orange" />
-                            <span className="text-foreground font-medium">{selectedStudent.email}</span>
-                          </div>
-                        )}
-                        {selectedStudent.address && (
-                          <div className="flex items-center space-x-3">
-                            <MapPin className="h-4 w-4 text-pink-rose" />
-                            <span className="text-foreground font-medium">{selectedStudent.address}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center space-x-3">
-                          <Calendar className="h-4 w-4 text-vibrant-purple" />
-                          <span className="text-foreground font-medium">
-                            Enrolled: {new Date(selectedStudent.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <h3 className="text-xl font-bold text-emerald-green flex items-center">
-                        <Shield className="h-5 w-5 mr-2" />
-                        Security Status
-                      </h3>
-                      <div className="space-y-3 glass-card p-4 border-emerald-green/20">
-                        <div className="flex items-center justify-between">
-                          <span className="text-foreground">Security Level:</span>
-                          <Badge className={`${getSecurityLevel(selectedStudent).color} font-bold`}>
-                            {getSecurityLevel(selectedStudent).level}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-foreground">Biometric Status:</span>
-                          <span className="text-emerald-green font-semibold">
-                            {[selectedStudent.finger_1, selectedStudent.finger_2, selectedStudent.finger_3, selectedStudent.finger_4, selectedStudent.finger_5]
-                              .filter(Boolean).length}/5 Complete
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-foreground">Account Status:</span>
-                          <Badge className="bg-emerald-green/20 text-emerald-green border-emerald-green/30">
-                            Active
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Fingerprint Data */}
-                  <div className="space-y-4">
-                    <h3 className="text-xl font-bold text-sunset-orange flex items-center">
-                      <Fingerprint className="h-5 w-5 mr-2" />
-                      Biometric Data
-                    </h3>
-                    <div className="glass-card p-6 border-sunset-orange/20">
-                      <StudentFingerprintView student={selectedStudent} showQuality={true} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           )}
         </div>

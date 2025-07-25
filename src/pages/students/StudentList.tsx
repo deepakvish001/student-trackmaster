@@ -22,9 +22,7 @@ import {
   Fingerprint,
   User,
   GraduationCap,
-  MapPin,
   Phone,
-  Mail,
   Calendar,
   Eye,
   Edit,
@@ -35,7 +33,7 @@ export default function StudentList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBatch, setSelectedBatch] = useState('all');
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [sortBy, setSortBy] = useState<'name' | 'created_at' | 'batch'>('created_at');
+  const [sortBy, setSortBy] = useState<'student_name' | 'created_at'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Real-time clock update
@@ -54,14 +52,13 @@ export default function StudentList() {
         .select(`
           *,
           batches:batch_id (
-            batch_name,
-            batch_code
+            batch_name
           )
         `)
         .eq('is_enabled', true);
 
       if (searchTerm) {
-        query = query.or(`student_name.ilike.%${searchTerm}%,mobile.ilike.%${searchTerm}%`);
+        query = query.ilike('student_name', `%${searchTerm}%`);
       }
 
       if (selectedBatch !== 'all') {
@@ -82,7 +79,7 @@ export default function StudentList() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('batches')
-        .select('id, batch_name, batch_code')
+        .select('id, batch_name')
         .eq('is_enabled', true);
       if (error) throw error;
       return data || [];
@@ -230,7 +227,7 @@ export default function StudentList() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-electric-blue" />
                     <Input
-                      placeholder="Search by name or mobile number..."
+                      placeholder="Search by name..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-12 glass bg-surface-darker border-electric-blue/30 text-foreground focus:border-electric-blue focus:ring-electric-blue/20 h-12 text-base"
@@ -299,10 +296,9 @@ export default function StudentList() {
                     <thead className="border-b border-foreground/10">
                       <tr className="text-left">
                         <th className="p-6 text-sm font-bold text-electric-blue uppercase tracking-wider">Student</th>
-                        <th className="p-6 text-sm font-bold text-emerald-green uppercase tracking-wider">Contact</th>
-                        <th className="p-6 text-sm font-bold text-sunset-orange uppercase tracking-wider">Batch</th>
-                        <th className="p-6 text-sm font-bold text-pink-rose uppercase tracking-wider">Biometric Status</th>
-                        <th className="p-6 text-sm font-bold text-vibrant-purple uppercase tracking-wider">Enrolled</th>
+                        <th className="p-6 text-sm font-bold text-emerald-green uppercase tracking-wider">Batch</th>
+                        <th className="p-6 text-sm font-bold text-sunset-orange uppercase tracking-wider">Biometric Status</th>
+                        <th className="p-6 text-sm font-bold text-pink-rose uppercase tracking-wider">Enrolled</th>
                         <th className="p-6 text-sm font-bold text-foreground uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
@@ -324,26 +320,11 @@ export default function StudentList() {
                             </div>
                           </td>
                           <td className="p-6">
-                            <div className="space-y-1">
-                              <div className="flex items-center text-foreground">
-                                <Phone className="h-4 w-4 mr-2 text-emerald-green" />
-                                <span className="font-medium">{student.mobile}</span>
-                              </div>
-                              {student.email && (
-                                <div className="flex items-center text-muted-foreground text-sm">
-                                  <Mail className="h-3 w-3 mr-2" />
-                                  <span>{student.email}</span>
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="p-6">
                             {student.batches ? (
                               <div className="flex items-center space-x-2">
-                                <GraduationCap className="h-4 w-4 text-sunset-orange" />
+                                <GraduationCap className="h-4 w-4 text-emerald-green" />
                                 <div>
-                                  <div className="font-semibold text-sunset-orange">{student.batches.batch_name}</div>
-                                  <div className="text-xs text-muted-foreground">{student.batches.batch_code}</div>
+                                  <div className="font-semibold text-emerald-green">{student.batches.batch_name}</div>
                                 </div>
                               </div>
                             ) : (
@@ -361,7 +342,7 @@ export default function StudentList() {
                           </td>
                           <td className="p-6">
                             <div className="flex items-center space-x-2">
-                              <Calendar className="h-4 w-4 text-vibrant-purple" />
+                              <Calendar className="h-4 w-4 text-pink-rose" />
                               <div>
                                 <div className="text-foreground font-medium">
                                   {new Date(student.created_at).toLocaleDateString()}

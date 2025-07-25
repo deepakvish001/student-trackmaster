@@ -34,7 +34,9 @@ import {
 interface Batch {
   id: string;
   batch_name: string;
-  batch_code: string;
+  serial_number: string;
+  admin_name: string;
+  username: string;
   max_students: number;
   created_at: string;
   is_enabled: boolean;
@@ -61,7 +63,7 @@ export default function Batches() {
       let query = supabase.from('batches').select('*');
 
       if (searchTerm) {
-        query = query.or(`batch_name.ilike.%${searchTerm}%,batch_code.ilike.%${searchTerm}%`);
+        query = query.or(`batch_name.ilike.%${searchTerm}%,serial_number.ilike.%${searchTerm}%`);
       }
 
       if (statusFilter !== 'all') {
@@ -255,7 +257,7 @@ export default function Batches() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-electric-blue" />
                     <Input
-                      placeholder="🔍 Search by batch name or code..."
+                      placeholder="🔍 Search by batch name or serial number..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-12 glass bg-surface-darker border-electric-blue/30 text-foreground placeholder:text-muted-foreground/70 focus:border-electric-blue focus:ring-electric-blue/20 h-12 text-base"
@@ -318,7 +320,7 @@ export default function Batches() {
                           </div>
                           <div>
                             <CardTitle className="text-lg text-foreground font-bold">{batch.batch_name}</CardTitle>
-                            <p className="text-sm text-muted-foreground font-mono">{batch.batch_code}</p>
+                            <p className="text-sm text-muted-foreground font-mono">{batch.serial_number}</p>
                           </div>
                         </div>
                         <div className="flex flex-col items-end space-y-1">
@@ -405,7 +407,7 @@ export default function Batches() {
                       </div>
                       <div>
                         <CardTitle className="text-3xl text-foreground font-bold">{selectedBatch.batch_name}</CardTitle>
-                        <p className="text-lg text-muted-foreground font-mono">{selectedBatch.batch_code}</p>
+                        <p className="text-lg text-muted-foreground font-mono">{selectedBatch.serial_number}</p>
                       </div>
                     </div>
                     <Button
