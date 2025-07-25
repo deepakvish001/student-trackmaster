@@ -24,7 +24,12 @@ export function FingerprintDisplay({
   const fingerprintImageUrl = useMemo(() => {
     if (!value || isCapturing) return null;
     
-    console.log(`Processing fingerprint display data for finger ${index + 1} (length: ${value.length})`);
+    console.log(`Processing fingerprint display data for finger ${index + 1}:`, {
+      dataLength: value.length,
+      dataPreview: value.substring(0, 100),
+      startsWithDataUri: value.startsWith('data:'),
+      containsImageSignature: value.includes('iVBOR') || value.includes('/9j/') || value.includes('UklGR')
+    });
     
     // If it's already a complete data URI (captured image), use it directly
     if (value.startsWith('data:image/')) {
@@ -33,27 +38,30 @@ export function FingerprintDisplay({
     }
     
     // Check for base64 image patterns more thoroughly
-    if (value.length > 1000) {
-      // Look for common base64 image signatures
+    if (value.length > 500) { // Reduced threshold for better detection
+      // Look for common base64 image signatures at any position in the string
       const imageSignatures = [
-        'iVBOR', // PNG
-        '/9j/',  // JPEG
-        'UklGR', // WebP (RIFF)
-        'R0lGOD', // GIF
-        'Qk02',  // BMP
+        { sig: 'iVBOR', mime: 'image/png' },    // PNG
+        { sig: '/9j/', mime: 'image/jpeg' },   // JPEG
+        { sig: 'UklGR', mime: 'image/webp' },  // WebP (RIFF)
+        { sig: 'R0lGOD', mime: 'image/gif' },  // GIF
+        { sig: 'Qk02', mime: 'image/bmp' },   // BMP
       ];
       
-      const startsWithImageSignature = imageSignatures.some(sig => value.startsWith(sig));
+      for (const { sig, mime } of imageSignatures) {
+        const sigIndex = value.indexOf(sig);
+        if (sigIndex !== -1) {
+          console.log(`✅ Found ${mime} signature at position ${sigIndex} - converting to data URI`);
+          // Extract base64 data from the signature position
+          const base64Data = sigIndex === 0 ? value : value.substring(sigIndex);
+          return `data:${mime};base64,${base64Data}`;
+        }
+      }
       
-      if (startsWithImageSignature) {
-        console.log('✅ Converting base64 image to data URI - displaying real fingerprint image');
-        let mimeType = 'image/png'; // default
-        if (value.startsWith('/9j/')) mimeType = 'image/jpeg';
-        else if (value.startsWith('UklGR')) mimeType = 'image/webp';
-        else if (value.startsWith('R0lGOD')) mimeType = 'image/gif';
-        else if (value.startsWith('Qk02')) mimeType = 'image/bmp';
-        
-        return `data:${mimeType};base64,${value}`;
+      // Try as raw base64 with PNG default if it's long enough and looks like base64
+      if (value.length > 1000 && /^[A-Za-z0-9+/=]+$/.test(value)) {
+        console.log('✅ Treating as raw base64 PNG data');
+        return `data:image/png;base64,${value}`;
       }
     }
     

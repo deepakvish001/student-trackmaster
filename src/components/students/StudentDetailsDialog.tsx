@@ -14,6 +14,25 @@ interface StudentDetailsDialogProps {
 export function StudentDetailsDialog({ student, open, onOpenChange }: StudentDetailsDialogProps) {
   if (!student) return null;
 
+  // Debug logging to help identify data issues
+  console.log('StudentDetailsDialog - Student data:', {
+    id: student.id,
+    name: student.student_name,
+    batchId: student.batch_id,
+    hasFingerprints: {
+      finger_1: !!student.finger_1,
+      finger_2: !!student.finger_2,
+      finger_3: !!student.finger_3,
+      finger_4: !!student.finger_4,
+      finger_5: !!student.finger_5,
+      finger_1_image: !!student.finger_1_image,
+      finger_2_image: !!student.finger_2_image,
+      finger_3_image: !!student.finger_3_image,
+      finger_4_image: !!student.finger_4_image,
+      finger_5_image: !!student.finger_5_image,
+    }
+  });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -73,6 +92,24 @@ export function StudentDetailsDialog({ student, open, onOpenChange }: StudentDet
               }}
               showQuality={true}
             />
+          </div>
+
+          {/* Debug Information */}
+          <div className="p-4 bg-blue-50 rounded-lg">
+            <h4 className="text-sm font-semibold text-blue-800 mb-2">Debug Information:</h4>
+            <div className="text-xs text-blue-700 space-y-1">
+              <div>Student ID: {student.id}</div>
+              <div>Batch ID: {student.batch_id || 'None'}</div>
+              <div>Is Enabled: {student.is_enabled ? 'Yes' : 'No'}</div>
+              <div>Template Data Available: {[
+                student.finger_1, student.finger_2, student.finger_3, 
+                student.finger_4, student.finger_5
+              ].filter(Boolean).length} fingers</div>
+              <div>Image Data Available: {[
+                student.finger_1_image, student.finger_2_image, student.finger_3_image,
+                student.finger_4_image, student.finger_5_image
+              ].filter(Boolean).length} fingers</div>
+            </div>
           </div>
         </div>
       </DialogContent>
