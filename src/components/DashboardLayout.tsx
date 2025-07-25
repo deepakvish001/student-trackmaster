@@ -1,4 +1,4 @@
-import { useAuth } from '@/contexts/AuthContext';
+import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 import { Button } from '@/components/ui/button';
 import { 
   SidebarProvider, 
@@ -18,7 +18,7 @@ import { Home, Users, BookOpen, Download, LogOut, UserPlus, List } from 'lucide-
 import { Link, useLocation } from 'react-router-dom';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { logout } = useAuth();
+  const { logout } = useEnhancedAuth();
   const location = useLocation();
 
   const menuItems = [
