@@ -1,6 +1,6 @@
 
 export interface Batch {
-  id: number;
+  id: string;
   batch_name: string;
   serial_number: number;
   admin_name: string;
@@ -12,9 +12,9 @@ export interface Batch {
 }
 
 export interface Student {
-  id: number;
+  id: string;
   student_name: string;
-  batch_id: number | null;
+  batch_id: string | null;
   finger_1: string | null;
   finger_2: string | null;
   finger_3: string | null;

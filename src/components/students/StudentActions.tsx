@@ -24,7 +24,7 @@ import { toast } from 'sonner';
 interface StudentActionsProps {
   student: Student;
   onEdit: (student: Student) => void;
-  onDelete: (studentId: number) => void;
+  onDelete: (studentId: string) => void;
   onView: (student: Student) => void;
 }
 

@@ -40,7 +40,7 @@ export function EditStudentDialog({
     if (student) {
       setFormData({
         student_name: student.student_name || '',
-        batch_id: student.batch_id?.toString() || ''
+        batch_id: student.batch_id || ''
       });
     }
   }, [student]);
@@ -51,7 +51,7 @@ export function EditStudentDialog({
 
     onUpdate({
       student_name: formData.student_name,
-      batch_id: formData.batch_id ? parseInt(formData.batch_id) : null
+      batch_id: formData.batch_id || null
     });
   };
 

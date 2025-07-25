@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import {
   Table,
@@ -17,7 +16,7 @@ import { CheckCircle, XCircle } from 'lucide-react';
 interface EnhancedStudentTableProps {
   students: Student[];
   onEdit: (student: Student) => void;
-  onDelete: (studentId: number) => void;
+  onDelete: (studentId: string) => void;
 }
 
 export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStudentTableProps) {

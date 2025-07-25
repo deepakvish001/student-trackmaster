@@ -137,16 +137,16 @@ export default function StudentList() {
     setShowEditDialog(true);
   };
 
-  const handleDelete = (studentId: number) => {
+  const handleDelete = (studentId: string) => {
     if (window.confirm('Are you sure you want to delete this student?')) {
-      deleteMutation.mutate(studentId.toString());
+      deleteMutation.mutate(studentId);
     }
   };
 
   const handleUpdateStudent = (updates: Partial<Student>) => {
     if (editingStudent) {
       updateMutation.mutate({
-        studentId: editingStudent.id.toString(),
+        studentId: editingStudent.id,
         updates
       });
     }
