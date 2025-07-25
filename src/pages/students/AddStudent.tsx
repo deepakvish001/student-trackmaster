@@ -1,4 +1,3 @@
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
@@ -20,7 +19,6 @@ import { BatchSelector } from "@/components/BatchSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FingerprintCapture } from "@/components/FingerprintCapture";
 import { MFS100FingerprintCapture } from "@/components/MFS100FingerprintCapture";
 import { FingerprintGuidanceSystem } from "@/components/FingerprintGuidanceSystem";
 import { validateStudentData } from "@/utils/securityValidation";
@@ -345,10 +343,9 @@ export default function AddStudent() {
                   )}
                   
                   <Tabs defaultValue="enhanced" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
+                    <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="enhanced" disabled={isSubmitting}>Enhanced MFS100 (Recommended)</TabsTrigger>
                       <TabsTrigger value="standard" disabled={isSubmitting}>Standard MFS100</TabsTrigger>
-                      <TabsTrigger value="rd" disabled={isSubmitting}>Mantra RD Service</TabsTrigger>
                     </TabsList>
                     
                     <TabsContent value="enhanced" className="mt-6">
@@ -386,30 +383,6 @@ export default function AddStudent() {
                                     value={field.value}
                                     onChange={field.onChange}
                                     onImageChange={(imageData) => handleFingerprintImageChange(index, imageData)}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        ))}
-                      </div>
-                    </TabsContent>
-                    
-                    <TabsContent value="rd" className="mt-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                        {[0, 1, 2, 3, 4].map((index) => (
-                          <FormField
-                            key={index}
-                            control={form.control}
-                            name={`fingerprints.${index}`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormControl>
-                                  <FingerprintCapture
-                                    index={index}
-                                    value={field.value}
-                                    onChange={field.onChange}
                                   />
                                 </FormControl>
                                 <FormMessage />

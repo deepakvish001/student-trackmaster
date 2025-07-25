@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -9,7 +8,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { FingerprintDisplay } from "./FingerprintDisplay";
 import { FingerprintPreview } from "./FingerprintPreview";
 import { useFingerprintCaptureState } from "@/hooks/useFingerprintCaptureState";
-import { performanceOptimizer } from "@/utils/performanceOptimizer";
 import { useModernDeviceConnection } from "@/hooks/useModernDeviceConnection";
 
 interface EnhancedMFS100CaptureProps {
