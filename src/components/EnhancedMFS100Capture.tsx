@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Fingerprint, Wifi, WifiOff, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { Fingerprint, Wifi, WifiOff, CheckCircle, AlertCircle, RefreshCw, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { FingerprintDisplay } from "./FingerprintDisplay";
@@ -55,35 +55,66 @@ export function EnhancedMFS100Capture({
   const [capturedImage, setCapturedImage] = useState<string>("");
   const [lastQuality, setLastQuality] = useState<number | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [initError, setInitError] = useState<string>("");
 
-  // Real-time device monitoring (every 2 seconds)
+  // Real-time device monitoring with error handling
   useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
     const monitorDevice = async () => {
-      const status = await checkDeviceConnectionHealth();
-      setDeviceStatus(status);
+      try {
+        const status = await checkDeviceConnectionHealth();
+        setDeviceStatus(status);
+      } catch (error) {
+        console.error('Device monitoring error:', error);
+        setDeviceStatus(prev => ({
+          ...prev,
+          isConnected: false,
+          connectionQuality: 'disconnected',
+          error: 'Monitoring failed'
+        }));
+      }
     };
 
     // Initial check
     monitorDevice();
     
-    // Set up interval for continuous monitoring
-    const interval = setInterval(monitorDevice, 2000);
+    // Set up interval for continuous monitoring (every 5 seconds to reduce load)
+    interval = setInterval(monitorDevice, 5000);
     
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, []);
 
   // Initialize MFS100 SDK on component mount
   useEffect(() => {
     const initialize = async () => {
       setIsInitializing(true);
-      const initialized = await initializeMFS100();
-      if (initialized) {
-        await checkDeviceConnectionHealth();
-        toast.success("MFS100 SDK initialized successfully");
-      } else {
-        toast.error("Failed to initialize MFS100 SDK");
+      setInitError("");
+      
+      try {
+        console.log('Initializing MFS100 SDK...');
+        const initialized = await initializeMFS100();
+        
+        if (initialized) {
+          console.log('MFS100 SDK initialized successfully');
+          await checkDeviceConnectionHealth();
+          toast.success("MFS100 SDK initialized successfully");
+        } else {
+          const error = "Failed to initialize MFS100 SDK. Please check if the device is connected and drivers are installed.";
+          setInitError(error);
+          console.error(error);
+          toast.error(error);
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Initialization failed';
+        setInitError(errorMessage);
+        console.error('Initialization error:', error);
+        toast.error(`Initialization failed: ${errorMessage}`);
+      } finally {
+        setIsInitializing(false);
       }
-      setIsInitializing(false);
     };
 
     initialize();
@@ -100,7 +131,7 @@ export function EnhancedMFS100Capture({
 
   const handleRealTimeCapture = async () => {
     if (!deviceStatus.isConnected) {
-      toast.error("MFS100 device not connected. Please check connection.");
+      toast.error(`Device not connected: ${deviceStatus.error || 'Please check MFS100 connection'}`);
       return;
     }
 
@@ -127,12 +158,14 @@ export function EnhancedMFS100Capture({
         // Save template
         if (result.template) {
           onChange(result.template);
+          console.log(`Finger ${index + 1} template captured:`, result.template.substring(0, 50) + '...');
         }
 
         // Save and display image
         if (result.imageData) {
           setCapturedImage(result.imageData);
           onImageChange?.(result.imageData);
+          console.log(`Finger ${index + 1} image captured successfully`);
         }
 
         setLastQuality(result.quality || null);
@@ -149,7 +182,7 @@ export function EnhancedMFS100Capture({
         }));
 
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || 'Capture failed');
       }
 
     } catch (error) {
@@ -255,6 +288,16 @@ export function EnhancedMFS100Capture({
         )}
       </div>
 
+      {/* Initialization Error */}
+      {initError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            {initError}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Loading State */}
       {isInitializing && (
         <Alert>
@@ -300,16 +343,17 @@ export function EnhancedMFS100Capture({
         }
       </Button>
 
-      {/* Status Messages */}
-      {!deviceStatus.isConnected && !isInitializing && (
+      {/* Device Connection Error */}
+      {!deviceStatus.isConnected && !isInitializing && deviceStatus.error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            MFS100 device not detected. Please connect your device and refresh.
+            {deviceStatus.error}
           </AlertDescription>
         </Alert>
       )}
 
+      {/* Success Status */}
       {value && capturedImage && (
         <div className="flex items-center space-x-2 text-sm text-green-600">
           <CheckCircle className="h-4 w-4" />

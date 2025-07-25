@@ -15,7 +15,6 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { USBFingerprintCapture } from "@/components/USBFingerprintCapture";
 import { BatchSelector } from "@/components/BatchSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -27,7 +26,7 @@ import { validateStudentData } from "@/utils/securityValidation";
 import { sanitizeTextInput, sanitizeEmail, sanitizePhoneNumber, logSecurityEvent } from "@/utils/inputSanitization";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Shield } from "lucide-react";
+import { Shield, Loader2, AlertTriangle } from "lucide-react";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name must not exceed 100 characters"),
@@ -55,21 +54,39 @@ export default function AddStudent() {
     },
   });
 
-  // Handle fingerprint changes with validation
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Handle fingerprint changes with validation and logging
   const handleFingerprintChange = (index: number, value: string) => {
+    console.log(`Fingerprint ${index + 1} changed:`, value ? `${value.substring(0, 50)}...` : 'empty');
     const currentFingerprints = form.getValues("fingerprints");
     currentFingerprints[index] = value;
     form.setValue("fingerprints", currentFingerprints);
+    
+    // Trigger validation
+    form.trigger("fingerprints");
   };
 
-  // Handle fingerprint image changes
+  // Handle fingerprint image changes with logging
   const handleFingerprintImageChange = (index: number, imageData: string) => {
+    console.log(`Fingerprint image ${index + 1} changed:`, imageData ? `${imageData.length} characters` : 'empty');
     const currentImages = form.getValues("fingerprintImages") || ["", "", "", "", ""];
     currentImages[index] = imageData;
     form.setValue("fingerprintImages", currentImages);
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (isSubmitting) {
+      console.log('Already submitting, ignoring duplicate submit');
+      return;
+    }
+
+    setIsSubmitting(true);
+    console.log('Starting form submission...', {
+      name: values.name,
+      fingerprintCount: values.fingerprints.filter(fp => fp).length
+    });
+
     try {
       // Security check: Ensure user is authenticated
       if (!user) {
@@ -90,6 +107,12 @@ export default function AddStudent() {
         fingerprintImages: values.fingerprintImages
       };
 
+      console.log('Sanitized data:', {
+        ...sanitizedData,
+        fingerprints: sanitizedData.fingerprints.map((fp, i) => `Finger ${i + 1}: ${fp ? 'captured' : 'empty'}`),
+        fingerprintImages: sanitizedData.fingerprintImages?.map((img, i) => `Image ${i + 1}: ${img ? 'captured' : 'empty'}`)
+      });
+
       // Server-side validation
       const validation = validateStudentData(sanitizedData);
       if (!validation.isValid) {
@@ -102,11 +125,14 @@ export default function AddStudent() {
       const missingFingerprints = sanitizedData.fingerprints.findIndex(fp => !fp);
       if (missingFingerprints !== -1) {
         toast.error(`Please capture all 5 fingerprints. Missing: Finger ${missingFingerprints + 1}`);
+        console.log('Missing fingerprints:', sanitizedData.fingerprints.map((fp, i) => `${i + 1}: ${fp ? 'OK' : 'MISSING'}`));
         return;
       }
 
+      console.log('All fingerprints captured, proceeding with database insert...');
+
       // Insert with automatic user_id assignment via trigger
-      const { error } = await supabase.from('students').insert({
+      const { data, error } = await supabase.from('students').insert({
         student_name: sanitizedData.name,
         batch_id: sanitizedData.batchId,
         finger_1: sanitizedData.fingerprints[0],
@@ -119,20 +145,38 @@ export default function AddStudent() {
         finger_3_image: sanitizedData.fingerprintImages?.[2] || null,
         finger_4_image: sanitizedData.fingerprintImages?.[3] || null,
         finger_5_image: sanitizedData.fingerprintImages?.[4] || null,
-      });
+      }).select();
 
       if (error) {
+        console.error('Database insert error:', error);
         logSecurityEvent('Database error during student creation', { error: error.message });
         throw error;
       }
 
+      console.log('Student created successfully:', data);
       logSecurityEvent('Student created successfully', { studentName: sanitizedData.name });
       toast.success("Student registered successfully with all fingerprints!");
+      
+      // Reset form
+      form.reset();
+      
+      // Navigate to students list
       navigate("/students");
+      
     } catch (error) {
       console.error('Error adding student:', error);
-      logSecurityEvent('Student creation failed', { error: error instanceof Error ? error.message : 'Unknown error' });
-      toast.error("Failed to add student. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logSecurityEvent('Student creation failed', { error: errorMessage });
+      
+      if (errorMessage.includes('duplicate key') || errorMessage.includes('unique constraint')) {
+        toast.error("A student with this information already exists.");
+      } else if (errorMessage.includes('foreign key')) {
+        toast.error("Selected batch is invalid. Please select a valid batch.");
+      } else {
+        toast.error(`Failed to add student: ${errorMessage}`);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -190,6 +234,7 @@ export default function AddStudent() {
                             onChange={(e) => field.onChange(sanitizeTextInput(e.target.value))}
                             className="hover:border-primary focus:border-primary transition-colors"
                             maxLength={100}
+                            disabled={isSubmitting}
                           />
                         </FormControl>
                         <FormMessage />
@@ -211,6 +256,7 @@ export default function AddStudent() {
                             onChange={(e) => field.onChange(sanitizePhoneNumber(e.target.value))}
                             className="hover:border-primary focus:border-primary transition-colors"
                             maxLength={15}
+                            disabled={isSubmitting}
                           />
                         </FormControl>
                         <FormMessage />
@@ -228,6 +274,7 @@ export default function AddStudent() {
                           <BatchSelector 
                             value={field.value} 
                             onChange={field.onChange}
+                            disabled={isSubmitting}
                           />
                         </FormControl>
                         <FormMessage />
@@ -249,6 +296,7 @@ export default function AddStudent() {
                             onChange={(e) => field.onChange(sanitizeTextInput(e.target.value))}
                             className="hover:border-primary focus:border-primary transition-colors"
                             maxLength={500}
+                            disabled={isSubmitting}
                           />
                         </FormControl>
                         <FormMessage />
@@ -270,6 +318,7 @@ export default function AddStudent() {
                             value={field.value ? sanitizeEmail(field.value) : ""}
                             onChange={(e) => field.onChange(sanitizeEmail(e.target.value))}
                             className="hover:border-primary focus:border-primary transition-colors"
+                            disabled={isSubmitting}
                           />
                         </FormControl>
                         <FormMessage />
@@ -285,11 +334,21 @@ export default function AddStudent() {
                     Connect your Mantra MFS100 device and follow the guided process to capture all 5 fingerprints in high quality.
                   </p>
                   
+                  {/* Show error if fingerprints are missing */}
+                  {form.formState.errors.fingerprints && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        {form.formState.errors.fingerprints.message}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
                   <Tabs defaultValue="enhanced" className="w-full">
                     <TabsList className="grid w-full grid-cols-3">
-                      <TabsTrigger value="enhanced">Enhanced MFS100 (Recommended)</TabsTrigger>
-                      <TabsTrigger value="standard">Standard MFS100</TabsTrigger>
-                      <TabsTrigger value="rd">Mantra RD Service</TabsTrigger>
+                      <TabsTrigger value="enhanced" disabled={isSubmitting}>Enhanced MFS100 (Recommended)</TabsTrigger>
+                      <TabsTrigger value="standard" disabled={isSubmitting}>Standard MFS100</TabsTrigger>
+                      <TabsTrigger value="rd" disabled={isSubmitting}>Mantra RD Service</TabsTrigger>
                     </TabsList>
                     
                     <TabsContent value="enhanced" className="mt-6">
@@ -367,8 +426,16 @@ export default function AddStudent() {
                   type="submit" 
                   className="w-full md:w-auto bg-primary hover:bg-primary/90 transition-colors animate-fade-in"
                   size="lg"
+                  disabled={isSubmitting}
                 >
-                  Register Student with Fingerprints
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Registering Student...
+                    </>
+                  ) : (
+                    'Register Student with Fingerprints'
+                  )}
                 </Button>
               </form>
             </Form>

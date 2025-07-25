@@ -8,6 +8,7 @@ export interface MFS100DeviceStatus {
   deviceInfo: DeviceInfo | null;
   lastChecked: Date;
   connectionQuality: 'excellent' | 'good' | 'poor' | 'disconnected';
+  error?: string;
 }
 
 export interface CaptureResult {
@@ -104,7 +105,7 @@ export const processHighQualityFingerprint = (
   }
 };
 
-// Real-time device connection checker with health monitoring
+// Improved device connection checker with better error handling
 export const checkDeviceConnectionHealth = async (): Promise<MFS100DeviceStatus> => {
   try {
     if (!window.GetMFS100Info) {
@@ -112,12 +113,15 @@ export const checkDeviceConnectionHealth = async (): Promise<MFS100DeviceStatus>
         isConnected: false,
         deviceInfo: null,
         lastChecked: new Date(),
-        connectionQuality: 'disconnected'
+        connectionQuality: 'disconnected',
+        error: 'MFS100 SDK not loaded'
       };
       return deviceStatus;
     }
 
+    console.log('Checking device connection...');
     const response = window.GetMFS100Info();
+    console.log('Device response:', response);
     const now = new Date();
     
     if (response.httpStaus && response.data?.ErrorCode === "0") {
@@ -136,33 +140,38 @@ export const checkDeviceConnectionHealth = async (): Promise<MFS100DeviceStatus>
           isConnected: false,
           deviceInfo: null,
           lastChecked: now,
-          connectionQuality: 'poor'
+          connectionQuality: 'poor',
+          error: 'Device info not available'
         };
       }
     } else {
+      const error = response.err || response.data?.ErrorDescription || 'Unknown device error';
       deviceStatus = {
         isConnected: false,
         deviceInfo: null,
         lastChecked: now,
-        connectionQuality: 'disconnected'
+        connectionQuality: 'disconnected',
+        error: error
       };
-      console.log('Device health check: Disconnected');
+      console.log('Device health check: Disconnected -', error);
     }
     
     return deviceStatus;
   } catch (error) {
     console.error('Device health check error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown connection error';
     deviceStatus = {
       isConnected: false,
       deviceInfo: null,
       lastChecked: new Date(),
-      connectionQuality: 'disconnected'
+      connectionQuality: 'disconnected',
+      error: errorMessage
     };
     return deviceStatus;
   }
 };
 
-// Enhanced fingerprint capture with real-time feedback
+// Enhanced fingerprint capture with better error handling and retries
 export const captureHighQualityFingerprint = async (
   quality: number = 60,
   timeout: number = 30,
@@ -172,7 +181,7 @@ export const captureHighQualityFingerprint = async (
     if (!window.CaptureFinger) {
       return {
         success: false,
-        error: 'MFS100 SDK not available'
+        error: 'MFS100 SDK not available. Please ensure the device is connected and drivers are installed.'
       };
     }
 
@@ -181,7 +190,7 @@ export const captureHighQualityFingerprint = async (
     if (!deviceCheck.isConnected) {
       return {
         success: false,
-        error: 'Device not connected. Please check MFS100 connection.'
+        error: `Device not connected: ${deviceCheck.error || 'Unknown connection issue'}`
       };
     }
 
@@ -189,18 +198,19 @@ export const captureHighQualityFingerprint = async (
     console.log('Starting high-quality fingerprint capture...');
     
     const result = window.CaptureFinger(quality, timeout);
+    console.log('Capture result:', result);
     
     if (!result.httpStaus) {
       return {
         success: false,
-        error: result.err || 'Capture failed'
+        error: result.err || 'Failed to communicate with device'
       };
     }
     
     if (result.data?.ErrorCode !== "0") {
       return {
         success: false,
-        error: result.data?.ErrorDescription || 'Device error'
+        error: result.data?.ErrorDescription || 'Device capture error'
       };
     }
     
@@ -236,12 +246,14 @@ export const captureHighQualityFingerprint = async (
   }
 };
 
-// Automatic quality-based capture
+// Automatic quality-based capture with better error handling
 export const captureWithAutoQuality = async (
   targetQuality: number = 70,
   maxAttempts: number = 3,
   onProgress?: (status: string, attempt?: number) => void
 ): Promise<CaptureResult> => {
+  let lastError = '';
+  
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     onProgress?.(`Attempt ${attempt}/${maxAttempts}...`, attempt);
     
@@ -252,6 +264,8 @@ export const captureWithAutoQuality = async (
       return result;
     }
     
+    lastError = result.error || `Low quality: ${result.quality}%`;
+    
     if (attempt < maxAttempts) {
       onProgress?.(`Quality ${result.quality}% too low. Retrying...`);
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -260,6 +274,6 @@ export const captureWithAutoQuality = async (
   
   return {
     success: false,
-    error: `Failed to capture fingerprint with quality >= ${targetQuality}% after ${maxAttempts} attempts`
+    error: `Failed to capture fingerprint with quality >= ${targetQuality}% after ${maxAttempts} attempts. Last error: ${lastError}`
   };
 };

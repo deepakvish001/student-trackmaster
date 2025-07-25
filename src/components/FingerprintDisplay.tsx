@@ -24,8 +24,11 @@ export function FingerprintDisplay({
   const getFingerprintImageUrl = (fingerprintData: string) => {
     if (!fingerprintData) return null;
     
+    console.log(`Processing fingerprint data for display (length: ${fingerprintData.length})`);
+    
     // If it's already a complete data URI (base64 image), use it directly
     if (fingerprintData.startsWith('data:image/')) {
+      console.log('Found complete data URI');
       return fingerprintData;
     }
     
@@ -33,10 +36,12 @@ export function FingerprintDisplay({
     if (fingerprintData.length > 100 && !fingerprintData.includes('data:')) {
       // Detect if it's likely an image (starts with common image headers in base64)
       if (fingerprintData.startsWith('iVBOR') || fingerprintData.startsWith('/9j/') || fingerprintData.startsWith('UklGR')) {
+        console.log('Converting base64 string to data URI');
         return `data:image/png;base64,${fingerprintData}`;
       }
     }
     
+    console.log('Data does not appear to be image data');
     // Return null for non-image data (like ISO templates)
     return null;
   };
@@ -49,6 +54,7 @@ export function FingerprintDisplay({
       const timer = setTimeout(() => setIsLoading(false), 500);
       return () => clearTimeout(timer);
     }
+    setImageError(false);
   }, [value, isCapturing]);
 
   return (
@@ -56,8 +62,10 @@ export function FingerprintDisplay({
       <div className={`relative w-40 h-40 border-2 rounded-lg flex items-center justify-center bg-white transition-all duration-300 ${
         isCapturing 
           ? 'border-primary border-dashed animate-pulse shadow-lg' 
-          : value && imageUrl
-            ? 'border-green-500 shadow-md' 
+          : value
+            ? imageUrl 
+              ? 'border-green-500 shadow-md'
+              : 'border-blue-500 shadow-md'
             : 'border-gray-300 hover:border-primary'
       }`}>
         {isCapturing ? (
@@ -70,22 +78,36 @@ export function FingerprintDisplay({
               <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
             </div>
           </div>
-        ) : value && imageUrl ? (
-          <div className="relative w-full h-full">
-            {isLoading ? (
-              <div className="flex items-center justify-center w-full h-full">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
+        ) : value ? (
+          <div className="relative w-full h-full flex items-center justify-center">
+            {imageUrl ? (
+              isLoading ? (
+                <div className="flex items-center justify-center w-full h-full">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : (
+                <img 
+                  src={imageUrl}
+                  alt={`Fingerprint ${index + 1}`}
+                  className={`max-w-36 max-h-36 object-contain transition-all duration-300 ${
+                    imageError ? 'opacity-50' : 'animate-scale-in'
+                  } rounded`}
+                  onError={(e) => {
+                    console.error(`Error loading fingerprint image ${index + 1}:`, e);
+                    setImageError(true);
+                  }}
+                  onLoad={() => {
+                    console.log(`Fingerprint image ${index + 1} loaded successfully`);
+                    setImageError(false);
+                  }}
+                />
+              )
             ) : (
-              <img 
-                src={imageUrl}
-                alt={`Fingerprint ${index + 1}`}
-                className={`w-36 h-36 object-contain m-auto transition-all duration-300 ${
-                  imageError ? 'opacity-50' : 'animate-scale-in'
-                } rounded`}
-                onError={() => setImageError(true)}
-                onLoad={() => setImageError(false)}
-              />
+              // Show template saved indicator for non-image data
+              <div className="flex flex-col items-center space-y-2 text-blue-600">
+                <Check className="h-8 w-8" />
+                <span className="text-sm font-medium">Template Saved</span>
+              </div>
             )}
             
             {showQuality && quality !== undefined && quality !== null && (
@@ -98,6 +120,15 @@ export function FingerprintDisplay({
                 ) : (
                   <AlertCircle className="h-3 w-3 text-white" />
                 )}
+              </div>
+            )}
+
+            {imageError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-50 rounded">
+                <div className="text-center text-gray-500">
+                  <AlertCircle className="h-6 w-6 mx-auto mb-1" />
+                  <span className="text-xs">Preview Error</span>
+                </div>
               </div>
             )}
           </div>
