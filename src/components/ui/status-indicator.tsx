@@ -1,151 +1,112 @@
 
-/**
- * Phase 4: Status Indicator Component
- * Visual status indicators for system health and test results
- */
+import React, { useState, useEffect } from 'react';
+import { Wifi, WifiOff, Activity, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
-import React from 'react';
-import { cn } from '@/lib/utils';
-import { CheckCircle, AlertTriangle, XCircle, Clock, Loader2 } from 'lucide-react';
+export type StatusType = 'online' | 'offline' | 'warning' | 'loading' | 'error';
 
-export interface StatusIndicatorProps {
-  status: 'success' | 'warning' | 'error' | 'loading' | 'pending';
-  size?: 'sm' | 'md' | 'lg';
+interface StatusIndicatorProps {
+  status?: StatusType;
+  label?: string;
   showIcon?: boolean;
-  showText?: boolean;
-  text?: string;
+  animate?: boolean;
   className?: string;
-  pulse?: boolean;
+  realTime?: boolean;
 }
 
-const statusConfig = {
-  success: {
-    color: 'text-green-600',
-    bgColor: 'bg-green-100',
-    borderColor: 'border-green-200',
-    icon: CheckCircle,
-    defaultText: 'Success'
-  },
-  warning: {
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-100',
-    borderColor: 'border-yellow-200',
-    icon: AlertTriangle,
-    defaultText: 'Warning'
-  },
-  error: {
-    color: 'text-red-600',
-    bgColor: 'bg-red-100',
-    borderColor: 'border-red-200',
-    icon: XCircle,
-    defaultText: 'Error'
-  },
-  loading: {
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-    borderColor: 'border-blue-200',
-    icon: Loader2,
-    defaultText: 'Loading'
-  },
-  pending: {
-    color: 'text-gray-600',
-    bgColor: 'bg-gray-100',
-    borderColor: 'border-gray-200',
-    icon: Clock,
-    defaultText: 'Pending'
-  }
-};
-
-const sizeConfig = {
-  sm: {
-    container: 'px-2 py-1 text-xs',
-    icon: 'h-3 w-3',
-    gap: 'space-x-1'
-  },
-  md: {
-    container: 'px-3 py-1.5 text-sm',
-    icon: 'h-4 w-4',
-    gap: 'space-x-2'
-  },
-  lg: {
-    container: 'px-4 py-2 text-base',
-    icon: 'h-5 w-5',
-    gap: 'space-x-2'
-  }
-};
-
-export function StatusIndicator({
-  status,
-  size = 'md',
+export function StatusIndicator({ 
+  status = 'online', 
+  label,
   showIcon = true,
-  showText = true,
-  text,
-  className,
-  pulse = false
+  animate = true,
+  className = "",
+  realTime = false
 }: StatusIndicatorProps) {
-  const config = statusConfig[status];
-  const sizeStyles = sizeConfig[size];
-  const Icon = config.icon;
+  const [currentStatus, setCurrentStatus] = useState<StatusType>(status);
 
-  const displayText = text || config.defaultText;
+  // Simulate real-time status updates
+  useEffect(() => {
+    if (!realTime) return;
+
+    const interval = setInterval(() => {
+      // Simulate occasional status changes for demo
+      const random = Math.random();
+      if (random > 0.95) {
+        setCurrentStatus(random > 0.98 ? 'warning' : 'offline');
+      } else {
+        setCurrentStatus('online');
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [realTime]);
+
+  const getStatusConfig = (status: StatusType) => {
+    switch (status) {
+      case 'online':
+        return {
+          icon: CheckCircle,
+          color: 'bg-green-500',
+          variant: 'default' as const,
+          text: label || 'Online',
+          bgColor: 'bg-green-50 border-green-200'
+        };
+      case 'offline':
+        return {
+          icon: WifiOff,
+          color: 'bg-red-500',
+          variant: 'destructive' as const,
+          text: label || 'Offline',
+          bgColor: 'bg-red-50 border-red-200'
+        };
+      case 'warning':
+        return {
+          icon: AlertTriangle,
+          color: 'bg-yellow-500',
+          variant: 'secondary' as const,
+          text: label || 'Warning',
+          bgColor: 'bg-yellow-50 border-yellow-200'
+        };
+      case 'loading':
+        return {
+          icon: Activity,
+          color: 'bg-blue-500',
+          variant: 'secondary' as const,
+          text: label || 'Connecting...',
+          bgColor: 'bg-blue-50 border-blue-200'
+        };
+      default:
+        return {
+          icon: Wifi,
+          color: 'bg-gray-500',
+          variant: 'secondary' as const,
+          text: label || 'Unknown',
+          bgColor: 'bg-gray-50 border-gray-200'
+        };
+    }
+  };
+
+  const config = getStatusConfig(realTime ? currentStatus : status);
+  const IconComponent = config.icon;
 
   return (
-    <div
-      className={cn(
-        'inline-flex items-center rounded-full font-medium transition-all duration-200',
-        config.bgColor,
-        config.borderColor,
-        config.color,
-        sizeStyles.container,
-        sizeStyles.gap,
-        pulse && 'animate-pulse',
-        className
-      )}
-    >
+    <div className={`inline-flex items-center space-x-2 ${className}`}>
       {showIcon && (
-        <Icon
-          className={cn(
-            sizeStyles.icon,
-            status === 'loading' && 'animate-spin'
+        <div className="relative">
+          <div 
+            className={`w-2 h-2 rounded-full ${config.color} ${
+              animate && (realTime ? currentStatus : status) === 'online' ? 'animate-pulse' : ''
+            }`}
+          />
+          {animate && (realTime ? currentStatus : status) === 'online' && (
+            <div className="absolute inset-0 w-2 h-2 rounded-full bg-green-400 animate-ping opacity-75" />
           )}
-        />
+        </div>
       )}
-      {showText && <span>{displayText}</span>}
+      <Badge variant={config.variant} className={`${config.bgColor} font-medium`}>
+        <IconComponent className="h-3 w-3 mr-1" />
+        {config.text}
+      </Badge>
     </div>
-  );
-}
-
-// Preset status indicators for common use cases
-export function HealthStatus({ status }: { status: 'healthy' | 'warning' | 'critical' }) {
-  const statusMap = {
-    healthy: 'success',
-    warning: 'warning',
-    critical: 'error'
-  } as const;
-
-  return (
-    <StatusIndicator
-      status={statusMap[status]}
-      text={status.charAt(0).toUpperCase() + status.slice(1)}
-    />
-  );
-}
-
-export function TestStatus({ passed }: { passed: boolean }) {
-  return (
-    <StatusIndicator
-      status={passed ? 'success' : 'error'}
-      text={passed ? 'Passed' : 'Failed'}
-    />
-  );
-}
-
-export function ConnectionStatus({ connected }: { connected: boolean }) {
-  return (
-    <StatusIndicator
-      status={connected ? 'success' : 'error'}
-      text={connected ? 'Connected' : 'Disconnected'}
-      pulse={!connected}
-    />
   );
 }
