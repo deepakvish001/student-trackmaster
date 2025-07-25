@@ -1,13 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { EnhancedStudentTable } from '@/components/students/EnhancedStudentTable';
+import { EditStudentDialog } from '@/components/students/EditStudentDialog';
 import { supabase } from '@/integrations/supabase/client';
+import { Student } from '@/types';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { 
   Users, 
   Search, 
@@ -17,17 +21,11 @@ import {
   Shield, 
   Activity,
   Clock,
-  TrendingUp,
   Database,
   Fingerprint,
-  User,
-  GraduationCap,
-  Phone,
-  Calendar,
-  Eye,
-  Edit,
-  Trash2
+  Plus
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function StudentList() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -35,6 +33,11 @@ export default function StudentList() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [sortBy, setSortBy] = useState<'student_name' | 'created_at'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+
+  const queryClient = useQueryClient();
+  const { profile } = useUserProfile();
 
   // Real-time clock update
   useEffect(() => {
@@ -86,6 +89,69 @@ export default function StudentList() {
     }
   });
 
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (studentId: string) => {
+      const { error } = await supabase
+        .from('students')
+        .update({ is_enabled: false })
+        .eq('id', studentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students-list'] });
+      toast.success('Student deleted successfully');
+    },
+    onError: (error) => {
+      console.error('Error deleting student:', error);
+      toast.error('Failed to delete student');
+    }
+  });
+
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ studentId, updates }: { studentId: string; updates: Partial<Student> }) => {
+      const { error } = await supabase
+        .from('students')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', studentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students-list'] });
+      toast.success('Student updated successfully');
+      setShowEditDialog(false);
+      setEditingStudent(null);
+    },
+    onError: (error) => {
+      console.error('Error updating student:', error);
+      toast.error('Failed to update student');
+    }
+  });
+
+  const handleEdit = (student: Student) => {
+    setEditingStudent(student);
+    setShowEditDialog(true);
+  };
+
+  const handleDelete = (studentId: number) => {
+    if (window.confirm('Are you sure you want to delete this student?')) {
+      deleteMutation.mutate(studentId.toString());
+    }
+  };
+
+  const handleUpdateStudent = (updates: Partial<Student>) => {
+    if (editingStudent) {
+      updateMutation.mutate({
+        studentId: editingStudent.id.toString(),
+        updates
+      });
+    }
+  };
+
   // Real-time statistics
   const stats = {
     totalStudents: students.length,
@@ -95,19 +161,6 @@ export default function StudentList() {
       return count > 0 && count < 5;
     }).length,
     noBiometrics: students.filter(s => [s.finger_1, s.finger_2, s.finger_3, s.finger_4, s.finger_5].filter(Boolean).length === 0).length
-  };
-
-  const getSecurityBadge = (student: any) => {
-    const fingerprintCount = [student.finger_1, student.finger_2, student.finger_3, student.finger_4, student.finger_5]
-      .filter(Boolean).length;
-    
-    if (fingerprintCount === 5) 
-      return <Badge className="bg-electric-blue/20 text-electric-blue border-electric-blue/30 font-bold">COMPLETE</Badge>;
-    if (fingerprintCount >= 3) 
-      return <Badge className="bg-sunset-orange/20 text-sunset-orange border-sunset-orange/30 font-bold">PARTIAL</Badge>;
-    if (fingerprintCount > 0) 
-      return <Badge className="bg-pink-rose/20 text-pink-rose border-pink-rose/30 font-bold">INCOMPLETE</Badge>;
-    return <Badge className="bg-muted/20 text-muted-foreground border-muted/30 font-bold">NONE</Badge>;
   };
 
   if (isLoading) {
@@ -150,6 +203,13 @@ export default function StudentList() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              <Button
+                onClick={() => window.location.href = '/students/enhanced-add'}
+                className="bg-gradient-to-r from-emerald-green to-electric-blue hover:scale-105 transition-all duration-300 shadow-glow"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Student
+              </Button>
               <Button
                 onClick={() => refetch()}
                 className="bg-gradient-to-r from-electric-blue to-vibrant-purple hover:scale-105 transition-all duration-300 shadow-glow"
@@ -275,7 +335,7 @@ export default function StudentList() {
             </CardContent>
           </Card>
 
-          {/* Enhanced Student Table */}
+          {/* Enhanced Student Table with CRUD Operations */}
           <Card className="glass-card border-foreground/10">
             <CardHeader className="bg-gradient-to-r from-electric-blue/5 via-emerald-green/5 to-pink-rose/5">
               <CardTitle className="text-2xl font-bold text-foreground flex items-center">
@@ -283,97 +343,24 @@ export default function StudentList() {
                 Student Records ({students.length})
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
-              {students.length === 0 ? (
-                <div className="text-center py-16">
-                  <Users className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-muted-foreground mb-2">No Students Found</h3>
-                  <p className="text-muted-foreground">Try adjusting your search criteria.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="border-b border-foreground/10">
-                      <tr className="text-left">
-                        <th className="p-6 text-sm font-bold text-electric-blue uppercase tracking-wider">Student</th>
-                        <th className="p-6 text-sm font-bold text-emerald-green uppercase tracking-wider">Batch</th>
-                        <th className="p-6 text-sm font-bold text-sunset-orange uppercase tracking-wider">Biometric Status</th>
-                        <th className="p-6 text-sm font-bold text-pink-rose uppercase tracking-wider">Enrolled</th>
-                        <th className="p-6 text-sm font-bold text-foreground uppercase tracking-wider">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {students.map((student) => (
-                        <tr 
-                          key={student.id} 
-                          className="border-b border-foreground/5 hover:bg-foreground/5 transition-all duration-200"
-                        >
-                          <td className="p-6">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-12 h-12 bg-gradient-to-br from-electric-blue to-vibrant-purple rounded-xl flex items-center justify-center">
-                                <User className="h-6 w-6 text-white" />
-                              </div>
-                              <div>
-                                <div className="font-bold text-foreground text-lg">{student.student_name}</div>
-                                <div className="text-sm text-muted-foreground">ID: {student.id}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-6">
-                            {student.batches ? (
-                              <div className="flex items-center space-x-2">
-                                <GraduationCap className="h-4 w-4 text-emerald-green" />
-                                <div>
-                                  <div className="font-semibold text-emerald-green">{student.batches.batch_name}</div>
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground">No Batch</span>
-                            )}
-                          </td>
-                          <td className="p-6">
-                            <div className="space-y-2">
-                              {getSecurityBadge(student)}
-                              <div className="text-xs text-muted-foreground">
-                                {[student.finger_1, student.finger_2, student.finger_3, student.finger_4, student.finger_5]
-                                  .filter(Boolean).length}/5 Fingerprints
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-6">
-                            <div className="flex items-center space-x-2">
-                              <Calendar className="h-4 w-4 text-pink-rose" />
-                              <div>
-                                <div className="text-foreground font-medium">
-                                  {new Date(student.created_at).toLocaleDateString()}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {new Date(student.created_at).toLocaleTimeString()}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-6">
-                            <div className="flex items-center space-x-2">
-                              <Button size="sm" variant="outline" className="glass border-electric-blue/30 text-electric-blue hover:bg-electric-blue/10">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button size="sm" variant="outline" className="glass border-emerald-green/30 text-emerald-green hover:bg-emerald-green/10">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button size="sm" variant="outline" className="glass border-pink-rose/30 text-pink-rose hover:bg-pink-rose/10">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+            <CardContent className="p-6">
+              <EnhancedStudentTable
+                students={students}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
             </CardContent>
           </Card>
+
+          {/* Edit Student Dialog */}
+          <EditStudentDialog
+            student={editingStudent}
+            open={showEditDialog}
+            onOpenChange={setShowEditDialog}
+            onUpdate={handleUpdateStudent}
+            batches={batches}
+            isUpdating={updateMutation.isPending}
+          />
         </div>
       </div>
     </DashboardLayout>
