@@ -1,0 +1,191 @@
+
+import { useState, useEffect, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
+interface HealthCheck {
+  id: string;
+  check_type: string;
+  status: string;
+  details?: any;
+  response_time_ms?: number;
+  checked_at: string;
+}
+
+interface SystemMetrics {
+  database: 'healthy' | 'degraded' | 'critical';
+  connectivity: 'healthy' | 'degraded' | 'critical';
+  authentication: 'healthy' | 'degraded' | 'critical';
+  storage: 'healthy' | 'degraded' | 'critical';
+  overall: 'healthy' | 'degraded' | 'critical';
+  lastCheck: string;
+}
+
+export function useSystemHealthMonitoring(autoCheck = true, interval = 30000) {
+  const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
+  const [recentChecks, setRecentChecks] = useState<HealthCheck[]>([]);
+  const [isChecking, setIsChecking] = useState(false);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (autoCheck) {
+      performHealthCheck();
+      intervalRef.current = setInterval(performHealthCheck, interval);
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoCheck, interval]);
+
+  const recordHealthCheck = async (
+    checkType: string,
+    status: string,
+    details?: any,
+    responseTime?: number
+  ) => {
+    try {
+      const { error } = await supabase.rpc('record_health_check', {
+        p_check_type: checkType,
+        p_status: status,
+        p_details: details,
+        p_response_time_ms: responseTime
+      });
+
+      if (error) {
+        console.error('Failed to record health check:', error);
+      }
+    } catch (err) {
+      console.error('Health check recording error:', err);
+    }
+  };
+
+  const checkDatabase = async (): Promise<{ status: string; responseTime: number }> => {
+    const startTime = Date.now();
+    try {
+      const { error } = await supabase.from('batches').select('count').limit(1);
+      const responseTime = Date.now() - startTime;
+      
+      if (error) {
+        await recordHealthCheck('database', 'critical', { error: error.message }, responseTime);
+        return { status: 'critical', responseTime };
+      }
+      
+      const status = responseTime > 1000 ? 'degraded' : 'healthy';
+      await recordHealthCheck('database', status, { responseTime }, responseTime);
+      return { status, responseTime };
+    } catch (err) {
+      const responseTime = Date.now() - startTime;
+      await recordHealthCheck('database', 'critical', { error: err }, responseTime);
+      return { status: 'critical', responseTime };
+    }
+  };
+
+  const checkAuthentication = async (): Promise<{ status: string; responseTime: number }> => {
+    const startTime = Date.now();
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      const responseTime = Date.now() - startTime;
+      
+      if (error) {
+        await recordHealthCheck('authentication', 'critical', { error: error.message }, responseTime);
+        return { status: 'critical', responseTime };
+      }
+      
+      const status = responseTime > 500 ? 'degraded' : 'healthy';
+      await recordHealthCheck('authentication', status, { 
+        hasSession: !!data.session,
+        responseTime 
+      }, responseTime);
+      return { status, responseTime };
+    } catch (err) {
+      const responseTime = Date.now() - startTime;
+      await recordHealthCheck('authentication', 'critical', { error: err }, responseTime);
+      return { status: 'critical', responseTime };
+    }
+  };
+
+  const checkConnectivity = async (): Promise<{ status: string; responseTime: number }> => {
+    const startTime = Date.now();
+    try {
+      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/`, {
+        method: 'HEAD',
+        headers: {
+          'apikey': supabase.supabaseKey
+        }
+      });
+      
+      const responseTime = Date.now() - startTime;
+      const status = response.ok ? (responseTime > 2000 ? 'degraded' : 'healthy') : 'critical';
+      
+      await recordHealthCheck('connectivity', status, { 
+        statusCode: response.status,
+        responseTime 
+      }, responseTime);
+      
+      return { status, responseTime };
+    } catch (err) {
+      const responseTime = Date.now() - startTime;
+      await recordHealthCheck('connectivity', 'critical', { error: err }, responseTime);
+      return { status: 'critical', responseTime };
+    }
+  };
+
+  const performHealthCheck = async () => {
+    if (isChecking) return;
+    
+    setIsChecking(true);
+    try {
+      const [dbCheck, authCheck, connCheck] = await Promise.all([
+        checkDatabase(),
+        checkAuthentication(),
+        checkConnectivity()
+      ]);
+
+      const statuses = [dbCheck.status, authCheck.status, connCheck.status];
+      const overall = statuses.includes('critical') ? 'critical' : 
+                    statuses.includes('degraded') ? 'degraded' : 'healthy';
+
+      const newMetrics: SystemMetrics = {
+        database: dbCheck.status as any,
+        authentication: authCheck.status as any,
+        connectivity: connCheck.status as any,
+        storage: 'healthy', // Placeholder for now
+        overall: overall as any,
+        lastCheck: new Date().toISOString()
+      };
+
+      setMetrics(newMetrics);
+      await fetchRecentChecks();
+      
+    } catch (err) {
+      console.error('Health check failed:', err);
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const fetchRecentChecks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('system_health_logs')
+        .select('*')
+        .order('checked_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+      setRecentChecks(data || []);
+    } catch (err) {
+      console.error('Failed to fetch recent health checks:', err);
+    }
+  };
+
+  return {
+    metrics,
+    recentChecks,
+    isChecking,
+    performHealthCheck,
+    fetchRecentChecks
+  };
+}

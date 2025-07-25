@@ -30,6 +30,7 @@ import { validateStudentDataWithBiometrics } from "@/utils/enhancedSecurityValid
 import { encryptFingerprintData, auditBiometricAccess } from "@/utils/biometricSecurity";
 import { sanitizeTextInput, sanitizeEmail, sanitizePhoneNumber } from "@/utils/inputSanitization";
 import { useEnhancedAuth } from "@/contexts/EnhancedAuthContext";
+import { useAuditLog } from "@/hooks/useAuditLog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Shield, Loader2, AlertTriangle, Lock, CheckCircle } from "lucide-react";
 
@@ -46,6 +47,8 @@ const formSchema = z.object({
 export default function EnhancedAddStudent() {
   const navigate = useNavigate();
   const { user, encryptionKey, securityLevel, sessionMetrics } = useEnhancedAuth();
+  const { logEvent } = useAuditLog();
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -108,8 +111,15 @@ export default function EnhancedAddStudent() {
     });
 
     try {
+      // Log the start of student creation
+      await logEvent('STUDENT_CREATION_STARTED', 'students', undefined, undefined, {
+        studentName: values.name,
+        fingerprintCount: values.fingerprints.filter(fp => fp).length
+      });
+
       // Security check: Ensure user is authenticated
       if (!user) {
+        await logEvent('UNAUTHORIZED_STUDENT_CREATION');
         auditBiometricAccess('UNAUTHORIZED_STUDENT_CREATION', { success: false });
         toast.error("You must be logged in to add students");
         navigate("/login");
@@ -118,6 +128,7 @@ export default function EnhancedAddStudent() {
 
       // Security check: Ensure encryption is available
       if (!encryptionKey) {
+        await logEvent('MISSING_ENCRYPTION_KEY');
         auditBiometricAccess('MISSING_ENCRYPTION_KEY', { 
           userId: user.id,
           success: false 
@@ -146,6 +157,9 @@ export default function EnhancedAddStudent() {
       // Advanced biometric validation
       const validation = await validateStudentDataWithBiometrics(sanitizedData);
       if (!validation.isValid) {
+        await logEvent('STUDENT_VALIDATION_FAILED', undefined, undefined, undefined, {
+          errors: validation.errors
+        });
         auditBiometricAccess('STUDENT_VALIDATION_FAILED', {
           userId: user.id,
           errors: validation.errors,
@@ -201,6 +215,9 @@ export default function EnhancedAddStudent() {
 
       if (error) {
         console.error('Enhanced database insert error:', error);
+        await logEvent('DATABASE_ERROR', 'students', undefined, undefined, {
+          error: error.message
+        });
         auditBiometricAccess('DATABASE_ERROR', {
           userId: user.id,
           error: error.message,
@@ -210,6 +227,11 @@ export default function EnhancedAddStudent() {
       }
 
       console.log('Enhanced student created successfully:', data);
+      
+      await logEvent('STUDENT_CREATED_SUCCESS', 'students', data[0].id, undefined, {
+        studentName: validation.sanitizedData!.student_name,
+        biometricSummary: validation.biometricSummary
+      });
       
       auditBiometricAccess('STUDENT_CREATED', {
         userId: user.id,
@@ -231,6 +253,10 @@ export default function EnhancedAddStudent() {
     } catch (error) {
       console.error('Enhanced error adding student:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      await logEvent('STUDENT_CREATION_FAILED', 'students', undefined, undefined, {
+        error: errorMessage
+      });
       
       auditBiometricAccess('STUDENT_CREATION_FAILED', {
         userId: user?.id,
