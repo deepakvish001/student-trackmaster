@@ -1,6 +1,6 @@
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useState } from "react";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -274,7 +274,6 @@ export default function AddStudent() {
                           <BatchSelector 
                             value={field.value} 
                             onChange={field.onChange}
-                            disabled={isSubmitting}
                           />
                         </FormControl>
                         <FormMessage />
