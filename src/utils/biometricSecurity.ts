@@ -332,6 +332,7 @@ export const auditBiometricAccess = (action: string, details: {
   studentId?: string;
   success: boolean;
   metadata?: any;
+  [key: string]: any; // Allow additional properties
 }) => {
   logSecurityEvent(`BIOMETRIC_AUDIT_${action.toUpperCase()}`, {
     action,

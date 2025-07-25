@@ -1,3 +1,4 @@
+
 /**
  * Phase 2: Enhanced Security Validation with Biometric Integration
  * Advanced validation for biometric systems with encryption support
@@ -181,7 +182,7 @@ export const validateStudentDataWithBiometrics = async (data: any): Promise<Biom
 
     // Calculate security metrics
     const averageQuality = validFingerprints > 0 ? totalQuality / validFingerprints : 0;
-    const securityLevel = 
+    const securityLevel: 'low' | 'medium' | 'high' = 
       averageQuality >= 80 && validFingerprints === 5 ? 'high' :
       averageQuality >= 60 && validFingerprints >= 4 ? 'medium' : 'low';
 

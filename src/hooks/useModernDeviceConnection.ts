@@ -1,3 +1,4 @@
+
 /**
  * Modern Device Connection Hook - React integration for device connection management
  */
@@ -110,6 +111,14 @@ export function useModernDeviceConnection(options: UseModernDeviceConnectionOpti
     return await deviceConnectionManager.reconnect();
   };
 
+  // Generate connection status text
+  const getConnectionStatus = () => {
+    if (!isInitialized) return 'Initializing...';
+    if (deviceStatus.isChecking) return 'Checking...';
+    if (deviceStatus.isConnected) return 'Connected';
+    return 'Disconnected';
+  };
+
   return {
     // Status
     isConnected: deviceStatus.isConnected,
@@ -117,6 +126,7 @@ export function useModernDeviceConnection(options: UseModernDeviceConnectionOpti
     lastCheck: deviceStatus.lastCheck,
     error: deviceStatus.error || initError,
     deviceInfo: deviceStatus.deviceInfo,
+    connectionStatus: getConnectionStatus(),
     
     // System status
     isInitialized,
@@ -126,6 +136,7 @@ export function useModernDeviceConnection(options: UseModernDeviceConnectionOpti
     reconnect,
     
     // Direct access to clients
+    client: modernMFS100Client,
     mfs100Client: modernMFS100Client,
     connectionManager: deviceConnectionManager
   };
