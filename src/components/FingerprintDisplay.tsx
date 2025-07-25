@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useMemo } from "react";
-import { AlertCircle, Check, Fingerprint } from "lucide-react";
+import { AlertCircle, Check, Fingerprint, Image } from "lucide-react";
 
 interface FingerprintDisplayProps {
   value: string;
@@ -130,8 +130,16 @@ export function FingerprintDisplay({
             ) : (
               // Show template saved indicator for non-image data (ISO templates)
               <div className="flex flex-col items-center space-y-2 text-blue-600">
-                <Check className="h-8 w-8" />
+                <div className="relative">
+                  <Fingerprint className="h-8 w-8" />
+                  <Check className="h-4 w-4 absolute -top-1 -right-1 bg-blue-600 text-white rounded-full p-0.5" />
+                </div>
                 <span className="text-sm font-medium">Template Saved</span>
+                <div className="text-xs text-gray-500 text-center px-2">
+                  Template data only
+                  <br />
+                  (No image captured)
+                </div>
               </div>
             )}
             
@@ -175,9 +183,19 @@ export function FingerprintDisplay({
             Quality: {quality}%
           </div>
         )}
-        {value && !fingerprintImageUrl && !imageError && (
-          <div className="text-xs text-blue-600 mt-1">
-            Template Saved ✓
+        {value && (
+          <div className="text-xs mt-1 flex items-center justify-center space-x-1">
+            {fingerprintImageUrl ? (
+              <div className="text-green-600 flex items-center space-x-1">
+                <Image className="h-3 w-3" />
+                <span>Image ✓</span>
+              </div>
+            ) : (
+              <div className="text-blue-600 flex items-center space-x-1">
+                <Fingerprint className="h-3 w-3" />
+                <span>Template ✓</span>
+              </div>
+            )}
           </div>
         )}
       </div>

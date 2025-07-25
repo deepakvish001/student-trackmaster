@@ -41,25 +41,56 @@ export function StudentFingerprintView({ student, showQuality = false }: Student
     }
   ];
 
+  const hasCapturedFingerprints = fingerprints.some(f => f.image || f.template);
+
   return (
     <div className="space-y-4">
       <div className="text-center text-sm text-gray-600 mb-4">
-        Fingerprint images captured from MFS100 device
+        {hasCapturedFingerprints ? 'Captured Fingerprints' : 'No fingerprints captured yet'}
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {fingerprints.map((fingerprint, index) => (
-          <div key={index} className="flex justify-center">
-            <FingerprintDisplay
-              value={fingerprint.image || fingerprint.template || ""}
-              index={index}
-              showQuality={showQuality}
-            />
+      
+      {!hasCapturedFingerprints ? (
+        <div className="text-center py-8">
+          <div className="text-gray-500 text-sm">
+            This student hasn't enrolled any fingerprints yet.
+            <br />
+            Use the "Edit Student" option to capture fingerprints.
           </div>
-        ))}
-      </div>
-      <div className="text-xs text-gray-500 text-center mt-4">
-        {fingerprints.filter(f => f.image || f.template).length} of 5 fingerprints captured
-      </div>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {fingerprints.map((fingerprint, index) => (
+              <div key={index} className="flex justify-center">
+                <FingerprintDisplay
+                  value={fingerprint.image || fingerprint.template || ""}
+                  index={index}
+                  showQuality={showQuality}
+                />
+              </div>
+            ))}
+          </div>
+          
+          <div className="text-xs text-gray-500 text-center mt-4">
+            <div className="flex justify-center items-center space-x-4">
+              <span>
+                {fingerprints.filter(f => f.image).length} images captured
+              </span>
+              <span>•</span>
+              <span>
+                {fingerprints.filter(f => f.template).length} templates saved
+              </span>
+            </div>
+            {fingerprints.some(f => f.template && !f.image) && (
+              <div className="text-yellow-600 mt-2 text-xs">
+                ⚠️ Some fingerprints show "Template Saved" because only template data was captured without images.
+                <br />
+                To capture actual images, use the MFS100 device with proper image capture settings.
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
