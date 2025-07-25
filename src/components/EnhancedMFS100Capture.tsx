@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -8,14 +9,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { FingerprintDisplay } from "./FingerprintDisplay";
 import { FingerprintPreview } from "./FingerprintPreview";
 import { useFingerprintCaptureState } from "@/hooks/useFingerprintCaptureState";
-import { 
-  monitorDeviceStatus, 
-  checkDeviceConnectionHealth, 
-  captureWithAutoQuality,
-  MFS100DeviceStatus,
-  CaptureResult
-} from "@/utils/mfs100Enhanced";
-import { initializeMFS100 } from "@/utils/mfs100Native";
+import { useOptimizedDeviceConnection } from "@/hooks/useOptimizedDeviceConnection";
+import { performanceOptimizer } from "@/utils/performanceOptimizer";
+import { initializeMFS100, captureFingerprint } from "@/utils/mfs100Native";
 
 interface EnhancedMFS100CaptureProps {
   index: number;
@@ -36,12 +32,8 @@ export function EnhancedMFS100Capture({
   targetQuality = 70,
   fingerName
 }: EnhancedMFS100CaptureProps) {
-  const [deviceStatus, setDeviceStatus] = useState<MFS100DeviceStatus>({
-    isConnected: false,
-    deviceInfo: null,
-    lastChecked: new Date(),
-    connectionQuality: 'disconnected'
-  });
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [initError, setInitError] = useState<string>("");
   
   const [captureProgress, setCaptureProgress] = useState<{
     isCapturing: boolean;
@@ -56,9 +48,8 @@ export function EnhancedMFS100Capture({
     attempt: 0,
     maxAttempts: 3
   });
-  
-  const [isInitializing, setIsInitializing] = useState(true);
-  const [initError, setInitError] = useState<string>("");
+
+  const { isConnected, isChecking, error, forceCheck } = useOptimizedDeviceConnection('mfs100');
 
   const {
     captureState,
@@ -69,64 +60,38 @@ export function EnhancedMFS100Capture({
     resetCapture
   } = useFingerprintCaptureState();
 
-  // Real-time device monitoring
+  // Optimized initialization - only run once
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    
-    const monitorDevice = async () => {
-      try {
-        const status = await checkDeviceConnectionHealth();
-        setDeviceStatus(status);
-      } catch (error) {
-        console.error('Device monitoring error:', error);
-        setDeviceStatus(prev => ({
-          ...prev,
-          isConnected: false,
-          connectionQuality: 'disconnected',
-          error: 'Monitoring failed'
-        }));
-      }
-    };
-
-    monitorDevice();
-    interval = setInterval(monitorDevice, 5000);
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, []);
-
-  // Initialize MFS100 SDK
-  useEffect(() => {
-    const initialize = async () => {
-      setIsInitializing(true);
-      setInitError("");
-      
-      try {
-        console.log('Initializing MFS100 SDK...');
-        const initialized = await initializeMFS100();
-        
-        if (initialized) {
-          console.log('MFS100 SDK initialized successfully');
-          await checkDeviceConnectionHealth();
-          toast.success("MFS100 SDK initialized successfully");
-        } else {
-          const error = "Failed to initialize MFS100 SDK. Please check if the device is connected and drivers are installed.";
-          setInitError(error);
-          console.error(error);
-          toast.error(error);
+    const initializeOnce = performanceOptimizer.memoize(
+      'mfs100_init',
+      async () => {
+        try {
+          console.log('Initializing MFS100 SDK...');
+          const initialized = await initializeMFS100();
+          
+          if (initialized) {
+            console.log('MFS100 SDK initialized successfully');
+            setIsInitialized(true);
+            setInitError("");
+            toast.success("MFS100 SDK initialized successfully");
+          } else {
+            const error = "Failed to initialize MFS100 SDK";
+            setInitError(error);
+            setIsInitialized(false);
+            toast.error(error);
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Initialization failed';
+          setInitError(errorMessage);
+          setIsInitialized(false);
+          console.error('Initialization error:', error);
+          toast.error(`Initialization failed: ${errorMessage}`);
         }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Initialization failed';
-        setInitError(errorMessage);
-        console.error('Initialization error:', error);
-        toast.error(`Initialization failed: ${errorMessage}`);
-      } finally {
-        setIsInitializing(false);
-      }
-    };
+      },
+      30000 // Cache for 30 seconds
+    );
 
-    initialize();
+    initializeOnce();
   }, []);
 
   const handleProgressUpdate = useCallback((status: string, attempt?: number) => {
@@ -138,80 +103,127 @@ export function EnhancedMFS100Capture({
     }));
   }, []);
 
-  const handleCapture = async () => {
-    if (!deviceStatus.isConnected) {
-      toast.error(`Device not connected: ${deviceStatus.error || 'Please check MFS100 connection'}`);
-      return;
-    }
-
-    try {
-      startCapture();
-      setCaptureProgress({
-        isCapturing: true,
-        currentStep: 'Preparing device...',
-        progress: 10,
-        attempt: 0,
-        maxAttempts: 3
-      });
-
-      toast.info(`Place ${fingerName} on the MFS100 scanner when red light activates`, {
-        duration: 4000,
-      });
-
-      const result: CaptureResult = await captureWithAutoQuality(
-        targetQuality,
-        3,
-        handleProgressUpdate
-      );
-
-      if (result.success) {
-        // Show preview instead of immediately saving
-        showPreview({
-          template: result.template || '',
-          imageData: result.imageData || '',
-          quality: result.quality || null
-        });
-
-        toast.success(`${fingerName} captured! Please review and accept or recapture.`);
-
-        setCaptureProgress(prev => ({
-          ...prev,
-          currentStep: 'Capture completed! Please review.',
-          progress: 100
-        }));
-
-      } else {
-        throw new Error(result.error || 'Capture failed');
+  // Optimized capture function with debouncing
+  const handleCapture = useCallback(
+    performanceOptimizer.debounce('capture', async () => {
+      if (!isConnected || !isInitialized) {
+        toast.error(`Device not ready: Please check MFS100 connection`);
+        return;
       }
 
-    } catch (error) {
-      console.error('Capture error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Capture failed';
-      toast.error(errorMessage, { duration: 5000 });
-      
-      resetCapture();
-      setCaptureProgress(prev => ({
-        ...prev,
-        currentStep: 'Capture failed',
-        progress: 0
-      }));
-    } finally {
-      setTimeout(() => {
+      try {
+        startCapture();
+        setCaptureProgress({
+          isCapturing: true,
+          currentStep: 'Preparing device...',
+          progress: 10,
+          attempt: 0,
+          maxAttempts: 3
+        });
+
+        toast.info(`Place ${fingerName} on scanner`, { duration: 4000 });
+
+        handleProgressUpdate('Capturing fingerprint...', 1);
+        
+        const result = await captureFingerprint(targetQuality, 15);
+
+        if (!result.httpStaus || result.data?.ErrorCode !== "0") {
+          throw new Error(result.data?.ErrorDescription || result.err || "Capture failed");
+        }
+
+        handleProgressUpdate('Processing image...', 2);
+        
+        const quality = result.data.Quality || 0;
+        let processedImage = "";
+
+        if (result.data.BitmapData) {
+          processedImage = processFingerprintBitmap(
+            result.data.BitmapData,
+            result.data.InWidth || 256,
+            result.data.InHeight || 256
+          );
+        }
+
+        if (result.data.IsoTemplate) {
+          showPreview({
+            template: result.data.IsoTemplate,
+            imageData: processedImage,
+            quality: quality
+          });
+
+          toast.success(`${fingerName} captured! Please review and accept.`);
+          handleProgressUpdate('Capture completed!', 3);
+        } else {
+          throw new Error("No template data received");
+        }
+
+      } catch (error) {
+        console.error('Capture error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Capture failed';
+        toast.error(errorMessage, { duration: 5000 });
+        
+        resetCapture();
         setCaptureProgress(prev => ({
           ...prev,
-          isCapturing: false,
-          currentStep: '',
-          progress: 0,
-          attempt: 0
+          currentStep: 'Capture failed',
+          progress: 0
         }));
-      }, 2000);
-    }
-  };
+      } finally {
+        setTimeout(() => {
+          setCaptureProgress(prev => ({
+            ...prev,
+            isCapturing: false,
+            currentStep: '',
+            progress: 0,
+            attempt: 0
+          }));
+        }, 2000);
+      }
+    }, 1000),
+    [isConnected, isInitialized, targetQuality, fingerName, startCapture, showPreview, resetCapture, handleProgressUpdate]
+  );
 
-  const handleAcceptCapture = () => {
+  // Optimized bitmap processing with memoization
+  const processFingerprintBitmap = useCallback((bitmapData: string, width: number, height: number): string => {
+    const cacheKey = `bitmap_${bitmapData.slice(0, 50)}_${width}_${height}`;
+    
+    return performanceOptimizer.memoize(cacheKey, () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) return "";
+        
+        const binaryData = atob(bitmapData);
+        const imageData = ctx.createImageData(width, height);
+        const data = imageData.data;
+        
+        const totalPixels = Math.min(binaryData.length, width * height);
+        for (let i = 0; i < totalPixels; i++) {
+          const pixelValue = binaryData.charCodeAt(i);
+          const pixelIndex = i * 4;
+          
+          data[pixelIndex] = pixelValue;     
+          data[pixelIndex + 1] = pixelValue; 
+          data[pixelIndex + 2] = pixelValue; 
+          data[pixelIndex + 3] = 255;        
+        }
+        
+        ctx.putImageData(imageData, 0, 0);
+        return canvas.toDataURL('image/png', 0.8);
+        
+      } catch (error) {
+        console.error('Bitmap processing error:', error);
+        return "";
+      }
+    }, 60000); // Cache for 1 minute
+  }, []);
+
+  const handleAcceptCapture = useCallback(() => {
     if (!captureData) return;
 
-    // Save the captured data
     onChange(captureData.template);
     onImageChange?.(captureData.imageData);
     
@@ -219,28 +231,12 @@ export function EnhancedMFS100Capture({
     onAccepted?.();
     
     toast.success(`${fingerName} accepted and saved!`);
-  };
+  }, [captureData, onChange, onImageChange, acceptCapture, onAccepted, fingerName]);
 
-  const handleRecapture = () => {
+  const handleRecapture = useCallback(() => {
     resetCapture();
     toast.info(`Ready to recapture ${fingerName}`);
-  };
-
-  const getConnectionStatusColor = () => {
-    switch (deviceStatus.connectionQuality) {
-      case 'excellent': return 'bg-green-500';
-      case 'good': return 'bg-blue-500';
-      case 'poor': return 'bg-yellow-500';
-      default: return 'bg-red-500';
-    }
-  };
-
-  const getQualityBadgeVariant = (quality: number | null) => {
-    if (!quality) return 'secondary';
-    if (quality >= 80) return 'default';
-    if (quality >= 60) return 'secondary';
-    return 'destructive';
-  };
+  }, [resetCapture, fingerName]);
 
   // Show preview if in previewing state
   if (captureState === 'previewing' && captureData) {
@@ -255,6 +251,11 @@ export function EnhancedMFS100Capture({
       />
     );
   }
+
+  const getConnectionStatusColor = () => {
+    if (isChecking) return 'bg-yellow-500';
+    return isConnected ? 'bg-green-500' : 'bg-red-500';
+  };
 
   return (
     <div className="flex flex-col items-center space-y-4 animate-fade-in">
@@ -297,7 +298,7 @@ export function EnhancedMFS100Capture({
       <div className="flex flex-col items-center space-y-2">
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-2">
-            {deviceStatus.isConnected ? (
+            {isConnected ? (
               <div className="flex items-center space-x-1">
                 <Wifi className="h-4 w-4 text-green-500" />
                 <div className={`w-2 h-2 rounded-full animate-pulse ${getConnectionStatusColor()}`}></div>
@@ -307,48 +308,39 @@ export function EnhancedMFS100Capture({
             )}
           </div>
           
-          <Badge variant={deviceStatus.isConnected ? "default" : "destructive"}>
-            {deviceStatus.isConnected ? 'MFS100 Connected' : 'Disconnected'}
+          <Badge variant={isConnected ? "default" : "destructive"}>
+            {isChecking ? 'Checking...' : isConnected ? 'Connected' : 'Disconnected'}
           </Badge>
           
           {captureState === 'accepted' && captureData?.quality && (
-            <Badge variant={getQualityBadgeVariant(captureData.quality)}>
+            <Badge variant={captureData.quality >= 70 ? "default" : "secondary"}>
               Quality: {captureData.quality}%
             </Badge>
           )}
         </div>
-
-        {deviceStatus.deviceInfo && (
-          <div className="text-xs text-center text-gray-600">
-            <div>{deviceStatus.deviceInfo.Make} {deviceStatus.deviceInfo.Model}</div>
-            {deviceStatus.deviceInfo.SerialNo && (
-              <div>S/N: {deviceStatus.deviceInfo.SerialNo}</div>
-            )}
-          </div>
-        )}
       </div>
 
-      {/* Initialization Error */}
+      {/* Error States */}
       {initError && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            {initError}
+          <AlertDescription>{initError}</AlertDescription>
+        </Alert>
+      )}
+
+      {!isConnected && !isChecking && error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>{error}</span>
+            <Button variant="outline" size="sm" onClick={forceCheck}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Loading State */}
-      {isInitializing && (
-        <Alert>
-          <RefreshCw className="h-4 w-4 animate-spin" />
-          <AlertDescription>
-            Initializing MFS100 SDK and checking device connection...
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Capture Progress */}
+      {/* Progress Display */}
       {captureProgress.isCapturing && captureProgress.currentStep && (
         <div className="w-full text-center space-y-2">
           <div className="text-sm text-gray-600">{captureProgress.currentStep}</div>
@@ -364,13 +356,13 @@ export function EnhancedMFS100Capture({
       <Button
         type="button"
         onClick={handleCapture}
-        disabled={captureState === 'capturing' || captureState === 'accepted' || !deviceStatus.isConnected || isInitializing}
+        disabled={captureState === 'capturing' || captureState === 'accepted' || !isConnected || !isInitialized}
         className={`w-full transition-all duration-300 rounded-md ${
           captureState === 'capturing' 
             ? 'bg-blue-500 hover:bg-blue-600 animate-pulse cursor-wait' 
             : captureState === 'accepted'
               ? 'bg-green-500 hover:bg-green-600'
-            : deviceStatus.isConnected 
+            : isConnected && isInitialized
               ? 'bg-primary hover:bg-primary/90' 
               : 'bg-gray-400 cursor-not-allowed'
         }`}
@@ -381,21 +373,11 @@ export function EnhancedMFS100Capture({
           ? `Capturing ${fingerName}...` 
           : captureState === 'accepted'
             ? `${fingerName} Accepted ✓`
-          : deviceStatus.isConnected 
+          : isConnected && isInitialized
             ? `Capture ${fingerName}` 
-            : 'Connect Device First'
+            : 'Device Not Ready'
         }
       </Button>
-
-      {/* Device Connection Error */}
-      {!deviceStatus.isConnected && !isInitializing && deviceStatus.error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {deviceStatus.error}
-          </AlertDescription>
-        </Alert>
-      )}
 
       {/* Success Status */}
       {captureState === 'accepted' && (
