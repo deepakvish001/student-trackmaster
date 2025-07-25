@@ -7,12 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
+import { BatchCRUD } from '@/components/batches/BatchCRUD';
 import { 
   GraduationCap, 
   Users, 
-  Plus, 
   Search, 
   Filter, 
   Calendar,
@@ -22,12 +21,7 @@ import {
   Database,
   BookOpen,
   Target,
-  CheckCircle,
-  AlertTriangle,
   RefreshCw,
-  Edit,
-  Trash2,
-  Eye,
   BarChart3
 } from 'lucide-react';
 
@@ -71,7 +65,10 @@ export default function Batches() {
       }
 
       const { data: batchData, error } = await query.order('created_at', { ascending: false });
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching batches:', error);
+        throw error;
+      }
 
       // Get student count for each batch
       const batchesWithCounts = await Promise.all(
@@ -91,7 +88,7 @@ export default function Batches() {
 
       return batchesWithCounts;
     },
-    refetchInterval: 30000 // Auto-refresh every 30 seconds
+    refetchInterval: 30000
   });
 
   // Real-time statistics
@@ -175,12 +172,7 @@ export default function Batches() {
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh Data
               </Button>
-              <Button
-                className="bg-gradient-to-r from-emerald-green to-lime-green hover:scale-105 transition-all duration-300 shadow-green-glow"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create Batch
-              </Button>
+              <BatchCRUD batches={batches} />
             </div>
           </div>
 
@@ -295,10 +287,7 @@ export default function Batches() {
                   <h3 className="text-3xl font-bold text-pink-rose mb-2">No Batches Found</h3>
                   <p className="text-muted-foreground text-lg">Create your first batch to get started with student management.</p>
                 </div>
-                <Button className="bg-gradient-to-r from-emerald-green to-lime-green hover:scale-105 transition-all duration-300 shadow-green-glow">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create First Batch
-                </Button>
+                <BatchCRUD batches={[]} />
               </div>
             </Card>
           ) : (
@@ -372,30 +361,13 @@ export default function Batches() {
                         </div>
                       </div>
                     </CardContent>
-                    
-                    <div className="px-6 pb-6">
-                      <div className="flex items-center justify-between pt-4 border-t border-foreground/10">
-                        <Button size="sm" variant="outline" className="glass border-electric-blue/30 text-electric-blue hover:bg-electric-blue/10">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="outline" className="glass border-emerald-green/30 text-emerald-green hover:bg-emerald-green/10">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="outline" className="glass border-sunset-orange/30 text-sunset-orange hover:bg-sunset-orange/10">
-                          <Users className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="outline" className="glass border-pink-rose/30 text-pink-rose hover:bg-pink-rose/10">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
                   </Card>
                 );
               })}
             </div>
           )}
 
-          {/* Enhanced Batch Detail Modal */}
+          {/* Batch Detail Modal */}
           {selectedBatch && (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
               <Card className="glass-card border-foreground/20 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
@@ -486,22 +458,7 @@ export default function Batches() {
 
                   {/* Action Buttons */}
                   <div className="flex flex-wrap gap-4 pt-6 border-t border-foreground/10">
-                    <Button className="bg-gradient-to-r from-electric-blue to-vibrant-purple hover:scale-105 transition-all duration-300">
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Students
-                    </Button>
-                    <Button className="bg-gradient-to-r from-emerald-green to-lime-green hover:scale-105 transition-all duration-300">
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit Batch
-                    </Button>
-                    <Button className="bg-gradient-to-r from-sunset-orange to-pink-rose hover:scale-105 transition-all duration-300">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Students
-                    </Button>
-                    <Button variant="outline" className="glass border-pink-rose/30 text-pink-rose hover:bg-pink-rose/10">
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete Batch
-                    </Button>
+                    <BatchCRUD batches={[selectedBatch]} />
                   </div>
                 </CardContent>
               </Card>

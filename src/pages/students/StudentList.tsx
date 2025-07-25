@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { EnhancedStudentTable } from '@/components/students/EnhancedStudentTable';
 import { EditStudentDialog } from '@/components/students/EditStudentDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -71,10 +70,13 @@ export default function StudentList() {
       query = query.order(sortBy, { ascending: sortOrder === 'asc' });
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching students:', error);
+        throw error;
+      }
       return data || [];
     },
-    refetchInterval: 30000 // Auto-refresh every 30 seconds
+    refetchInterval: 30000
   });
 
   const { data: batches = [] } = useQuery({
@@ -84,7 +86,10 @@ export default function StudentList() {
         .from('batches')
         .select('id, batch_name')
         .eq('is_enabled', true);
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching batches:', error);
+        throw error;
+      }
       return data || [];
     }
   });
@@ -92,11 +97,15 @@ export default function StudentList() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (studentId: string) => {
+      console.log('Deleting student with ID:', studentId);
       const { error } = await supabase
         .from('students')
         .update({ is_enabled: false })
         .eq('id', studentId);
-      if (error) throw error;
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students-list'] });
@@ -111,6 +120,7 @@ export default function StudentList() {
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async ({ studentId, updates }: { studentId: string; updates: Partial<Student> }) => {
+      console.log('Updating student:', studentId, updates);
       const { error } = await supabase
         .from('students')
         .update({
@@ -118,7 +128,10 @@ export default function StudentList() {
           updated_at: new Date().toISOString()
         })
         .eq('id', studentId);
-      if (error) throw error;
+      if (error) {
+        console.error('Update error:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students-list'] });
@@ -133,15 +146,18 @@ export default function StudentList() {
   });
 
   const handleEdit = (student: Student) => {
+    console.log('Editing student:', student);
     setEditingStudent(student);
     setShowEditDialog(true);
   };
 
   const handleDelete = (studentId: string) => {
+    console.log('Delete requested for student:', studentId);
     deleteMutation.mutate(studentId);
   };
 
   const handleUpdateStudent = (updates: Partial<Student>) => {
+    console.log('Update student with:', updates);
     if (editingStudent) {
       updateMutation.mutate({
         studentId: editingStudent.id,
