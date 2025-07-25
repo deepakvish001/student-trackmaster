@@ -78,7 +78,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <SidebarMenuButton asChild>
                           <Link
                             to={item.path}
-                            className={`${(location.pathname === item.path || (item.path === '/dashboard' && location.pathname === '/')) ? 'bg-[#2A2F3E]' : ''} text-white hover:bg-[#2A2F3E]`}
+                            className={`${(location.pathname === item.path || (item.path === '/dashboard' && (location.pathname === '/' || location.pathname === '/dashboard'))) ? 'bg-[#2A2F3E]' : ''} text-white hover:bg-[#2A2F3E]`}
                           >
                             <item.icon className="w-4 h-4" />
                             <span>{item.title}</span>
@@ -95,10 +95,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <SidebarGroup>
               <SidebarGroupContent>
                 <div className="px-2 py-2">
-                  <Link to="/students/add">
+                  <Link to="/students/enhanced-add">
                     <Button 
                       className={`w-full justify-start gap-3 h-12 text-white border-2 transition-all duration-200 ${
-                        location.pathname === '/students/add' 
+                        location.pathname === '/students/enhanced-add' 
                           ? 'bg-[#8B5CF6] border-[#8B5CF6] shadow-lg' 
                           : 'bg-transparent border-[#8B5CF6] hover:bg-[#8B5CF6] hover:shadow-md'
                       }`}
