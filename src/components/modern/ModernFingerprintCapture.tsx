@@ -1,34 +1,19 @@
 
-/**
- * Modern Fingerprint Capture Component
- * Uses the new async MFS100 client for non-blocking UI
- */
-
-import { useState, useCallback } from "react";
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Fingerprint, Wifi, WifiOff, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
-import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { FingerprintDisplay } from "@/components/FingerprintDisplay";
 import { useModernDeviceConnection } from "@/hooks/useModernDeviceConnection";
+import { Fingerprint, Wifi, WifiOff, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
 
 interface ModernFingerprintCaptureProps {
   index: number;
   value: string;
   onChange: (value: string) => void;
   onImageChange?: (imageData: string) => void;
-  fingerName?: string;
   targetQuality?: number;
-  onCaptureComplete?: (data: { template: string; image: string; quality: number }) => void;
-}
-
-interface CaptureProgress {
-  step: string;
-  progress: number;
-  attempt: number;
-  maxAttempts: number;
 }
 
 export function ModernFingerprintCapture({
@@ -36,284 +21,262 @@ export function ModernFingerprintCapture({
   value,
   onChange,
   onImageChange,
-  fingerName = `Finger ${index + 1}`,
-  targetQuality = 60,
-  onCaptureComplete
+  targetQuality = 60
 }: ModernFingerprintCaptureProps) {
-  const [isCapturing, setIsCapturing] = useState(false);
-  const [captureProgress, setCaptureProgress] = useState<CaptureProgress>({
-    step: '',
-    progress: 0,
-    attempt: 0,
-    maxAttempts: 3
-  });
-  const [capturedImage, setCapturedImage] = useState<string>("");
-  const [captureQuality, setCaptureQuality] = useState<number | null>(null);
-
-  const {
-    isConnected,
-    isChecking,
-    error,
-    deviceInfo,
-    isInitialized,
-    forceCheck,
-    reconnect,
-    mfs100Client
+  const { 
+    isConnected, 
+    deviceInfo, 
+    connectionStatus, 
+    client,
+    reconnect 
   } = useModernDeviceConnection();
 
-  const updateProgress = useCallback((step: string, progress: number, attempt?: number) => {
-    setCaptureProgress(prev => ({
-      ...prev,
-      step,
-      progress,
-      attempt: attempt ?? prev.attempt
-    }));
-  }, []);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [captureProgress, setCaptureProgress] = useState(0);
+  const [lastError, setLastError] = useState<string>('');
+  const [quality, setQuality] = useState<number | null>(null);
+  const [attempts, setAttempts] = useState(0);
 
-  const processBitmapData = useCallback((bitmapData: string, width: number, height: number): string => {
-    try {
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      
-      if (!ctx) return "";
-      
-      const binaryData = atob(bitmapData);
-      const imageData = ctx.createImageData(width, height);
-      const data = imageData.data;
-      
-      const totalPixels = Math.min(binaryData.length, width * height);
-      for (let i = 0; i < totalPixels; i++) {
-        const pixelValue = binaryData.charCodeAt(i);
-        const pixelIndex = i * 4;
-        
-        data[pixelIndex] = pixelValue;
-        data[pixelIndex + 1] = pixelValue;
-        data[pixelIndex + 2] = pixelValue;
-        data[pixelIndex + 3] = 255;
-      }
-      
-      ctx.putImageData(imageData, 0, 0);
-      return canvas.toDataURL('image/png', 0.8);
-      
-    } catch (error) {
-      console.error('Bitmap processing error:', error);
-      return "";
+  const maxAttempts = 3;
+
+  // Reset states when value changes
+  useEffect(() => {
+    if (value) {
+      setLastError('');
+      setAttempts(0);
     }
-  }, []);
+  }, [value]);
 
-  const handleCapture = useCallback(async () => {
-    if (!isConnected || !isInitialized) {
-      toast.error("Device not ready. Please check connection.");
+  const handleCapture = async () => {
+    if (!isConnected || !client) {
+      setLastError('Device not connected. Please connect your MFS100 device.');
       return;
     }
 
+    if (isCapturing) return;
+
     try {
       setIsCapturing(true);
-      setCaptureProgress({
-        step: 'Initializing capture...',
-        progress: 10,
-        attempt: 1,
-        maxAttempts: 3
+      setLastError('');
+      setCaptureProgress(0);
+      setAttempts(prev => prev + 1);
+
+      console.log(`Starting modern fingerprint capture for finger ${index + 1} (attempt ${attempts + 1})`);
+
+      // Progress simulation
+      const progressInterval = setInterval(() => {
+        setCaptureProgress(prev => Math.min(prev + 20, 90));
+      }, 200);
+
+      // Capture fingerprint using modern client
+      const result = await client.captureFingerprint({
+        timeout: 15000,
+        quality: targetQuality
       });
 
-      toast.info(`Place ${fingerName} on the scanner`, { duration: 4000 });
+      clearInterval(progressInterval);
+      setCaptureProgress(100);
 
-      updateProgress('Capturing fingerprint...', 30, 1);
-
-      const result = await mfs100Client.captureFingerprint({
-        quality: targetQuality,
-        timeout: 15,
-        retries: 3
-      });
-
-      if (!result.httpStaus || result.data?.ErrorCode !== "0") {
-        throw new Error(result.data?.ErrorDescription || result.err || "Capture failed");
-      }
-
-      updateProgress('Processing image...', 70);
-
-      const quality = result.data.Quality || 0;
-      setCaptureQuality(quality);
-
-      // Process fingerprint image
-      let processedImage = "";
-      if (result.data.BitmapData) {
-        processedImage = processBitmapData(
-          result.data.BitmapData,
-          result.data.InWidth || 256,
-          result.data.InHeight || 256
-        );
-        setCapturedImage(processedImage);
-        onImageChange?.(processedImage);
-      }
-
-      updateProgress('Saving template...', 90);
-
-      // Save template
-      if (result.data.IsoTemplate) {
-        onChange(result.data.IsoTemplate);
-        
-        onCaptureComplete?({
-          template: result.data.IsoTemplate,
-          image: processedImage,
-          quality
+      if (result.success && result.data) {
+        console.log('Modern capture successful:', {
+          finger: index + 1,
+          quality: result.data.quality,
+          templateLength: result.data.template?.length || 0,
+          imageLength: result.data.imageData?.length || 0
         });
-      }
 
-      updateProgress('Capture completed!', 100);
-      
-      toast.success(`${fingerName} captured successfully! Quality: ${quality}%`);
+        setQuality(result.data.quality || null);
+        
+        // Store template data
+        if (result.data.template) {
+          onChange(result.data.template);
+        }
 
-      if (quality < targetQuality) {
-        toast.warning(`Quality ${quality}% is below target (${targetQuality}%). Consider recapturing for better results.`);
+        // Store image data if available
+        if (result.data.imageData && onImageChange) {
+          onImageChange(result.data.imageData);
+        }
+
+        setLastError('');
+      } else {
+        throw new Error(result.error || 'Capture failed');
       }
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Capture failed';
-      console.error('Modern capture error:', error);
-      toast.error(errorMessage);
-      
-      setCaptureProgress(prev => ({
-        ...prev,
-        step: 'Capture failed',
-        progress: 0
-      }));
-      
+      console.error(`Modern capture failed for finger ${index + 1}:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown capture error';
+      setLastError(errorMessage);
+      setQuality(null);
     } finally {
-      setTimeout(() => {
-        setIsCapturing(false);
-        setCaptureProgress({
-          step: '',
-          progress: 0,
-          attempt: 0,
-          maxAttempts: 3
-        });
-      }, 2000);
+      setIsCapturing(false);
+      setCaptureProgress(0);
     }
-  }, [isConnected, isInitialized, mfs100Client, targetQuality, fingerName, onChange, onImageChange, onCaptureComplete, updateProgress, processBitmapData]);
+  };
+
+  const handleRetry = () => {
+    setLastError('');
+    setQuality(null);
+    onChange('');
+    if (onImageChange) {
+      onImageChange('');
+    }
+  };
 
   const getStatusColor = () => {
-    if (!isInitialized) return "bg-gray-500";
-    if (isChecking) return "bg-yellow-500";
-    return isConnected ? "bg-green-500" : "bg-red-500";
+    if (!isConnected) return 'bg-red-500';
+    if (value) return 'bg-green-500';
+    if (isCapturing) return 'bg-blue-500';
+    return 'bg-gray-400';
   };
 
   const getStatusText = () => {
-    if (!isInitialized) return "Initializing...";
-    if (isChecking) return "Checking...";
-    return isConnected ? "Connected" : "Disconnected";
+    if (!isConnected) return 'Disconnected';
+    if (value) return 'Captured';
+    if (isCapturing) return 'Capturing...';
+    return 'Ready';
   };
 
   return (
-    <div className="flex flex-col items-center space-y-4">
-      {/* Fingerprint Display */}
-      <FingerprintDisplay 
-        value={capturedImage || value}
-        index={index}
-        quality={captureQuality}
-        isCapturing={isCapturing}
-        showQuality={true}
-      />
-
-      {/* Device Status */}
-      <div className="flex items-center space-x-3">
-        <div className="flex items-center space-x-2">
-          {isConnected ? (
-            <div className="flex items-center space-x-1">
+    <Card className="w-full max-w-sm mx-auto">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg flex items-center justify-between">
+          <span>Finger {index + 1}</span>
+          <div className="flex items-center space-x-2">
+            <div className={`w-3 h-3 rounded-full ${getStatusColor()}`} />
+            <Badge variant={isConnected ? 'default' : 'destructive'} className="text-xs">
+              {getStatusText()}
+            </Badge>
+          </div>
+        </CardTitle>
+      </CardHeader>
+      
+      <CardContent className="space-y-4">
+        {/* Device Status */}
+        <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center space-x-2">
+            {isConnected ? (
               <Wifi className="h-4 w-4 text-green-500" />
-              <div className={`w-2 h-2 rounded-full animate-pulse ${getStatusColor()}`}></div>
-            </div>
-          ) : (
-            <WifiOff className="h-4 w-4 text-red-500" />
+            ) : (
+              <WifiOff className="h-4 w-4 text-red-500" />
+            )}
+            <span className={isConnected ? 'text-green-600' : 'text-red-600'}>
+              {connectionStatus}
+            </span>
+          </div>
+          {deviceInfo && (
+            <span className="text-xs text-gray-500">
+              {deviceInfo.model || 'MFS100'}
+            </span>
           )}
         </div>
-        
-        <Badge variant={isConnected ? "default" : "destructive"}>
-          {getStatusText()}
-        </Badge>
-        
-        {captureQuality && (
-          <Badge variant={captureQuality >= targetQuality ? "default" : "secondary"}>
-            Quality: {captureQuality}%
-          </Badge>
+
+        {/* Fingerprint Display */}
+        <div className="flex justify-center">
+          <FingerprintDisplay
+            value={value}
+            index={index}
+            quality={quality}
+            isCapturing={isCapturing}
+            showQuality={true}
+          />
+        </div>
+
+        {/* Capture Progress */}
+        {isCapturing && (
+          <div className="space-y-2">
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-primary h-2 rounded-full transition-all duration-300"
+                style={{ width: `${captureProgress}%` }}
+              />
+            </div>
+            <p className="text-sm text-center text-gray-600">
+              Place finger on sensor... ({captureProgress}%)
+            </p>
+          </div>
         )}
-      </div>
 
-      {/* Device Info */}
-      {deviceInfo && (
-        <div className="text-xs text-center text-gray-600">
-          {deviceInfo.Make} {deviceInfo.Model}
-          {deviceInfo.SerialNo && <div>S/N: {deviceInfo.SerialNo}</div>}
-        </div>
-      )}
+        {/* Quality Indicator */}
+        {quality !== null && value && (
+          <div className="flex items-center justify-center space-x-2">
+            {quality >= targetQuality ? (
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            ) : (
+              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+            )}
+            <span className={`text-sm font-medium ${
+              quality >= targetQuality ? 'text-green-600' : 'text-yellow-600'
+            }`}>
+              Quality: {quality}%
+            </span>
+          </div>
+        )}
 
-      {/* Error Display */}
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="flex items-center justify-between">
-            <span>{error}</span>
-            <div className="flex space-x-1">
-              <Button variant="outline" size="sm" onClick={forceCheck} disabled={isChecking}>
-                <RefreshCw className={`h-4 w-4 ${isChecking ? 'animate-spin' : ''}`} />
-              </Button>
-              <Button variant="outline" size="sm" onClick={reconnect}>
-                Reconnect
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
+        {/* Error Display */}
+        {lastError && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="text-sm">
+              {lastError}
+              {attempts >= maxAttempts && (
+                <span className="block mt-1 text-xs">
+                  Maximum attempts reached. Please try reconnecting the device.
+                </span>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
 
-      {/* Progress Display */}
-      {isCapturing && captureProgress.step && (
-        <div className="w-full space-y-2">
-          <div className="text-sm text-center text-gray-600">{captureProgress.step}</div>
-          {captureProgress.progress > 0 && (
-            <Progress value={captureProgress.progress} className="w-full h-2" />
+        {/* Action Buttons */}
+        <div className="flex space-x-2">
+          {!value ? (
+            <Button
+              onClick={handleCapture}
+              disabled={!isConnected || isCapturing || attempts >= maxAttempts}
+              className="flex-1"
+              variant="default"
+            >
+              {isCapturing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Capturing...
+                </>
+              ) : (
+                <>
+                  <Fingerprint className="mr-2 h-4 w-4" />
+                  Capture
+                </>
+              )}
+            </Button>
+          ) : (
+            <Button
+              onClick={handleRetry}
+              variant="outline"
+              className="flex-1"
+            >
+              Recapture
+            </Button>
           )}
-          {captureProgress.attempt > 0 && (
-            <div className="text-xs text-center text-gray-500">
-              Attempt {captureProgress.attempt} of {captureProgress.maxAttempts}
-            </div>
+
+          {!isConnected && (
+            <Button
+              onClick={reconnect}
+              variant="secondary"
+              size="sm"
+            >
+              Reconnect
+            </Button>
           )}
         </div>
-      )}
 
-      {/* Capture Button */}
-      <Button
-        type="button"
-        onClick={handleCapture}
-        disabled={isCapturing || !isConnected || !isInitialized}
-        className={`w-full transition-all duration-300 ${
-          isCapturing 
-            ? 'bg-blue-500 hover:bg-blue-600 animate-pulse cursor-wait' 
-            : isConnected && isInitialized
-              ? 'bg-primary hover:bg-primary/90' 
-              : 'bg-gray-400 cursor-not-allowed'
-        }`}
-        size="lg"
-      >
-        <Fingerprint className="mr-2 h-5 w-5" />
-        {isCapturing 
-          ? `Capturing ${fingerName}...` 
-          : isConnected && isInitialized
-            ? `Capture ${fingerName}` 
-            : !isInitialized
-              ? 'Initializing...'
-              : 'Device Not Ready'
-        }
-      </Button>
-
-      {/* Success Status */}
-      {value && capturedImage && !isCapturing && (
-        <div className="flex items-center space-x-2 text-sm text-green-600">
-          <CheckCircle className="h-4 w-4" />
-          <span>{fingerName} captured and ready</span>
-        </div>
-      )}
-    </div>
+        {/* Device Info */}
+        {deviceInfo && isConnected && (
+          <div className="text-xs text-gray-500 text-center space-y-1">
+            <div>Serial: {deviceInfo.serialNumber || 'Unknown'}</div>
+            <div>Version: {deviceInfo.version || 'Unknown'}</div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
