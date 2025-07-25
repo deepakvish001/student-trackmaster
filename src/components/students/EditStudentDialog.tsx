@@ -40,7 +40,7 @@ export function EditStudentDialog({
     if (student) {
       setFormData({
         student_name: student.student_name || '',
-        batch_id: student.batch_id || ''
+        batch_id: student.batch_id || 'no-batch'
       });
     }
   }, [student]);
@@ -51,7 +51,7 @@ export function EditStudentDialog({
 
     onUpdate({
       student_name: formData.student_name,
-      batch_id: formData.batch_id || null
+      batch_id: formData.batch_id === 'no-batch' ? null : formData.batch_id
     });
   };
 
@@ -96,7 +96,7 @@ export function EditStudentDialog({
                 <SelectValue placeholder="Select a batch" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No Batch</SelectItem>
+                <SelectItem value="no-batch">No Batch</SelectItem>
                 {batches.map((batch) => (
                   <SelectItem key={batch.id} value={batch.id}>
                     <div className="flex items-center space-x-2">
