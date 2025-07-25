@@ -1,4 +1,3 @@
-
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 import { Button } from '@/components/ui/button';
 import { 
@@ -13,9 +12,10 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
-  SidebarTrigger
+  SidebarTrigger,
+  SidebarSeparator
 } from '@/components/ui/sidebar';
-import { Home, Users, BookOpen, Download, LogOut, UserPlus, List } from 'lucide-react';
+import { Home, Users, BookOpen, Download, LogOut, UserPlus, List, Plus } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -88,6 +88,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     )
                   ))}
                 </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+            
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <div className="px-2 py-2">
+                  <Link to="/students/add">
+                    <Button 
+                      className={`w-full justify-start gap-3 h-12 text-white border-2 transition-all duration-200 ${
+                        location.pathname === '/students/add' 
+                          ? 'bg-[#8B5CF6] border-[#8B5CF6] shadow-lg' 
+                          : 'bg-transparent border-[#8B5CF6] hover:bg-[#8B5CF6] hover:shadow-md'
+                      }`}
+                      variant="outline"
+                    >
+                      <Plus className="w-5 h-5" />
+                      <span className="font-medium">Add New Student</span>
+                    </Button>
+                  </Link>
+                </div>
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
