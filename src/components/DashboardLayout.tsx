@@ -26,7 +26,7 @@ import {
   Plus
 } from "lucide-react"
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -35,7 +35,7 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout } = useEnhancedAuth();
 
   const menuItems = [
     { title: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
