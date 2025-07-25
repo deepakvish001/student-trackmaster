@@ -14,7 +14,7 @@ import EnhancedAddStudent from "./pages/students/EnhancedAddStudent";
 import ViewStudents from "./pages/students/ViewStudents";
 import Downloads from "./pages/Downloads";
 import Testing from "./pages/Testing";
-import ProtectedRoute from "./components/ProtectedRoute";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
