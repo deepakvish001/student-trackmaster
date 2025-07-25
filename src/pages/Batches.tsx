@@ -30,7 +30,7 @@ import { BatchForm } from "@/components/batches/BatchForm";
 import { BatchSearch } from "@/components/batches/BatchSearch";
 import { BatchPagination } from "@/components/batches/BatchPagination";
 import { Batch, BatchFormData } from "@/types/batch";
-import { useAuth } from "@/contexts/AuthContext";
+import { useEnhancedAuth } from "@/contexts/EnhancedAuthContext";
 import { validateBatchData } from "@/utils/securityValidation";
 import { logSecurityEvent } from "@/utils/inputSanitization";
 
@@ -43,7 +43,7 @@ const formSchema = z.object({
 });
 
 export default function Batches() {
-  const { user } = useAuth();
+  const { user } = useEnhancedAuth();
   const navigate = useNavigate();
   const [batches, setBatches] = useState<Batch[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
