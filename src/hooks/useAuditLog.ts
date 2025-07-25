@@ -26,13 +26,22 @@ export function useAuditLog() {
     newValues?: any
   ) => {
     try {
-      const { error } = await supabase.rpc('log_audit_event' as any, {
-        p_action: action,
-        p_table_name: tableName,
-        p_record_id: recordId,
-        p_old_values: oldValues,
-        p_new_values: newValues
-      });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Direct insert into audit_logs table instead of RPC
+      const { error } = await (supabase as any)
+        .from('audit_logs')
+        .insert({
+          user_id: user.id,
+          action,
+          table_name: tableName,
+          record_id: recordId,
+          old_values: oldValues,
+          new_values: newValues,
+          ip_address: null, // Could be enhanced to get real IP
+          user_agent: navigator?.userAgent || null
+        });
 
       if (error) {
         console.error('Failed to log audit event:', error);
@@ -56,7 +65,6 @@ export function useAuditLog() {
     try {
       setIsLoading(true);
       
-      // Use raw SQL query for audit_logs table
       const { data, error } = await (supabase as any)
         .from('audit_logs')
         .select('*')

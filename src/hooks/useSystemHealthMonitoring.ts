@@ -49,12 +49,18 @@ export function useSystemHealthMonitoring(autoCheck = true, interval = 30000) {
     responseTime?: number
   ) => {
     try {
-      const { error } = await supabase.rpc('record_health_check' as any, {
-        p_check_type: checkType,
-        p_status: status,
-        p_details: details,
-        p_response_time_ms: responseTime
-      });
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Direct insert into system_health_logs table instead of RPC
+      const { error } = await (supabase as any)
+        .from('system_health_logs')
+        .insert({
+          check_type: checkType,
+          status,
+          details,
+          response_time_ms: responseTime,
+          checked_at: new Date().toISOString()
+        });
 
       if (error) {
         console.error('Failed to record health check:', error);
