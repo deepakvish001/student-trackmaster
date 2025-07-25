@@ -1,5 +1,6 @@
+
 import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +10,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-  const { login, signUp, user, isLoading } = useAuth();
+  const { login, signUp, user, isLoading } = useEnhancedAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
