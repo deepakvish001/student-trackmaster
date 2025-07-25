@@ -19,7 +19,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { MoreHorizontal, Edit, Trash2, Eye } from 'lucide-react';
 import { Student } from '@/types';
-import { toast } from 'sonner';
 
 interface StudentActionsProps {
   student: Student;
@@ -34,7 +33,6 @@ export function StudentActions({ student, onEdit, onDelete, onView }: StudentAct
   const handleDelete = () => {
     onDelete(student.id);
     setShowDeleteDialog(false);
-    toast.success('Student deleted successfully');
   };
 
   return (

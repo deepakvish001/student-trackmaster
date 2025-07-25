@@ -65,11 +65,11 @@ export function StudentDetailsDialog({ student, open, onOpenChange }: StudentDet
                 finger_3: student.finger_3,
                 finger_4: student.finger_4,
                 finger_5: student.finger_5,
-                finger_1_image: (student as any).finger_1_image,
-                finger_2_image: (student as any).finger_2_image,
-                finger_3_image: (student as any).finger_3_image,
-                finger_4_image: (student as any).finger_4_image,
-                finger_5_image: (student as any).finger_5_image,
+                finger_1_image: student.finger_1_image,
+                finger_2_image: student.finger_2_image,
+                finger_3_image: student.finger_3_image,
+                finger_4_image: student.finger_4_image,
+                finger_5_image: student.finger_5_image,
               }}
               showQuality={true}
             />

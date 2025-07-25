@@ -138,9 +138,7 @@ export default function StudentList() {
   };
 
   const handleDelete = (studentId: string) => {
-    if (window.confirm('Are you sure you want to delete this student?')) {
-      deleteMutation.mutate(studentId);
-    }
+    deleteMutation.mutate(studentId);
   };
 
   const handleUpdateStudent = (updates: Partial<Student>) => {
