@@ -20,29 +20,37 @@ export function FingerprintDisplay({
   const [imageError, setImageError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Get fingerprint image URL for display
+  // Process fingerprint data for display
   const getFingerprintImageUrl = (fingerprintData: string) => {
     if (!fingerprintData) return null;
     
-    console.log(`Processing fingerprint data for display (length: ${fingerprintData.length})`);
+    console.log(`Processing fingerprint display data for finger ${index + 1} (length: ${fingerprintData.length})`);
     
-    // If it's already a complete data URI (base64 image), use it directly
+    // If it's already a complete data URI (captured image), use it directly
     if (fingerprintData.startsWith('data:image/')) {
-      console.log('Found complete data URI');
+      console.log('Found complete image data URI');
       return fingerprintData;
     }
     
-    // If it's a base64 string without data URI prefix, add it
+    // If it's a base64 image string without data URI prefix, add it
     if (fingerprintData.length > 100 && !fingerprintData.includes('data:')) {
-      // Detect if it's likely an image (starts with common image headers in base64)
-      if (fingerprintData.startsWith('iVBOR') || fingerprintData.startsWith('/9j/') || fingerprintData.startsWith('UklGR')) {
-        console.log('Converting base64 string to data URI');
-        return `data:image/png;base64,${fingerprintData}`;
+      // Check for common base64 image headers
+      if (fingerprintData.startsWith('iVBOR') || // PNG
+          fingerprintData.startsWith('/9j/') ||  // JPEG
+          fingerprintData.startsWith('UklGR') || // WebP
+          fingerprintData.startsWith('R0lGOD')) { // GIF
+        console.log('Converting base64 image to data URI');
+        // Detect format and add appropriate data URI prefix
+        let mimeType = 'image/png'; // default
+        if (fingerprintData.startsWith('/9j/')) mimeType = 'image/jpeg';
+        else if (fingerprintData.startsWith('UklGR')) mimeType = 'image/webp';
+        else if (fingerprintData.startsWith('R0lGOD')) mimeType = 'image/gif';
+        
+        return `data:${mimeType};base64,${fingerprintData}`;
       }
     }
     
-    console.log('Data does not appear to be image data');
-    // Return null for non-image data (like ISO templates)
+    console.log('Data does not appear to be image data, likely ISO template');
     return null;
   };
 
@@ -51,11 +59,26 @@ export function FingerprintDisplay({
   useEffect(() => {
     if (value && !isCapturing) {
       setIsLoading(true);
-      const timer = setTimeout(() => setIsLoading(false), 500);
+      setImageError(false);
+      const timer = setTimeout(() => setIsLoading(false), 300);
       return () => clearTimeout(timer);
     }
-    setImageError(false);
+    if (!value) {
+      setImageError(false);
+    }
   }, [value, isCapturing]);
+
+  const handleImageLoad = () => {
+    console.log(`Fingerprint image ${index + 1} loaded successfully`);
+    setImageError(false);
+    setIsLoading(false);
+  };
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    console.error(`Error loading fingerprint image ${index + 1}:`, e);
+    setImageError(true);
+    setIsLoading(false);
+  };
 
   return (
     <div className="flex flex-col items-center space-y-2">
@@ -91,19 +114,17 @@ export function FingerprintDisplay({
                   alt={`Fingerprint ${index + 1}`}
                   className={`max-w-36 max-h-36 object-contain transition-all duration-300 ${
                     imageError ? 'opacity-50' : 'animate-scale-in'
-                  } rounded`}
-                  onError={(e) => {
-                    console.error(`Error loading fingerprint image ${index + 1}:`, e);
-                    setImageError(true);
-                  }}
-                  onLoad={() => {
-                    console.log(`Fingerprint image ${index + 1} loaded successfully`);
-                    setImageError(false);
+                  } rounded border`}
+                  onError={handleImageError}
+                  onLoad={handleImageLoad}
+                  style={{ 
+                    filter: 'contrast(1.1) brightness(1.05)',
+                    imageRendering: 'crisp-edges'
                   }}
                 />
               )
             ) : (
-              // Show template saved indicator for non-image data
+              // Show template saved indicator for non-image data (ISO templates)
               <div className="flex flex-col items-center space-y-2 text-blue-600">
                 <Check className="h-8 w-8" />
                 <span className="text-sm font-medium">Template Saved</span>
@@ -127,7 +148,7 @@ export function FingerprintDisplay({
               <div className="absolute inset-0 flex items-center justify-center bg-gray-50 rounded">
                 <div className="text-center text-gray-500">
                   <AlertCircle className="h-6 w-6 mx-auto mb-1" />
-                  <span className="text-xs">Preview Error</span>
+                  <span className="text-xs">Image Load Error</span>
                 </div>
               </div>
             )}
@@ -150,7 +171,7 @@ export function FingerprintDisplay({
             Quality: {quality}%
           </div>
         )}
-        {value && !imageUrl && (
+        {value && !imageUrl && !imageError && (
           <div className="text-xs text-blue-600 mt-1">
             Template Saved ✓
           </div>
