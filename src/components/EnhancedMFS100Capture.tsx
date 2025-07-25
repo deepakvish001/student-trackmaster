@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -59,42 +60,45 @@ export function EnhancedMFS100Capture({
     resetCapture
   } = useFingerprintCaptureState();
 
-  // Fixed initialization - properly handle async memoized function
+  // Fixed initialization - simple async without memoization
   useEffect(() => {
+    let mounted = true;
+    
     const initializeDevice = async () => {
       try {
         console.log('Initializing MFS100 SDK...');
         const initialized = await initializeMFS100();
         
-        if (initialized) {
-          console.log('MFS100 SDK initialized successfully');
-          setIsInitialized(true);
-          setInitError("");
-          toast.success("MFS100 SDK initialized successfully");
-        } else {
-          const error = "Failed to initialize MFS100 SDK";
-          setInitError(error);
-          setIsInitialized(false);
-          toast.error(error);
+        if (mounted) {
+          if (initialized) {
+            console.log('MFS100 SDK initialized successfully');
+            setIsInitialized(true);
+            setInitError("");
+            toast.success("MFS100 SDK initialized successfully");
+          } else {
+            const error = "Failed to initialize MFS100 SDK";
+            setInitError(error);
+            setIsInitialized(false);
+            toast.error(error);
+          }
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Initialization failed';
-        setInitError(errorMessage);
-        setIsInitialized(false);
-        console.error('Initialization error:', error);
-        toast.error(`Initialization failed: ${errorMessage}`);
+        if (mounted) {
+          const errorMessage = error instanceof Error ? error.message : 'Initialization failed';
+          setInitError(errorMessage);
+          setIsInitialized(false);
+          console.error('Initialization error:', error);
+          toast.error(`Initialization failed: ${errorMessage}`);
+        }
       }
     };
 
-    // Use memoization properly for initialization
-    const memoizedInit = performanceOptimizer.memoize(
-      'mfs100_init',
-      initializeDevice,
-      30000 // Cache for 30 seconds
-    );
-
-    // Call the memoized function (which returns the result, not a promise)
-    memoizedInit();
+    // Simple initialization without memoization for async functions
+    initializeDevice();
+    
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const handleProgressUpdate = useCallback((status: string, attempt?: number) => {
