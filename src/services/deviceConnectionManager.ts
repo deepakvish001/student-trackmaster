@@ -1,4 +1,3 @@
-
 /**
  * Device Connection Manager - Real-time device monitoring and health management
  */
@@ -34,6 +33,7 @@ class DeviceConnectionManager {
     retryAttempts: 3,
     healthCheckTimeout: 10000
   };
+  private mfs100Client: any;
 
   static getInstance(): DeviceConnectionManager {
     if (!DeviceConnectionManager.instance) {
@@ -59,8 +59,6 @@ class DeviceConnectionManager {
     
     console.log('Device Connection Manager initialized');
   }
-
-  private mfs100Client: any;
 
   /**
    * Start real-time device monitoring

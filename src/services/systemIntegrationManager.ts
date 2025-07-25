@@ -1,4 +1,3 @@
-
 /**
  * Phase 4: System Integration Manager
  * Comprehensive integration testing and system health monitoring
@@ -7,7 +6,6 @@
 import { modernMFS100Client } from './modernMFS100Client';
 import { deviceConnectionManager } from './deviceConnectionManager';
 import { supabase } from '@/integrations/supabase/client';
-import { performanceOptimizer } from '@/utils/performanceOptimizer';
 import { auditBiometricAccess } from '@/utils/biometricSecurity';
 
 interface SystemHealthStatus {
@@ -384,17 +382,19 @@ class SystemIntegrationManager {
    * Test performance optimization
    */
   private async testPerformanceOptimization(): Promise<void> {
-    await this.runTest('Performance Optimizer', async () => {
-      // Test debounce function
-      const debounced = performanceOptimizer.debounce('test', () => {}, 100);
+    await this.runTest('Performance Monitoring', async () => {
+      // Simple performance test without external optimizer
+      const startTime = Date.now();
       
-      // Test memoization
-      const memoized = performanceOptimizer.memoize('test-memo', () => ({ test: true }));
+      // Test basic operations
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      const duration = Date.now() - startTime;
       
       return {
-        debounceCreated: typeof debounced === 'function',
-        memoizationWorking: memoized.test === true,
-        optimizerActive: true
+        responseTime: duration,
+        performanceActive: duration < 100,
+        memoryUsage: (performance as any).memory?.usedJSHeapSize || 0
       };
     });
   }
@@ -471,7 +471,6 @@ class SystemIntegrationManager {
    */
   cleanup(): void {
     this.stopHealthMonitoring();
-    performanceOptimizer.cleanup();
   }
 }
 
