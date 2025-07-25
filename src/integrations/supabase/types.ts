@@ -24,6 +24,7 @@ export type Database = {
           max_students: number
           serial_number: string
           updated_at: string
+          user_id: string | null
           username: string
         }
         Insert: {
@@ -35,6 +36,7 @@ export type Database = {
           max_students?: number
           serial_number: string
           updated_at?: string
+          user_id?: string | null
           username: string
         }
         Update: {
@@ -46,6 +48,7 @@ export type Database = {
           max_students?: number
           serial_number?: string
           updated_at?: string
+          user_id?: string | null
           username?: string
         }
         Relationships: []
@@ -68,6 +71,7 @@ export type Database = {
           is_enabled: boolean
           student_name: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           batch_id: string
@@ -86,6 +90,7 @@ export type Database = {
           is_enabled?: boolean
           student_name: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           batch_id?: string
@@ -104,6 +109,7 @@ export type Database = {
           is_enabled?: boolean
           student_name?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {

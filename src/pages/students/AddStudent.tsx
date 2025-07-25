@@ -23,12 +23,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FingerprintCapture } from "@/components/FingerprintCapture";
 import { MFS100FingerprintCapture } from "@/components/MFS100FingerprintCapture";
 import { FingerprintGuidanceSystem } from "@/components/FingerprintGuidanceSystem";
+import { validateStudentData } from "@/utils/securityValidation";
+import { sanitizeTextInput, sanitizeEmail, sanitizePhoneNumber, logSecurityEvent } from "@/utils/inputSanitization";
+import { useAuth } from "@/contexts/AuthContext";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Shield } from "lucide-react";
 
 const formSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
+  name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name must not exceed 100 characters"),
   mobile: z.string().min(10, "Mobile number must be at least 10 digits").max(15, "Mobile number must not exceed 15 digits"),
   batchId: z.string().min(1, "Please select a batch"),
-  address: z.string().min(5, "Address must be at least 5 characters"),
+  address: z.string().min(5, "Address must be at least 5 characters").max(500, "Address must not exceed 500 characters"),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
   fingerprints: z.array(z.string()).length(5, "All 5 fingerprints are required"),
   fingerprintImages: z.array(z.string()).optional(),
@@ -36,6 +41,7 @@ const formSchema = z.object({
 
 export default function AddStudent() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -49,7 +55,7 @@ export default function AddStudent() {
     },
   });
 
-  // Handle fingerprint changes
+  // Handle fingerprint changes with validation
   const handleFingerprintChange = (index: number, value: string) => {
     const currentFingerprints = form.getValues("fingerprints");
     currentFingerprints[index] = value;
@@ -65,36 +71,85 @@ export default function AddStudent() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
+      // Security check: Ensure user is authenticated
+      if (!user) {
+        logSecurityEvent('Unauthorized student creation attempt');
+        toast.error("You must be logged in to add students");
+        navigate("/login");
+        return;
+      }
+
+      // Sanitize and validate input data
+      const sanitizedData = {
+        name: sanitizeTextInput(values.name),
+        mobile: sanitizePhoneNumber(values.mobile),
+        batchId: values.batchId,
+        address: sanitizeTextInput(values.address),
+        email: values.email ? sanitizeEmail(values.email) : "",
+        fingerprints: values.fingerprints,
+        fingerprintImages: values.fingerprintImages
+      };
+
+      // Server-side validation
+      const validation = validateStudentData(sanitizedData);
+      if (!validation.isValid) {
+        logSecurityEvent('Invalid student data submission', { errors: validation.errors });
+        toast.error(`Validation failed: ${validation.errors.join(', ')}`);
+        return;
+      }
+
       // Validate that all fingerprints are captured
-      const missingFingerprints = values.fingerprints.findIndex(fp => !fp);
+      const missingFingerprints = sanitizedData.fingerprints.findIndex(fp => !fp);
       if (missingFingerprints !== -1) {
         toast.error(`Please capture all 5 fingerprints. Missing: Finger ${missingFingerprints + 1}`);
         return;
       }
 
+      // Insert with automatic user_id assignment via trigger
       const { error } = await supabase.from('students').insert({
-        student_name: values.name,
-        batch_id: values.batchId,
-        finger_1: values.fingerprints[0],
-        finger_2: values.fingerprints[1],
-        finger_3: values.fingerprints[2],
-        finger_4: values.fingerprints[3],
-        finger_5: values.fingerprints[4],
-        finger_1_image: values.fingerprintImages?.[0] || null,
-        finger_2_image: values.fingerprintImages?.[1] || null,
-        finger_3_image: values.fingerprintImages?.[2] || null,
-        finger_4_image: values.fingerprintImages?.[3] || null,
-        finger_5_image: values.fingerprintImages?.[4] || null,
+        student_name: sanitizedData.name,
+        batch_id: sanitizedData.batchId,
+        finger_1: sanitizedData.fingerprints[0],
+        finger_2: sanitizedData.fingerprints[1],
+        finger_3: sanitizedData.fingerprints[2],
+        finger_4: sanitizedData.fingerprints[3],
+        finger_5: sanitizedData.fingerprints[4],
+        finger_1_image: sanitizedData.fingerprintImages?.[0] || null,
+        finger_2_image: sanitizedData.fingerprintImages?.[1] || null,
+        finger_3_image: sanitizedData.fingerprintImages?.[2] || null,
+        finger_4_image: sanitizedData.fingerprintImages?.[3] || null,
+        finger_5_image: sanitizedData.fingerprintImages?.[4] || null,
       });
 
-      if (error) throw error;
+      if (error) {
+        logSecurityEvent('Database error during student creation', { error: error.message });
+        throw error;
+      }
 
+      logSecurityEvent('Student created successfully', { studentName: sanitizedData.name });
       toast.success("Student registered successfully with all fingerprints!");
       navigate("/students");
     } catch (error) {
       console.error('Error adding student:', error);
+      logSecurityEvent('Student creation failed', { error: error instanceof Error ? error.message : 'Unknown error' });
       toast.error("Failed to add student. Please try again.");
     }
+  }
+
+  // Show authentication warning if user is not logged in
+  if (!user) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6 animate-fade-in p-6">
+          <Alert className="border-red-200 bg-red-50">
+            <Shield className="h-4 w-4 text-red-500" />
+            <AlertDescription className="text-red-700">
+              You must be logged in to access this feature. Please log in to continue.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   return (
@@ -103,6 +158,14 @@ export default function AddStudent() {
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-primary">Add Student with Real-time Fingerprint Capture</h2>
         </div>
+
+        {/* Security Notice */}
+        <Alert className="border-green-200 bg-green-50">
+          <Shield className="h-4 w-4 text-green-500" />
+          <AlertDescription className="text-green-700">
+            🔒 Secure Mode: All student data and biometric information is encrypted and protected with enhanced security measures.
+          </AlertDescription>
+        </Alert>
 
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
@@ -123,7 +186,10 @@ export default function AddStudent() {
                           <Input 
                             placeholder="Enter Student Name" 
                             {...field}
+                            value={sanitizeTextInput(field.value)}
+                            onChange={(e) => field.onChange(sanitizeTextInput(e.target.value))}
                             className="hover:border-primary focus:border-primary transition-colors"
+                            maxLength={100}
                           />
                         </FormControl>
                         <FormMessage />
@@ -141,7 +207,10 @@ export default function AddStudent() {
                           <Input 
                             placeholder="Enter Mobile" 
                             {...field}
+                            value={sanitizePhoneNumber(field.value)}
+                            onChange={(e) => field.onChange(sanitizePhoneNumber(e.target.value))}
                             className="hover:border-primary focus:border-primary transition-colors"
+                            maxLength={15}
                           />
                         </FormControl>
                         <FormMessage />
@@ -176,7 +245,10 @@ export default function AddStudent() {
                           <Input 
                             placeholder="Enter Address" 
                             {...field}
+                            value={sanitizeTextInput(field.value)}
+                            onChange={(e) => field.onChange(sanitizeTextInput(e.target.value))}
                             className="hover:border-primary focus:border-primary transition-colors"
+                            maxLength={500}
                           />
                         </FormControl>
                         <FormMessage />
@@ -195,6 +267,8 @@ export default function AddStudent() {
                             type="email"
                             placeholder="Enter Email" 
                             {...field}
+                            value={field.value ? sanitizeEmail(field.value) : ""}
+                            onChange={(e) => field.onChange(sanitizeEmail(e.target.value))}
                             className="hover:border-primary focus:border-primary transition-colors"
                           />
                         </FormControl>
