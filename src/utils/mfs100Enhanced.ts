@@ -53,7 +53,7 @@ export const processHighQualityFingerprint = (
 ): string => {
   try {
     if (!bitmapData || bitmapData.length === 0) {
-      console.warn('No bitmap data provided');
+      console.warn('No bitmap data provided for processing');
       return "";
     }
 
@@ -72,6 +72,7 @@ export const processHighQualityFingerprint = (
     let binaryData;
     try {
       binaryData = atob(bitmapData);
+      console.log(`Successfully decoded base64 data: ${binaryData.length} bytes`);
     } catch (error) {
       console.error('Failed to decode base64 bitmap data:', error);
       return "";
@@ -97,13 +98,11 @@ export const processHighQualityFingerprint = (
     for (let i = 0; i < actualDataLength; i++) {
       let pixelValue = binaryData.charCodeAt(i);
       
-      // MFS100 typically returns values where:
-      // - 0 = black (ridge)
-      // - 255 = white (valley)
-      // We want ridges to be dark, so invert if needed
+      // Invert the pixel values - MFS100 typically returns inverted images
+      pixelValue = 255 - pixelValue;
       
       // Apply contrast and brightness enhancement
-      pixelValue = Math.min(255, Math.max(0, pixelValue * 1.2));
+      pixelValue = Math.min(255, Math.max(0, pixelValue * 1.3 + 20));
       
       const pixelIndex = i * 4;
       if (pixelIndex + 3 < data.length) {
@@ -117,28 +116,11 @@ export const processHighQualityFingerprint = (
     // Put the processed image data onto the canvas
     ctx.putImageData(imageData, 0, 0);
     
-    // Apply additional sharpening filter for better ridge definition
-    ctx.filter = 'contrast(1.5) brightness(1.0) saturate(0)';
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = width;
-    tempCanvas.height = height;
-    const tempCtx = tempCanvas.getContext('2d');
+    // Convert to high-quality PNG data URI
+    const result = canvas.toDataURL('image/png', 1.0);
+    console.log(`Fingerprint image processed successfully, result length: ${result.length}`);
     
-    if (tempCtx) {
-      tempCtx.filter = 'contrast(1.5) brightness(1.0)';
-      tempCtx.drawImage(canvas, 0, 0);
-      
-      // Convert to high-quality PNG data URI
-      const result = tempCanvas.toDataURL('image/png', 1.0);
-      console.log(`Fingerprint image processed successfully: ${result.substring(0, 50)}...`);
-      
-      return result;
-    } else {
-      // Fallback without additional filtering
-      const result = canvas.toDataURL('image/png', 1.0);
-      console.log(`Fingerprint image processed (no filter): ${result.substring(0, 50)}...`);
-      return result;
-    }
+    return result;
     
   } catch (error) {
     console.error('Fingerprint bitmap processing error:', error);
@@ -212,7 +194,7 @@ export const checkDeviceConnectionHealth = async (): Promise<MFS100DeviceStatus>
   }
 };
 
-// Enhanced fingerprint capture with proper image processing
+// Enhanced fingerprint capture with detailed logging
 export const captureHighQualityFingerprint = async (
   quality: number = 60,
   timeout: number = 30,
@@ -236,12 +218,37 @@ export const captureHighQualityFingerprint = async (
     }
 
     onProgress?.('Activating scanner and preparing for capture...');
-    console.log('Starting fingerprint capture with quality:', quality);
+    console.log('Starting fingerprint capture with quality:', quality, 'timeout:', timeout);
     
     const result = window.CaptureFinger(quality, timeout);
-    console.log('MFS100 capture result:', result);
+    
+    // DETAILED LOGGING OF CAPTURE RESPONSE
+    console.log('=== MFS100 CAPTURE RESPONSE ANALYSIS ===');
+    console.log('Full response object:', result);
+    console.log('HTTP Status:', result.httpStaus);
+    console.log('Error field:', result.err);
+    
+    if (result.data) {
+      console.log('Response data object:', result.data);
+      console.log('Error Code:', result.data.ErrorCode);
+      console.log('Error Description:', result.data.ErrorDescription);
+      console.log('Quality:', result.data.Quality);
+      console.log('Template present:', !!result.data.IsoTemplate);
+      console.log('Template length:', result.data.IsoTemplate ? result.data.IsoTemplate.length : 'N/A');
+      console.log('BitmapData present:', !!result.data.BitmapData);
+      console.log('BitmapData length:', result.data.BitmapData ? result.data.BitmapData.length : 'N/A');
+      console.log('BitmapData type:', typeof result.data.BitmapData);
+      console.log('BitmapData first 50 chars:', result.data.BitmapData ? result.data.BitmapData.substring(0, 50) : 'N/A');
+      console.log('Width (InWidth):', result.data.InWidth);
+      console.log('Height (InHeight):', result.data.InHeight);
+      console.log('All response data keys:', Object.keys(result.data));
+    } else {
+      console.log('No data object in response!');
+    }
+    console.log('=== END CAPTURE RESPONSE ANALYSIS ===');
     
     if (!result.httpStaus) {
+      console.error('HTTP request failed:', result.err);
       return {
         success: false,
         error: result.err || 'Failed to communicate with device'
@@ -249,6 +256,7 @@ export const captureHighQualityFingerprint = async (
     }
     
     if (result.data?.ErrorCode !== "0") {
+      console.error('Device returned error:', result.data?.ErrorCode, result.data?.ErrorDescription);
       return {
         success: false,
         error: result.data?.ErrorDescription || 'Device capture error'
@@ -260,25 +268,9 @@ export const captureHighQualityFingerprint = async (
     const captureQuality = result.data.Quality || 0;
     let imageData = "";
     
-    // Debug: Log the raw response data structure
-    console.log('Raw MFS100 response data:', {
-      ErrorCode: result.data.ErrorCode,
-      Quality: result.data.Quality,
-      BitmapDataLength: result.data.BitmapData ? result.data.BitmapData.length : 'No BitmapData',
-      InWidth: result.data.InWidth,
-      InHeight: result.data.InHeight,
-      IsoTemplateLength: result.data.IsoTemplate ? result.data.IsoTemplate.length : 'No IsoTemplate',
-      AllKeys: Object.keys(result.data)
-    });
-    
-    // Process the raw bitmap data from MFS100 into a viewable image
+    // Check for bitmap data and process it
     if (result.data.BitmapData && result.data.BitmapData.length > 0) {
-      console.log('Processing bitmap data:', {
-        bitmapLength: result.data.BitmapData.length,
-        width: result.data.InWidth || 256,
-        height: result.data.InHeight || 256,
-        firstFewChars: result.data.BitmapData.substring(0, 20)
-      });
+      console.log('Found bitmap data, processing...');
       
       imageData = processHighQualityFingerprint(
         result.data.BitmapData,
@@ -287,18 +279,34 @@ export const captureHighQualityFingerprint = async (
       );
       
       if (imageData) {
-        console.log('Fingerprint image processed successfully, data URI length:', imageData.length);
+        console.log('✅ Fingerprint image processed successfully');
         onProgress?.('Fingerprint image ready for preview');
       } else {
-        console.warn('Failed to process fingerprint image');
-        onProgress?.('Warning: Image processing failed');
+        console.warn('❌ Failed to process fingerprint image');
+        return {
+          success: false,
+          error: 'Failed to process fingerprint bitmap data'
+        };
       }
     } else {
-      console.warn('No bitmap data received from device');
-      return {
-        success: false,
-        error: 'No fingerprint image data received from device'
-      };
+      console.warn('❌ No bitmap data received from device');
+      console.log('Capture was successful but no image data available');
+      
+      // Check if we have template data at least
+      if (result.data.IsoTemplate) {
+        console.log('Template data available, capture was successful but no image');
+        return {
+          success: true,
+          template: result.data.IsoTemplate,
+          quality: captureQuality,
+          error: 'Fingerprint captured successfully but no image data available'
+        };
+      } else {
+        return {
+          success: false,
+          error: 'No fingerprint data (neither image nor template) received from device'
+        };
+      }
     }
     
     return {
