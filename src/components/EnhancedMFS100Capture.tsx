@@ -162,42 +162,38 @@ export function EnhancedMFS100Capture({
     }
   }, [isConnected, isInitialized, targetQuality, fingerName, startCapture, showPreview, resetCapture, handleProgressUpdate, mfs100Client]);
 
-  // Optimized bitmap processing with memoization
+  // Simplified bitmap processing without performance optimization cache
   const processFingerprintBitmap = useCallback((bitmapData: string, width: number, height: number): string => {
-    const cacheKey = `bitmap_${bitmapData.slice(0, 50)}_${width}_${height}`;
-    
-    return performanceOptimizer.memoize(cacheKey, () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) return "";
+      
+      const binaryData = atob(bitmapData);
+      const imageData = ctx.createImageData(width, height);
+      const data = imageData.data;
+      
+      const totalPixels = Math.min(binaryData.length, width * height);
+      for (let i = 0; i < totalPixels; i++) {
+        const pixelValue = 255 - binaryData.charCodeAt(i); // Invert for better visibility
+        const pixelIndex = i * 4;
         
-        if (!ctx) return "";
-        
-        const binaryData = atob(bitmapData);
-        const imageData = ctx.createImageData(width, height);
-        const data = imageData.data;
-        
-        const totalPixels = Math.min(binaryData.length, width * height);
-        for (let i = 0; i < totalPixels; i++) {
-          const pixelValue = 255 - binaryData.charCodeAt(i); // Invert for better visibility
-          const pixelIndex = i * 4;
-          
-          data[pixelIndex] = pixelValue;     
-          data[pixelIndex + 1] = pixelValue; 
-          data[pixelIndex + 2] = pixelValue; 
-          data[pixelIndex + 3] = 255;        
-        }
-        
-        ctx.putImageData(imageData, 0, 0);
-        return canvas.toDataURL('image/png', 0.8);
-        
-      } catch (error) {
-        console.error('Bitmap processing error:', error);
-        return "";
+        data[pixelIndex] = pixelValue;     
+        data[pixelIndex + 1] = pixelValue; 
+        data[pixelIndex + 2] = pixelValue; 
+        data[pixelIndex + 3] = 255;        
       }
-    }, 60000); // Cache for 1 minute
+      
+      ctx.putImageData(imageData, 0, 0);
+      return canvas.toDataURL('image/png', 0.8);
+      
+    } catch (error) {
+      console.error('Bitmap processing error:', error);
+      return "";
+    }
   }, []);
 
   const handleAcceptCapture = useCallback(() => {
