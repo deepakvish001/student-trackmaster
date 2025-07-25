@@ -2,13 +2,15 @@
 export interface Batch {
   id: string;
   batch_name: string;
-  serial_number: number;
+  serial_number: string; // Changed from number to string to match database
   admin_name: string;
   username: string;
   max_students: number;
   is_enabled: boolean;
   created_at: string;
   updated_at: string;
+  user_id?: string | null; // Made optional to match database
+  student_count?: number; // Added optional field for computed data
 }
 
 export interface Student {

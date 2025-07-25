@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -9,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { BatchCRUD } from '@/components/batches/BatchCRUD';
+import { Batch } from '@/types/index';
 import { 
   GraduationCap, 
   Users, 
@@ -24,18 +24,6 @@ import {
   RefreshCw,
   BarChart3
 } from 'lucide-react';
-
-interface Batch {
-  id: string;
-  batch_name: string;
-  serial_number: string;
-  admin_name: string;
-  username: string;
-  max_students: number;
-  created_at: string;
-  is_enabled: boolean;
-  student_count?: number;
-}
 
 export default function Batches() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -70,9 +58,9 @@ export default function Batches() {
         throw error;
       }
 
-      // Get student count for each batch
-      const batchesWithCounts = await Promise.all(
-        (batchData || []).map(async (batch) => {
+      // Get student count for each batch and properly type the result
+      const batchesWithCounts: Batch[] = await Promise.all(
+        (batchData || []).map(async (batch): Promise<Batch> => {
           const { count } = await supabase
             .from('students')
             .select('id', { count: 'exact' })
@@ -81,7 +69,8 @@ export default function Batches() {
           
           return {
             ...batch,
-            student_count: count || 0
+            student_count: count || 0,
+            user_id: batch.user_id || undefined
           };
         })
       );
@@ -293,7 +282,7 @@ export default function Batches() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {batches.map((batch) => {
-                const utilizationPercentage = (batch.student_count! / batch.max_students) * 100;
+                const utilizationPercentage = ((batch.student_count || 0) / batch.max_students) * 100;
                 
                 return (
                   <Card 
@@ -319,7 +308,7 @@ export default function Batches() {
                           }>
                             {batch.is_enabled ? 'Active' : 'Inactive'}
                           </Badge>
-                          {getUtilizationBadge(batch.student_count!, batch.max_students)}
+                          {getUtilizationBadge(batch.student_count || 0, batch.max_students)}
                         </div>
                       </div>
                     </CardHeader>
@@ -331,8 +320,8 @@ export default function Batches() {
                             <Users className="h-4 w-4 text-electric-blue" />
                             <span className="text-sm text-foreground font-medium">Student Enrollment</span>
                           </div>
-                          <span className={`text-lg font-bold ${getUtilizationColor(batch.student_count!, batch.max_students)}`}>
-                            {batch.student_count}/{batch.max_students}
+                          <span className={`text-lg font-bold ${getUtilizationColor(batch.student_count || 0, batch.max_students)}`}>
+                            {batch.student_count || 0}/{batch.max_students}
                           </span>
                         </div>
                         
@@ -403,18 +392,18 @@ export default function Batches() {
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <span className="text-foreground">Current Students:</span>
-                          <span className="text-2xl font-bold text-electric-blue">{selectedBatch.student_count}</span>
+                          <span className="text-2xl font-bold text-electric-blue">{selectedBatch.student_count || 0}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-foreground">Max Capacity:</span>
                           <span className="text-xl font-semibold text-muted-foreground">{selectedBatch.max_students}</span>
                         </div>
                         <Progress 
-                          value={(selectedBatch.student_count! / selectedBatch.max_students) * 100} 
+                          value={((selectedBatch.student_count || 0) / selectedBatch.max_students) * 100} 
                           className="h-3 mt-3" 
                         />
                         <p className="text-sm text-center text-muted-foreground">
-                          {Math.round((selectedBatch.student_count! / selectedBatch.max_students) * 100)}% Utilized
+                          {Math.round(((selectedBatch.student_count || 0) / selectedBatch.max_students) * 100)}% Utilized
                         </p>
                       </div>
                     </div>
