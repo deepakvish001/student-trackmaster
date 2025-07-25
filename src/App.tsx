@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,14 +13,14 @@ import AddStudent from "./pages/students/AddStudent";
 import EnhancedAddStudent from "./pages/students/EnhancedAddStudent";
 import ViewStudents from "./pages/students/ViewStudents";
 import StudentList from "./pages/students/StudentList";
-import { AuthProvider } from "./contexts/AuthContext";
+import { EnhancedAuthProvider } from "./contexts/EnhancedAuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   return (
     <QueryClient>
       <BrowserRouter>
-        <AuthProvider>
+        <EnhancedAuthProvider>
           <Toaster />
           <Routes>
             <Route path="/login" element={<Login />} />
@@ -98,7 +97,7 @@ function App() {
               }
             />
           </Routes>
-        </AuthProvider>
+        </EnhancedAuthProvider>
       </BrowserRouter>
     </QueryClient>
   );
