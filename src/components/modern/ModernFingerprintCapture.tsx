@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,38 +67,40 @@ export function ModernFingerprintCapture({
         setCaptureProgress(prev => Math.min(prev + 20, 90));
       }, 200);
 
-      // Capture fingerprint using modern client
+      // Capture fingerprint using modern client with all required properties
       const result = await client.captureFingerprint({
         timeout: 15000,
-        quality: targetQuality
+        quality: targetQuality,
+        retries: 3
       });
 
       clearInterval(progressInterval);
       setCaptureProgress(100);
 
-      if (result.success && result.data) {
+      // Check for successful capture using correct MFS100Response structure
+      if (result.httpStaus && result.data && result.data.ErrorCode === "0") {
         console.log('Modern capture successful:', {
           finger: index + 1,
-          quality: result.data.quality,
-          templateLength: result.data.template?.length || 0,
-          imageLength: result.data.imageData?.length || 0
+          quality: result.data.Quality,
+          templateLength: result.data.IsoTemplate?.length || 0,
+          imageLength: result.data.BitmapData?.length || 0
         });
 
-        setQuality(result.data.quality || null);
+        setQuality(result.data.Quality || null);
         
-        // Store template data
-        if (result.data.template) {
-          onChange(result.data.template);
+        // Store template data - use IsoTemplate from MFS100 response
+        if (result.data.IsoTemplate) {
+          onChange(result.data.IsoTemplate);
         }
 
-        // Store image data if available
-        if (result.data.imageData && onImageChange) {
-          onImageChange(result.data.imageData);
+        // Store image data if available - use BitmapData from MFS100 response
+        if (result.data.BitmapData && onImageChange) {
+          onImageChange(result.data.BitmapData);
         }
 
         setLastError('');
       } else {
-        throw new Error(result.error || 'Capture failed');
+        throw new Error(result.err || result.data?.ErrorDescription || 'Capture failed');
       }
 
     } catch (error) {
