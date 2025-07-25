@@ -20,6 +20,9 @@ interface SystemMetrics {
   lastCheck: string;
 }
 
+const SUPABASE_URL = "https://zwtjjzryscwhqsgvvqzf.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp3dGpqenJ5c2N3aHFzZ3Z2cXpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI5MzQ1MDEsImV4cCI6MjA2ODUxMDUwMX0.l5lgHxwSWVKkdJhuWqomKGz8Q35Ck2BCYIS2CJmPHZs";
+
 export function useSystemHealthMonitoring(autoCheck = true, interval = 30000) {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [recentChecks, setRecentChecks] = useState<HealthCheck[]>([]);
@@ -109,10 +112,10 @@ export function useSystemHealthMonitoring(autoCheck = true, interval = 30000) {
   const checkConnectivity = async (): Promise<{ status: string; responseTime: number }> => {
     const startTime = Date.now();
     try {
-      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/`, {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
         method: 'HEAD',
         headers: {
-          'apikey': supabase.supabaseKey
+          'apikey': SUPABASE_KEY
         }
       });
       
@@ -169,13 +172,13 @@ export function useSystemHealthMonitoring(autoCheck = true, interval = 30000) {
   const fetchRecentChecks = async () => {
     try {
       const { data, error } = await supabase
-        .from('system_health_logs')
+        .from('system_health_logs' as any)
         .select('*')
         .order('checked_at', { ascending: false })
         .limit(20);
 
       if (error) throw error;
-      setRecentChecks(data || []);
+      setRecentChecks((data || []) as HealthCheck[]);
     } catch (err) {
       console.error('Failed to fetch recent health checks:', err);
     }

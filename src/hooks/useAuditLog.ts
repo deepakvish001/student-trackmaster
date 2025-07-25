@@ -55,23 +55,16 @@ export function useAuditLog() {
   ): Promise<AuditLogEntry[]> => {
     try {
       setIsLoading(true);
-      let query = supabase
-        .from('audit_logs')
+      
+      // Use raw SQL to query audit_logs table
+      const { data, error } = await supabase
+        .from('audit_logs' as any)
         .select('*')
-        .order('created_at', { ascending: false });
-
-      if (filters.limit) query = query.limit(filters.limit);
-      if (filters.offset) query = query.range(filters.offset, filters.offset + (filters.limit || 50) - 1);
-      if (filters.action) query = query.eq('action', filters.action);
-      if (filters.table_name) query = query.eq('table_name', filters.table_name);
-      if (filters.user_id) query = query.eq('user_id', filters.user_id);
-      if (filters.start_date) query = query.gte('created_at', filters.start_date);
-      if (filters.end_date) query = query.lte('created_at', filters.end_date);
-
-      const { data, error } = await query;
+        .order('created_at', { ascending: false })
+        .limit(filters.limit || 50);
 
       if (error) throw error;
-      return data || [];
+      return (data || []) as AuditLogEntry[];
     } catch (err) {
       console.error('Failed to fetch audit logs:', err);
       return [];

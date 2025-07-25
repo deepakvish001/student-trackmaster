@@ -26,27 +26,33 @@ export function useUserProfile() {
   useEffect(() => {
     if (user) {
       fetchProfile();
+    } else {
+      setIsLoading(false);
     }
   }, [user]);
 
   const fetchProfile = async () => {
+    if (!user) return;
+
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('user_id', user?.id)
-        .single();
+      setError(null);
 
-      if (error) {
-        if (error.code === 'PGRST116') {
-          // Profile doesn't exist, create one
-          await createProfile();
-        } else {
-          throw error;
-        }
+      const { data, error } = await supabase
+        .from('user_profiles' as any)
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      if (!data) {
+        // Profile doesn't exist, create one
+        await createProfile();
       } else {
-        setProfile(data);
+        setProfile(data as UserProfile);
         // Update last login
         await updateLastLogin();
       }
@@ -62,17 +68,18 @@ export function useUserProfile() {
 
     try {
       const { data, error } = await supabase
-        .from('user_profiles')
+        .from('user_profiles' as any)
         .insert({
           user_id: user.id,
           full_name: user.email?.split('@')[0] || 'User',
-          role: 'operator' as UserRole
+          role: 'operator' as UserRole,
+          is_active: true
         })
         .select()
         .single();
 
       if (error) throw error;
-      setProfile(data);
+      setProfile(data as UserProfile);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create profile');
     }
@@ -83,7 +90,7 @@ export function useUserProfile() {
 
     try {
       await supabase
-        .from('user_profiles')
+        .from('user_profiles' as any)
         .update({ last_login_at: new Date().toISOString() })
         .eq('user_id', user.id);
     } catch (err) {
@@ -97,15 +104,15 @@ export function useUserProfile() {
     try {
       setIsLoading(true);
       const { data, error } = await supabase
-        .from('user_profiles')
+        .from('user_profiles' as any)
         .update(updates)
         .eq('user_id', user.id)
         .select()
         .single();
 
       if (error) throw error;
-      setProfile(data);
-      return data;
+      setProfile(data as UserProfile);
+      return data as UserProfile;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update profile');
       throw err;
