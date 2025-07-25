@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -221,7 +220,6 @@ export default function StudentList() {
                     <SelectValue placeholder="-- Select Batch --" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">-- Select Batch --</SelectItem>
                     {batches?.map((batch) => (
                       <SelectItem key={batch.id} value={batch.id}>
                         {batch.batch_name}
@@ -230,12 +228,22 @@ export default function StudentList() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button 
-                onClick={() => refetch()}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                Submit
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => refetch()}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Submit
+                </Button>
+                {selectedBatch && (
+                  <Button 
+                    onClick={() => setSelectedBatch("")}
+                    variant="outline"
+                  >
+                    Clear Filter
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -395,6 +403,11 @@ export default function StudentList() {
               {/* Pagination info */}
               <div className="text-sm text-gray-600">
                 Showing {filteredStudents?.length || 0} of {students?.length || 0} entries
+                {selectedBatch && (
+                  <span className="ml-2 text-blue-600">
+                    (filtered by batch)
+                  </span>
+                )}
               </div>
             </div>
           </CardContent>
