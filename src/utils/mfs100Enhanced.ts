@@ -1,3 +1,4 @@
+
 // Enhanced MFS100 utilities for real-time fingerprint capture
 import { toast } from "sonner";
 
@@ -68,40 +69,77 @@ export const processHighQualityFingerprint = (
     }
 
     // Convert base64 bitmap data to binary
-    const binaryData = atob(bitmapData);
+    let binaryData;
+    try {
+      binaryData = atob(bitmapData);
+    } catch (error) {
+      console.error('Failed to decode base64 bitmap data:', error);
+      return "";
+    }
+
     const imageData = ctx.createImageData(width, height);
     const data = imageData.data;
     
-    // Process each pixel - MFS100 provides grayscale bitmap data
-    for (let i = 0; i < binaryData.length && i < (width * height); i++) {
+    // Clear the canvas with white background first
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = 255;     // Red
+      data[i + 1] = 255; // Green
+      data[i + 2] = 255; // Blue
+      data[i + 3] = 255; // Alpha
+    }
+    
+    // Process each pixel - MFS100 provides raw grayscale bitmap data
+    const expectedPixels = width * height;
+    const actualDataLength = Math.min(binaryData.length, expectedPixels);
+    
+    console.log(`Processing ${actualDataLength} pixels out of expected ${expectedPixels}`);
+    
+    for (let i = 0; i < actualDataLength; i++) {
       let pixelValue = binaryData.charCodeAt(i);
       
-      // Enhanced contrast and brightness for better fingerprint ridge visibility
-      // Invert colors so ridges appear dark (fingerprint scanners typically capture inverted)
-      pixelValue = 255 - pixelValue;
+      // MFS100 typically returns values where:
+      // - 0 = black (ridge)
+      // - 255 = white (valley)
+      // We want ridges to be dark, so invert if needed
       
-      // Apply contrast enhancement
-      pixelValue = Math.min(255, Math.max(0, (pixelValue - 128) * 1.8 + 128));
+      // Apply contrast and brightness enhancement
+      pixelValue = Math.min(255, Math.max(0, pixelValue * 1.2));
       
       const pixelIndex = i * 4;
-      data[pixelIndex] = pixelValue;     // Red
-      data[pixelIndex + 1] = pixelValue; // Green
-      data[pixelIndex + 2] = pixelValue; // Blue
-      data[pixelIndex + 3] = 255;        // Alpha (fully opaque)
+      if (pixelIndex + 3 < data.length) {
+        data[pixelIndex] = pixelValue;     // Red
+        data[pixelIndex + 1] = pixelValue; // Green
+        data[pixelIndex + 2] = pixelValue; // Blue
+        data[pixelIndex + 3] = 255;        // Alpha (fully opaque)
+      }
     }
     
     // Put the processed image data onto the canvas
     ctx.putImageData(imageData, 0, 0);
     
-    // Apply additional image enhancement for better ridge definition
-    ctx.filter = 'contrast(1.3) brightness(1.1) saturate(0)';
-    ctx.drawImage(canvas, 0, 0);
+    // Apply additional sharpening filter for better ridge definition
+    ctx.filter = 'contrast(1.5) brightness(1.0) saturate(0)';
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = width;
+    tempCanvas.height = height;
+    const tempCtx = tempCanvas.getContext('2d');
     
-    // Convert to high-quality PNG data URI
-    const result = canvas.toDataURL('image/png', 1.0);
-    console.log(`Fingerprint image processed successfully: ${result.substring(0, 50)}...`);
+    if (tempCtx) {
+      tempCtx.filter = 'contrast(1.5) brightness(1.0)';
+      tempCtx.drawImage(canvas, 0, 0);
+      
+      // Convert to high-quality PNG data URI
+      const result = tempCanvas.toDataURL('image/png', 1.0);
+      console.log(`Fingerprint image processed successfully: ${result.substring(0, 50)}...`);
+      
+      return result;
+    } else {
+      // Fallback without additional filtering
+      const result = canvas.toDataURL('image/png', 1.0);
+      console.log(`Fingerprint image processed (no filter): ${result.substring(0, 50)}...`);
+      return result;
+    }
     
-    return result;
   } catch (error) {
     console.error('Fingerprint bitmap processing error:', error);
     return "";
@@ -222,12 +260,24 @@ export const captureHighQualityFingerprint = async (
     const captureQuality = result.data.Quality || 0;
     let imageData = "";
     
+    // Debug: Log the raw response data structure
+    console.log('Raw MFS100 response data:', {
+      ErrorCode: result.data.ErrorCode,
+      Quality: result.data.Quality,
+      BitmapDataLength: result.data.BitmapData ? result.data.BitmapData.length : 'No BitmapData',
+      InWidth: result.data.InWidth,
+      InHeight: result.data.InHeight,
+      IsoTemplateLength: result.data.IsoTemplate ? result.data.IsoTemplate.length : 'No IsoTemplate',
+      AllKeys: Object.keys(result.data)
+    });
+    
     // Process the raw bitmap data from MFS100 into a viewable image
     if (result.data.BitmapData && result.data.BitmapData.length > 0) {
       console.log('Processing bitmap data:', {
         bitmapLength: result.data.BitmapData.length,
-        width: result.data.InWidth,
-        height: result.data.InHeight
+        width: result.data.InWidth || 256,
+        height: result.data.InHeight || 256,
+        firstFewChars: result.data.BitmapData.substring(0, 20)
       });
       
       imageData = processHighQualityFingerprint(
@@ -237,7 +287,7 @@ export const captureHighQualityFingerprint = async (
       );
       
       if (imageData) {
-        console.log('Fingerprint image processed successfully');
+        console.log('Fingerprint image processed successfully, data URI length:', imageData.length);
         onProgress?.('Fingerprint image ready for preview');
       } else {
         console.warn('Failed to process fingerprint image');
