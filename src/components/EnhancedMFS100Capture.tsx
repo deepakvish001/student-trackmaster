@@ -1,16 +1,15 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Fingerprint, Wifi, WifiOff, CheckCircle, AlertCircle, RefreshCw, AlertTriangle } from "lucide-react";
+import { Fingerprint, Wifi, WifiOff, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { FingerprintDisplay } from "./FingerprintDisplay";
 import { FingerprintPreview } from "./FingerprintPreview";
 import { useFingerprintCaptureState } from "@/hooks/useFingerprintCaptureState";
-import { useOptimizedDeviceConnection } from "@/hooks/useOptimizedDeviceConnection";
 import { performanceOptimizer } from "@/utils/performanceOptimizer";
-import { initializeMFS100, captureFingerprint } from "@/utils/mfs100Native";
 import { useModernDeviceConnection } from "@/hooks/useModernDeviceConnection";
 
 interface EnhancedMFS100CaptureProps {
@@ -32,7 +31,6 @@ export function EnhancedMFS100Capture({
   targetQuality = 70,
   fingerName
 }: EnhancedMFS100CaptureProps) {
-  // Use the modern device connection instead of the old one
   const {
     isConnected,
     isChecking,
@@ -58,6 +56,10 @@ export function EnhancedMFS100Capture({
     maxAttempts: 3
   });
 
+  // Store image data separately from template data
+  const [capturedImageData, setCapturedImageData] = useState<string>("");
+  const [captureQuality, setCaptureQuality] = useState<number | null>(null);
+
   const {
     captureState,
     captureData,
@@ -66,8 +68,6 @@ export function EnhancedMFS100Capture({
     acceptCapture,
     resetCapture
   } = useFingerprintCaptureState();
-
-  // Remove the old initialization useEffect - now handled by useModernDeviceConnection
 
   const handleProgressUpdate = useCallback((status: string, attempt?: number) => {
     setCaptureProgress(prev => ({
@@ -113,14 +113,18 @@ export function EnhancedMFS100Capture({
       handleProgressUpdate('Processing image...', 2);
       
       const quality = result.data.Quality || 0;
+      setCaptureQuality(quality);
+      
       let processedImage = "";
 
+      // Process bitmap data if available
       if (result.data.BitmapData) {
         processedImage = processFingerprintBitmap(
           result.data.BitmapData,
           result.data.InWidth || 256,
           result.data.InHeight || 256
         );
+        setCapturedImageData(processedImage);
       }
 
       if (result.data.IsoTemplate) {
@@ -179,7 +183,7 @@ export function EnhancedMFS100Capture({
         
         const totalPixels = Math.min(binaryData.length, width * height);
         for (let i = 0; i < totalPixels; i++) {
-          const pixelValue = binaryData.charCodeAt(i);
+          const pixelValue = 255 - binaryData.charCodeAt(i); // Invert for better visibility
           const pixelIndex = i * 4;
           
           data[pixelIndex] = pixelValue;     
@@ -201,8 +205,13 @@ export function EnhancedMFS100Capture({
   const handleAcceptCapture = useCallback(() => {
     if (!captureData) return;
 
+    // Save template data
     onChange(captureData.template);
-    onImageChange?.(captureData.imageData);
+    
+    // Save image data if available
+    if (captureData.imageData) {
+      onImageChange?.(captureData.imageData);
+    }
     
     acceptCapture();
     onAccepted?.();
@@ -212,6 +221,8 @@ export function EnhancedMFS100Capture({
 
   const handleRecapture = useCallback(() => {
     resetCapture();
+    setCapturedImageData("");
+    setCaptureQuality(null);
     toast.info(`Ready to recapture ${fingerName}`);
   }, [resetCapture, fingerName]);
 
@@ -241,14 +252,18 @@ export function EnhancedMFS100Capture({
     return isConnected ? 'Connected' : 'Disconnected';
   };
 
+  // Determine what to show in the display
+  const displayValue = captureState === 'accepted' ? capturedImageData : '';
+  const displayQuality = captureState === 'accepted' ? captureQuality : null;
+
   return (
     <div className="flex flex-col items-center space-y-4 animate-fade-in">
       {/* Fingerprint Display */}
       <div className="relative">
         <FingerprintDisplay 
-          value={captureState === 'accepted' ? (captureData?.imageData || value) : ''}
+          value={displayValue}
           index={index}
-          quality={captureState === 'accepted' ? captureData?.quality || null : null}
+          quality={displayQuality}
           isCapturing={captureState === 'capturing'}
           showQuality={true}
         />
@@ -278,7 +293,7 @@ export function EnhancedMFS100Capture({
         )}
       </div>
 
-      {/* Updated Device Status */}
+      {/* Device Status */}
       <div className="flex flex-col items-center space-y-2">
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-2">
@@ -296,9 +311,9 @@ export function EnhancedMFS100Capture({
             {getConnectionStatusText()}
           </Badge>
           
-          {captureState === 'accepted' && captureData?.quality && (
-            <Badge variant={captureData.quality >= 70 ? "default" : "secondary"}>
-              Quality: {captureData.quality}%
+          {captureState === 'accepted' && captureQuality && (
+            <Badge variant={captureQuality >= 70 ? "default" : "secondary"}>
+              Quality: {captureQuality}%
             </Badge>
           )}
         </div>
@@ -312,7 +327,7 @@ export function EnhancedMFS100Capture({
         )}
       </div>
 
-      {/* Updated Error States */}
+      {/* Error States */}
       {!isConnected && !isChecking && error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
