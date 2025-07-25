@@ -1,3 +1,4 @@
+
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 import { Button } from '@/components/ui/button';
 import { 
@@ -22,7 +23,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const location = useLocation();
 
   const menuItems = [
-    { title: 'Dashboard', icon: Home, path: '/' },
+    { title: 'Dashboard', icon: Home, path: '/dashboard' },
     {
       title: 'Student List',
       icon: Users,
@@ -77,7 +78,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <SidebarMenuButton asChild>
                           <Link
                             to={item.path}
-                            className={`${location.pathname === item.path ? 'bg-[#2A2F3E]' : ''} text-white hover:bg-[#2A2F3E]`}
+                            className={`${(location.pathname === item.path || (item.path === '/dashboard' && location.pathname === '/')) ? 'bg-[#2A2F3E]' : ''} text-white hover:bg-[#2A2F3E]`}
                           >
                             <item.icon className="w-4 h-4" />
                             <span>{item.title}</span>
@@ -96,10 +97,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <header className="bg-white border-b border-gray-200 px-4 py-4 flex justify-between items-center">
             <div className="flex items-center space-x-2">
               <SidebarTrigger className="md:hidden" />
-              <Link to="/" className="text-blue-600 hover:underline">Home</Link>
+              <Link to="/dashboard" className="text-blue-600 hover:underline">Home</Link>
               <span className="text-gray-500">/</span>
               <span className="text-gray-900 capitalize">
-                {location.pathname.split('/').pop()?.replace('-', ' ')}
+                {location.pathname === '/' ? 'dashboard' : location.pathname.split('/').pop()?.replace('-', ' ')}
               </span>
             </div>
             <Button variant="ghost" onClick={logout}>

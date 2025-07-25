@@ -5,7 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { EnhancedAuthProvider } from "@/contexts/EnhancedAuthContext";
-import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Batches from "./pages/Batches";
@@ -26,7 +25,14 @@ const App = () => (
       <BrowserRouter>
         <EnhancedAuthProvider>
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route 
+              path="/" 
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
             <Route path="/login" element={<Login />} />
             <Route 
               path="/dashboard" 
