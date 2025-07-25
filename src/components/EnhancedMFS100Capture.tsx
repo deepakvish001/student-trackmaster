@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -12,6 +11,7 @@ import { useFingerprintCaptureState } from "@/hooks/useFingerprintCaptureState";
 import { useOptimizedDeviceConnection } from "@/hooks/useOptimizedDeviceConnection";
 import { performanceOptimizer } from "@/utils/performanceOptimizer";
 import { initializeMFS100, captureFingerprint } from "@/utils/mfs100Native";
+import { useModernDeviceConnection } from "@/hooks/useModernDeviceConnection";
 
 interface EnhancedMFS100CaptureProps {
   index: number;
@@ -32,9 +32,18 @@ export function EnhancedMFS100Capture({
   targetQuality = 70,
   fingerName
 }: EnhancedMFS100CaptureProps) {
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [initError, setInitError] = useState<string>("");
-  
+  // Use the modern device connection instead of the old one
+  const {
+    isConnected,
+    isChecking,
+    error,
+    deviceInfo,
+    isInitialized,
+    forceCheck,
+    reconnect,
+    mfs100Client
+  } = useModernDeviceConnection();
+
   const [captureProgress, setCaptureProgress] = useState<{
     isCapturing: boolean;
     currentStep: string;
@@ -49,8 +58,6 @@ export function EnhancedMFS100Capture({
     maxAttempts: 3
   });
 
-  const { isConnected, isChecking, error, forceCheck } = useOptimizedDeviceConnection('mfs100');
-
   const {
     captureState,
     captureData,
@@ -60,46 +67,7 @@ export function EnhancedMFS100Capture({
     resetCapture
   } = useFingerprintCaptureState();
 
-  // Fixed initialization - simple async without memoization
-  useEffect(() => {
-    let mounted = true;
-    
-    const initializeDevice = async () => {
-      try {
-        console.log('Initializing MFS100 SDK...');
-        const initialized = await initializeMFS100();
-        
-        if (mounted) {
-          if (initialized) {
-            console.log('MFS100 SDK initialized successfully');
-            setIsInitialized(true);
-            setInitError("");
-            toast.success("MFS100 SDK initialized successfully");
-          } else {
-            const error = "Failed to initialize MFS100 SDK";
-            setInitError(error);
-            setIsInitialized(false);
-            toast.error(error);
-          }
-        }
-      } catch (error) {
-        if (mounted) {
-          const errorMessage = error instanceof Error ? error.message : 'Initialization failed';
-          setInitError(errorMessage);
-          setIsInitialized(false);
-          console.error('Initialization error:', error);
-          toast.error(`Initialization failed: ${errorMessage}`);
-        }
-      }
-    };
-
-    // Simple initialization without memoization for async functions
-    initializeDevice();
-    
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  // Remove the old initialization useEffect - now handled by useModernDeviceConnection
 
   const handleProgressUpdate = useCallback((status: string, attempt?: number) => {
     setCaptureProgress(prev => ({
@@ -110,85 +78,87 @@ export function EnhancedMFS100Capture({
     }));
   }, []);
 
-  // Optimized capture function with debouncing
-  const handleCapture = useCallback(
-    performanceOptimizer.debounce('capture', async () => {
-      if (!isConnected || !isInitialized) {
-        toast.error(`Device not ready: Please check MFS100 connection`);
-        return;
+  // Updated capture function using modern client
+  const handleCapture = useCallback(async () => {
+    if (!isConnected || !isInitialized) {
+      toast.error(`Device not ready: Please check MFS100 connection`);
+      return;
+    }
+
+    try {
+      startCapture();
+      setCaptureProgress({
+        isCapturing: true,
+        currentStep: 'Preparing device...',
+        progress: 10,
+        attempt: 0,
+        maxAttempts: 3
+      });
+
+      toast.info(`Place ${fingerName} on scanner`, { duration: 4000 });
+
+      handleProgressUpdate('Capturing fingerprint...', 1);
+      
+      // Use modern async client
+      const result = await mfs100Client.captureFingerprint({
+        quality: targetQuality,
+        timeout: 15,
+        retries: 3
+      });
+
+      if (!result.httpStaus || result.data?.ErrorCode !== "0") {
+        throw new Error(result.data?.ErrorDescription || result.err || "Capture failed");
       }
 
-      try {
-        startCapture();
-        setCaptureProgress({
-          isCapturing: true,
-          currentStep: 'Preparing device...',
-          progress: 10,
-          attempt: 0,
-          maxAttempts: 3
+      handleProgressUpdate('Processing image...', 2);
+      
+      const quality = result.data.Quality || 0;
+      let processedImage = "";
+
+      if (result.data.BitmapData) {
+        processedImage = processFingerprintBitmap(
+          result.data.BitmapData,
+          result.data.InWidth || 256,
+          result.data.InHeight || 256
+        );
+      }
+
+      if (result.data.IsoTemplate) {
+        showPreview({
+          template: result.data.IsoTemplate,
+          imageData: processedImage,
+          quality: quality
         });
 
-        toast.info(`Place ${fingerName} on scanner`, { duration: 4000 });
+        toast.success(`${fingerName} captured! Please review and accept.`);
+        handleProgressUpdate('Capture completed!', 3);
+      } else {
+        throw new Error("No template data received");
+      }
 
-        handleProgressUpdate('Capturing fingerprint...', 1);
-        
-        const result = await captureFingerprint(targetQuality, 15);
-
-        if (!result.httpStaus || result.data?.ErrorCode !== "0") {
-          throw new Error(result.data?.ErrorDescription || result.err || "Capture failed");
-        }
-
-        handleProgressUpdate('Processing image...', 2);
-        
-        const quality = result.data.Quality || 0;
-        let processedImage = "";
-
-        if (result.data.BitmapData) {
-          processedImage = processFingerprintBitmap(
-            result.data.BitmapData,
-            result.data.InWidth || 256,
-            result.data.InHeight || 256
-          );
-        }
-
-        if (result.data.IsoTemplate) {
-          showPreview({
-            template: result.data.IsoTemplate,
-            imageData: processedImage,
-            quality: quality
-          });
-
-          toast.success(`${fingerName} captured! Please review and accept.`);
-          handleProgressUpdate('Capture completed!', 3);
-        } else {
-          throw new Error("No template data received");
-        }
-
-      } catch (error) {
-        console.error('Capture error:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Capture failed';
-        toast.error(errorMessage, { duration: 5000 });
-        
-        resetCapture();
+    } catch (error) {
+      console.error('Capture error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Capture failed';
+      toast.error(errorMessage, { duration: 5000 });
+      
+      resetCapture();
+      setCaptureProgress(prev => ({
+        ...prev,
+        currentStep: 'Capture failed',
+        progress: 0
+      }));
+    } finally {
+      setTimeout(() => {
         setCaptureProgress(prev => ({
           ...prev,
-          currentStep: 'Capture failed',
-          progress: 0
+          isCapturing: false,
+          currentStep: '',
+          progress: 0,
+          attempt: 0
         }));
-      } finally {
-        setTimeout(() => {
-          setCaptureProgress(prev => ({
-            ...prev,
-            isCapturing: false,
-            currentStep: '',
-            progress: 0,
-            attempt: 0
-          }));
-        }, 2000);
-      }
-    }, 1000),
-    [isConnected, isInitialized, targetQuality, fingerName, startCapture, showPreview, resetCapture, handleProgressUpdate]
-  );
+      }, 2000);
+    }
+  }, [isConnected, isInitialized, targetQuality, fingerName, startCapture, showPreview, resetCapture, handleProgressUpdate, mfs100Client]);
 
   // Optimized bitmap processing with memoization
   const processFingerprintBitmap = useCallback((bitmapData: string, width: number, height: number): string => {
@@ -260,8 +230,15 @@ export function EnhancedMFS100Capture({
   }
 
   const getConnectionStatusColor = () => {
+    if (!isInitialized) return 'bg-gray-500';
     if (isChecking) return 'bg-yellow-500';
     return isConnected ? 'bg-green-500' : 'bg-red-500';
+  };
+
+  const getConnectionStatusText = () => {
+    if (!isInitialized) return 'Initializing...';
+    if (isChecking) return 'Checking...';
+    return isConnected ? 'Connected' : 'Disconnected';
   };
 
   return (
@@ -301,7 +278,7 @@ export function EnhancedMFS100Capture({
         )}
       </div>
 
-      {/* Device Status */}
+      {/* Updated Device Status */}
       <div className="flex flex-col items-center space-y-2">
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-2">
@@ -316,7 +293,7 @@ export function EnhancedMFS100Capture({
           </div>
           
           <Badge variant={isConnected ? "default" : "destructive"}>
-            {isChecking ? 'Checking...' : isConnected ? 'Connected' : 'Disconnected'}
+            {getConnectionStatusText()}
           </Badge>
           
           {captureState === 'accepted' && captureData?.quality && (
@@ -325,24 +302,30 @@ export function EnhancedMFS100Capture({
             </Badge>
           )}
         </div>
+
+        {/* Device Info */}
+        {deviceInfo && isConnected && (
+          <div className="text-xs text-center text-gray-600">
+            {deviceInfo.Make} {deviceInfo.Model}
+            {deviceInfo.SerialNo && <div>S/N: {deviceInfo.SerialNo}</div>}
+          </div>
+        )}
       </div>
 
-      {/* Error States */}
-      {initError && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{initError}</AlertDescription>
-        </Alert>
-      )}
-
+      {/* Updated Error States */}
       {!isConnected && !isChecking && error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">
             <span>{error}</span>
-            <Button variant="outline" size="sm" onClick={forceCheck}>
-              <RefreshCw className="h-4 w-4" />
-            </Button>
+            <div className="flex space-x-1">
+              <Button variant="outline" size="sm" onClick={forceCheck} disabled={isChecking}>
+                <RefreshCw className={`h-4 w-4 ${isChecking ? 'animate-spin' : ''}`} />
+              </Button>
+              <Button variant="outline" size="sm" onClick={reconnect}>
+                Reconnect
+              </Button>
+            </div>
           </AlertDescription>
         </Alert>
       )}
