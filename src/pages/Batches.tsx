@@ -31,10 +31,12 @@ import { BatchSearch } from "@/components/batches/BatchSearch";
 import { BatchPagination } from "@/components/batches/BatchPagination";
 import { Batch, BatchFormData } from "@/types/batch";
 import { useAuth } from "@/contexts/AuthContext";
+import { validateBatchData } from "@/utils/securityValidation";
+import { logSecurityEvent } from "@/utils/inputSanitization";
 
 const formSchema = z.object({
   batch_name: z.string().min(2, "Batch name must be at least 2 characters"),
-  serial_number: z.number().min(1, "Serial number must be at least 1"),
+  serial_number: z.string().optional(),
   admin_name: z.string().min(2, "Admin name must be at least 2 characters"),
   username: z.string().min(2, "Username must be at least 2 characters"),
   max_students: z.number().min(1, "Maximum students must be at least 1"),
@@ -83,6 +85,7 @@ export default function Batches() {
 
       if (error) {
         console.error("Error fetching batches:", error);
+        logSecurityEvent('BATCH_FETCH_ERROR', { error: error.message });
         toast({
           variant: "destructive",
           title: "Error",
@@ -93,6 +96,9 @@ export default function Batches() {
       setBatches(data || []);
     } catch (error) {
       console.error("Error fetching batches:", error);
+      logSecurityEvent('BATCH_FETCH_EXCEPTION', { 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
       toast({
         variant: "destructive",
         title: "Error",
@@ -141,6 +147,7 @@ export default function Batches() {
 
   const handleSubmit = async (values: BatchFormData) => {
     if (!user) {
+      logSecurityEvent('UNAUTHORIZED_BATCH_OPERATION', { operation: 'create/update' });
       toast({
         variant: "destructive",
         title: "Error",
@@ -149,24 +156,47 @@ export default function Batches() {
       return;
     }
 
+    // Enhanced validation with security checks
+    const validation = validateBatchData(values);
+    if (!validation.isValid) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: validation.errors[0],
+      });
+      return;
+    }
+
     try {
       if (editingBatch) {
         const { error } = await supabase
           .from("batches")
-          .update(values)
+          .update(validation.sanitizedData)
           .eq("id", editingBatch.id);
 
-        if (error) throw error;
+        if (error) {
+          logSecurityEvent('BATCH_UPDATE_ERROR', { 
+            batchId: editingBatch.id, 
+            error: error.message 
+          });
+          throw error;
+        }
 
+        logSecurityEvent('BATCH_UPDATED', { batchId: editingBatch.id });
         toast({
           title: "Success",
           description: "Batch updated successfully",
         });
       } else {
-        const { error } = await supabase.from("batches").insert([values]);
+        // Note: user_id will be automatically set by the database trigger
+        const { error } = await supabase.from("batches").insert([validation.sanitizedData]);
 
-        if (error) throw error;
+        if (error) {
+          logSecurityEvent('BATCH_CREATE_ERROR', { error: error.message });
+          throw error;
+        }
 
+        logSecurityEvent('BATCH_CREATED', { batchName: validation.sanitizedData.batch_name });
         toast({
           title: "Success",
           description: "Batch created successfully",
@@ -189,6 +219,7 @@ export default function Batches() {
 
   const handleStatusChange = async (batch: Batch) => {
     if (!user) {
+      logSecurityEvent('UNAUTHORIZED_BATCH_STATUS_CHANGE', { batchId: batch.id });
       toast({
         variant: "destructive",
         title: "Error",
@@ -214,7 +245,18 @@ export default function Batches() {
         .update({ is_enabled: !currentStatus })
         .eq("id", id);
 
-      if (error) throw error;
+      if (error) {
+        logSecurityEvent('BATCH_STATUS_CHANGE_ERROR', { 
+          batchId: id, 
+          error: error.message 
+        });
+        throw error;
+      }
+
+      logSecurityEvent('BATCH_STATUS_CHANGED', { 
+        batchId: id, 
+        newStatus: !currentStatus 
+      });
 
       toast({
         title: "Success",
