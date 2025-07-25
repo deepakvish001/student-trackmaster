@@ -1,6 +1,6 @@
 
 import { ReactNode, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 import { useNavigate } from 'react-router-dom';
 import { logSecurityEvent } from '@/utils/inputSanitization';
 
@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, session, isLoading } = useAuth();
+  const { user, session, isLoading } = useEnhancedAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
