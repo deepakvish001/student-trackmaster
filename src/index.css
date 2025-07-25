@@ -7,45 +7,49 @@
 
 @layer base {
   :root {
-    /* Dark Theme with Black Background and Orange Accents */
+    /* Pure Dark Theme with Colorful Accents */
     --background: 0 0% 0%; /* Pure black */
-    --foreground: 25 100% 60%; /* Bright orange text */
-    --card: 0 0% 3%; /* Very dark cards */
-    --card-foreground: 25 100% 60%;
-    --popover: 0 0% 2%;
-    --popover-foreground: 25 100% 60%;
-    --primary: 25 100% 55%; /* Vibrant orange */
+    --foreground: 25 100% 65%; /* Bright orange text */
+    --card: 0 0% 2%; /* Very dark cards */
+    --card-foreground: 25 100% 65%;
+    --popover: 0 0% 1%;
+    --popover-foreground: 25 100% 65%;
+    --primary: 25 100% 58%; /* Vibrant orange */
     --primary-foreground: 0 0% 0%;
-    --secondary: 30 100% 50%; /* Golden orange */
+    --secondary: 280 100% 70%; /* Vibrant purple */
     --secondary-foreground: 0 0% 0%;
-    --muted: 0 0% 8%;
-    --muted-foreground: 25 80% 45%; /* Muted orange */
-    --accent: 20 100% 60%; /* Red-orange */
+    --muted: 0 0% 5%;
+    --muted-foreground: 25 80% 50%; /* Muted orange */
+    --accent: 195 100% 60%; /* Electric blue */
     --accent-foreground: 0 0% 0%;
-    --destructive: 0 84% 55%;
+    --destructive: 0 100% 65%; /* Bright red */
     --destructive-foreground: 0 0% 100%;
     --border: 25 50% 15%; /* Dark orange borders */
-    --input: 0 0% 10%;
-    --ring: 25 100% 55%;
+    --input: 0 0% 8%;
+    --ring: 25 100% 58%;
     
-    /* High contrast orange palette */
-    --electric-blue: 25 100% 55%; /* Override to orange */
-    --vibrant-purple: 30 100% 50%; /* Override to golden */
-    --emerald-green: 35 100% 45%; /* Override to amber */
+    /* Vibrant Color Palette */
+    --electric-blue: 195 100% 60%;
+    --vibrant-purple: 280 100% 70%;
+    --emerald-green: 160 100% 50%;
     --sunset-orange: 25 100% 60%;
-    --pink-rose: 20 100% 55%;
-    --lime-green: 40 100% 50%;
+    --pink-rose: 340 100% 65%;
+    --lime-green: 75 100% 55%;
+    --golden-yellow: 45 100% 60%;
+    --neon-cyan: 180 100% 65%;
+    --hot-pink: 320 100% 70%;
+    --electric-violet: 270 100% 75%;
     
     /* Enhanced surfaces - all dark */
-    --surface-1: 0 0% 2%;
-    --surface-2: 0 0% 4%;
-    --surface-3: 0 0% 6%;
+    --surface-1: 0 0% 1%;
+    --surface-2: 0 0% 3%;
+    --surface-3: 0 0% 5%;
     
     /* Text hierarchy with orange tones */
-    --text-primary: 25 100% 65%;
-    --text-secondary: 25 90% 55%;
-    --text-tertiary: 25 80% 45%;
-    --text-muted: 25 60% 35%;
+    --text-primary: 25 100% 70%;
+    --text-secondary: 25 95% 60%;
+    --text-tertiary: 25 85% 50%;
+    --text-muted: 25 70% 40%;
     
     --radius: 0.75rem;
   }
@@ -54,7 +58,7 @@
 @layer base {
   * {
     @apply border-border;
-    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   body {
@@ -62,53 +66,69 @@
     font-feature-settings: "rlig" 1, "calt" 1;
     line-height: 1.6;
     letter-spacing: -0.01em;
-    background: radial-gradient(ellipse at center, hsl(0 0% 2%) 0%, hsl(0 0% 0%) 100%);
+    background: 
+      radial-gradient(ellipse at top left, hsl(195 100% 60% / 0.05) 0%, transparent 50%),
+      radial-gradient(ellipse at top right, hsl(280 100% 70% / 0.05) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom, hsl(25 100% 60% / 0.03) 0%, transparent 50%),
+      hsl(0 0% 0%);
     min-height: 100vh;
-    animation: backgroundPulse 8s ease-in-out infinite;
+    animation: backgroundShimmer 15s ease-in-out infinite;
   }
   
-  /* Enhanced Typography Hierarchy with Orange */
+  /* Enhanced Typography with Orange and Colorful Accents */
   h1 {
     @apply font-poppins font-bold text-4xl md:text-5xl;
-    color: hsl(var(--text-primary));
+    background: linear-gradient(135deg, hsl(var(--sunset-orange)), hsl(var(--pink-rose)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     line-height: 1.1;
     letter-spacing: -0.02em;
-    text-shadow: 0 0 20px hsl(25 100% 60% / 0.3);
-    animation: titleGlow 2s ease-in-out infinite alternate;
+    text-shadow: 0 0 30px hsl(25 100% 60% / 0.4);
+    animation: titleGlow 3s ease-in-out infinite alternate;
   }
   
   h2 {
     @apply font-poppins font-bold text-3xl md:text-4xl;
-    color: hsl(var(--text-primary));
+    background: linear-gradient(135deg, hsl(var(--vibrant-purple)), hsl(var(--electric-blue)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     line-height: 1.2;
     letter-spacing: -0.015em;
-    text-shadow: 0 0 15px hsl(25 100% 55% / 0.2);
+    text-shadow: 0 0 25px hsl(280 100% 70% / 0.3);
   }
   
   h3 {
     @apply font-poppins font-semibold text-2xl md:text-3xl;
-    color: hsl(var(--text-primary));
+    background: linear-gradient(135deg, hsl(var(--emerald-green)), hsl(var(--lime-green)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     line-height: 1.3;
     letter-spacing: -0.01em;
-    text-shadow: 0 0 10px hsl(25 100% 50% / 0.2);
+    text-shadow: 0 0 20px hsl(160 100% 50% / 0.3);
   }
   
   h4 {
     @apply font-poppins font-semibold text-xl md:text-2xl;
-    color: hsl(var(--text-secondary));
+    color: hsl(var(--golden-yellow));
     line-height: 1.35;
+    text-shadow: 0 0 15px hsl(45 100% 60% / 0.3);
   }
   
   h5 {
     @apply font-poppins font-medium text-lg md:text-xl;
-    color: hsl(var(--text-secondary));
+    color: hsl(var(--neon-cyan));
     line-height: 1.4;
+    text-shadow: 0 0 12px hsl(180 100% 65% / 0.3);
   }
   
   h6 {
     @apply font-poppins font-medium text-base md:text-lg;
-    color: hsl(var(--text-secondary));
+    color: hsl(var(--hot-pink));
     line-height: 1.4;
+    text-shadow: 0 0 10px hsl(320 100% 70% / 0.3);
   }
   
   p {
@@ -126,258 +146,357 @@
   code, pre {
     @apply font-mono;
     font-family: 'JetBrains Mono', monospace;
-    color: hsl(var(--sunset-orange));
+    color: hsl(var(--electric-violet));
+    text-shadow: 0 0 8px hsl(270 100% 75% / 0.4);
   }
   
   a {
-    @apply text-primary hover:text-primary/80 transition-all duration-150;
-    text-shadow: 0 0 5px hsl(25 100% 55% / 0.3);
+    @apply transition-all duration-100;
+    background: linear-gradient(135deg, hsl(var(--sunset-orange)), hsl(var(--pink-rose)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 8px hsl(25 100% 60% / 0.3);
   }
   
   a:hover {
-    text-shadow: 0 0 10px hsl(25 100% 60% / 0.5);
+    text-shadow: 0 0 15px hsl(25 100% 60% / 0.6);
     transform: translateY(-1px);
+    filter: brightness(1.2);
   }
 }
 
 @layer utilities {
-  /* Superfast Enhanced Animations */
-  .animate-fade-in {
-    animation: fadeIn 0.2s ease-out forwards;
+  /* Superfast Colorful Animations */
+  .animate-rainbow {
+    animation: rainbow 3s linear infinite;
   }
   
-  .animate-slide-up {
-    animation: slideUp 0.25s ease-out forwards;
+  .animate-colorful-pulse {
+    animation: colorfulPulse 2s ease-in-out infinite;
   }
   
-  .animate-scale-in {
-    animation: scaleIn 0.15s ease-out forwards;
+  .animate-neon-glow {
+    animation: neonGlow 2s ease-in-out infinite alternate;
   }
   
-  .animate-pulse-glow {
-    animation: pulseGlow 1s infinite;
-  }
-  
-  .animate-shimmer {
-    animation: shimmer 0.8s linear infinite;
+  .animate-color-shift {
+    animation: colorShift 4s ease-in-out infinite;
   }
 
-  .animate-bounce-fast {
-    animation: bounceFast 0.4s infinite;
-  }
-
-  .animate-spin-fast {
-    animation: spinFast 0.5s linear infinite;
-  }
-
-  /* Enhanced Hover Effects - Superfast */
-  .hover-lift {
-    transition: all 0.1s ease;
+  /* Enhanced Hover Effects - Colorful */
+  .hover-rainbow:hover {
+    background: linear-gradient(135deg, 
+      hsl(var(--sunset-orange)), 
+      hsl(var(--pink-rose)), 
+      hsl(var(--vibrant-purple)), 
+      hsl(var(--electric-blue))
+    );
+    background-size: 400% 400%;
+    animation: rainbowShift 2s ease infinite;
   }
   
-  .hover-lift:hover {
+  .hover-neon:hover {
+    box-shadow: 
+      0 0 20px hsl(var(--electric-blue) / 0.5),
+      0 0 40px hsl(var(--vibrant-purple) / 0.3),
+      0 0 60px hsl(var(--sunset-orange) / 0.2);
     transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 20px 40px rgba(255, 140, 0, 0.3);
   }
   
-  .hover-glow:hover {
-    box-shadow: 0 0 30px hsl(var(--sunset-orange) / 0.5);
-    text-shadow: 0 0 10px hsl(25 100% 60% / 0.7);
+  /* Colorful Glass morphism */
+  .glass-card-colorful {
+    background: linear-gradient(135deg, 
+      rgba(0, 0, 0, 0.9) 0%,
+      rgba(255, 140, 0, 0.05) 50%,
+      rgba(0, 0, 0, 0.9) 100%
+    );
+    backdrop-filter: blur(25px);
+    border: 1px solid;
+    border-image: linear-gradient(135deg, 
+      hsl(var(--sunset-orange) / 0.3), 
+      hsl(var(--electric-blue) / 0.3), 
+      hsl(var(--vibrant-purple) / 0.3)
+    ) 1;
+    box-shadow: 
+      0 8px 32px rgba(255, 140, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
   
-  /* Dark Glass morphism */
-  .glass-card {
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 140, 0, 0.2);
-    box-shadow: 0 8px 32px rgba(255, 140, 0, 0.1);
+  /* Colorful gradient backgrounds */
+  .gradient-rainbow {
+    background: linear-gradient(135deg, 
+      hsl(var(--sunset-orange)), 
+      hsl(var(--pink-rose)), 
+      hsl(var(--vibrant-purple)), 
+      hsl(var(--electric-blue))
+    );
+    background-size: 400% 400%;
+    animation: rainbowShift 3s ease infinite;
   }
   
-  /* Orange gradient backgrounds */
-  .gradient-primary {
-    background: linear-gradient(135deg, hsl(var(--sunset-orange)), hsl(var(--pink-rose)));
+  .gradient-neon {
+    background: linear-gradient(135deg, 
+      hsl(var(--neon-cyan)), 
+      hsl(var(--electric-violet))
+    );
   }
   
-  .gradient-success {
-    background: linear-gradient(135deg, hsl(var(--emerald-green)), hsl(var(--lime-green)));
+  .gradient-fire {
+    background: linear-gradient(135deg, 
+      hsl(var(--sunset-orange)), 
+      hsl(var(--golden-yellow)), 
+      hsl(var(--pink-rose))
+    );
   }
   
-  .gradient-warning {
-    background: linear-gradient(135deg, hsl(var(--sunset-orange)), hsl(var(--vibrant-purple)));
-  }
-  
-  /* Dark surfaces */
-  .surface-elevated {
-    background: hsl(var(--surface-1));
-    border: 1px solid hsl(var(--border));
-    box-shadow: 0 4px 16px rgba(255, 140, 0, 0.1);
-  }
-  
-  /* Interactive elements - superfast */
-  .interactive-element {
-    @apply transition-all duration-100 hover:scale-110 hover:shadow-2xl;
-  }
-  
-  .btn-primary {
-    @apply gradient-primary text-black font-semibold px-6 py-3 rounded-lg shadow-lg hover-lift;
+  /* Interactive elements - superfast and colorful */
+  .btn-colorful {
+    background: linear-gradient(135deg, 
+      hsl(var(--sunset-orange)), 
+      hsl(var(--pink-rose))
+    );
+    @apply text-black font-semibold px-6 py-3 rounded-lg shadow-lg transition-all duration-100;
     font-family: 'Poppins', sans-serif;
-    text-shadow: none;
+    box-shadow: 0 4px 15px hsl(25 100% 60% / 0.3);
   }
   
-  /* Status indicators with orange theme */
+  .btn-colorful:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 
+      0 8px 25px hsl(25 100% 60% / 0.4),
+      0 0 30px hsl(340 100% 65% / 0.3);
+    background: linear-gradient(135deg, 
+      hsl(var(--pink-rose)), 
+      hsl(var(--vibrant-purple))
+    );
+  }
+  
+  /* Status indicators with colorful theme */
   .status-online {
-    @apply bg-orange-500 text-black;
-  }
-  
-  .status-offline {
-    @apply bg-red-600 text-white;
+    @apply bg-gradient-to-r from-emerald-green to-lime-green text-black;
+    box-shadow: 0 0 15px hsl(160 100% 50% / 0.4);
   }
   
   .status-warning {
-    @apply bg-yellow-500 text-black;
+    @apply bg-gradient-to-r from-golden-yellow to-sunset-orange text-black;
+    box-shadow: 0 0 15px hsl(45 100% 60% / 0.4);
   }
   
-  /* Orange text gradient */
-  .text-gradient {
-    background: linear-gradient(135deg, hsl(var(--sunset-orange)), hsl(var(--vibrant-purple)));
+  .status-error {
+    @apply bg-gradient-to-r from-pink-rose to-hot-pink text-black;
+    box-shadow: 0 0 15px hsl(340 100% 65% / 0.4);
+  }
+  
+  /* Colorful text gradients */
+  .text-rainbow {
+    background: linear-gradient(135deg, 
+      hsl(var(--sunset-orange)), 
+      hsl(var(--pink-rose)), 
+      hsl(var(--vibrant-purple)), 
+      hsl(var(--electric-blue)),
+      hsl(var(--emerald-green))
+    );
+    background-size: 400% 400%;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    animation: rainbowShift 4s ease infinite;
     font-weight: 700;
-    text-shadow: none;
   }
   
-  /* Loading states with orange */
-  .loading-shimmer {
+  /* Loading states with colorful theme */
+  .loading-colorful {
     background: linear-gradient(
       90deg,
       hsl(var(--surface-1)) 0%,
-      hsl(25 100% 20%) 50%,
+      hsl(var(--sunset-orange) / 0.2) 25%,
+      hsl(var(--electric-blue) / 0.2) 50%,
+      hsl(var(--vibrant-purple) / 0.2) 75%,
       hsl(var(--surface-1)) 100%
     );
-    background-size: 200% 100%;
-    animation: shimmer 0.8s infinite;
+    background-size: 400% 100%;
+    animation: colorfulShimmer 1.5s infinite;
   }
 
-  /* Superfast page transitions */
-  .page-transition {
-    animation: pageSlide 0.2s ease-out;
-  }
-
-  /* Button hover effects */
-  .btn-hover {
+  /* Card hover effects */
+  .card-hover {
     transition: all 0.1s ease;
   }
 
-  .btn-hover:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(255, 140, 0, 0.4);
+  .card-hover:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 
+      0 15px 35px rgba(255, 140, 0, 0.2),
+      0 0 25px rgba(59, 130, 246, 0.15),
+      0 0 15px rgba(147, 51, 234, 0.1);
+    border-color: hsl(var(--sunset-orange) / 0.5);
   }
 }
 
-/* Superfast Enhanced Keyframes */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+/* Superfast Colorful Keyframes */
+@keyframes rainbow {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
 }
 
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(15px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes colorfulPulse {
+  0%, 100% { 
+    box-shadow: 0 0 20px hsl(var(--sunset-orange) / 0.3);
+  }
+  50% { 
+    box-shadow: 
+      0 0 40px hsl(var(--electric-blue) / 0.6),
+      0 0 60px hsl(var(--vibrant-purple) / 0.4);
+  }
 }
 
-@keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.98); }
-  to { opacity: 1; transform: scale(1); }
+@keyframes neonGlow {
+  0% { 
+    text-shadow: 
+      0 0 10px hsl(var(--sunset-orange) / 0.5),
+      0 0 20px hsl(var(--electric-blue) / 0.3);
+  }
+  100% { 
+    text-shadow: 
+      0 0 20px hsl(var(--sunset-orange) / 0.8),
+      0 0 40px hsl(var(--electric-blue) / 0.6),
+      0 0 60px hsl(var(--vibrant-purple) / 0.4);
+  }
 }
 
-@keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 20px hsl(var(--sunset-orange) / 0.3); }
-  50% { box-shadow: 0 0 40px hsl(var(--sunset-orange) / 0.6); }
+@keyframes colorShift {
+  0% { filter: hue-rotate(0deg) brightness(1); }
+  25% { filter: hue-rotate(90deg) brightness(1.1); }
+  50% { filter: hue-rotate(180deg) brightness(1.2); }
+  75% { filter: hue-rotate(270deg) brightness(1.1); }
+  100% { filter: hue-rotate(360deg) brightness(1); }
 }
 
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+@keyframes rainbowShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes colorfulShimmer {
+  0% { background-position: -400% 0; }
+  100% { background-position: 400% 0; }
 }
 
 @keyframes titleGlow {
-  0% { text-shadow: 0 0 20px hsl(25 100% 60% / 0.3); }
-  100% { text-shadow: 0 0 30px hsl(25 100% 60% / 0.6), 0 0 40px hsl(25 100% 60% / 0.3); }
+  0% { 
+    text-shadow: 
+      0 0 20px hsl(25 100% 60% / 0.3),
+      0 0 30px hsl(340 100% 65% / 0.2);
+  }
+  100% { 
+    text-shadow: 
+      0 0 40px hsl(25 100% 60% / 0.6),
+      0 0 60px hsl(340 100% 65% / 0.4),
+      0 0 80px hsl(195 100% 60% / 0.3);
+  }
 }
 
-@keyframes backgroundPulse {
-  0%, 100% { background: radial-gradient(ellipse at center, hsl(0 0% 2%) 0%, hsl(0 0% 0%) 100%); }
-  50% { background: radial-gradient(ellipse at center, hsl(15 20% 3%) 0%, hsl(0 0% 0%) 100%); }
+@keyframes backgroundShimmer {
+  0%, 100% { 
+    background: 
+      radial-gradient(ellipse at top left, hsl(195 100% 60% / 0.05) 0%, transparent 50%),
+      radial-gradient(ellipse at top right, hsl(280 100% 70% / 0.05) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom, hsl(25 100% 60% / 0.03) 0%, transparent 50%),
+      hsl(0 0% 0%);
+  }
+  33% { 
+    background: 
+      radial-gradient(ellipse at top left, hsl(280 100% 70% / 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at top right, hsl(160 100% 50% / 0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom, hsl(340 100% 65% / 0.05) 0%, transparent 50%),
+      hsl(0 0% 0%);
+  }
+  66% { 
+    background: 
+      radial-gradient(ellipse at top left, hsl(45 100% 60% / 0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at top right, hsl(195 100% 60% / 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom, hsl(270 100% 75% / 0.04) 0%, transparent 50%),
+      hsl(0 0% 0%);
+  }
 }
 
-@keyframes bounceFast {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-@keyframes spinFast {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes pageSlide {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-/* Enhanced Dark Scrollbar with Orange */
+/* Enhanced Colorful Scrollbar */
 ::-webkit-scrollbar {
-  width: 12px;
+  width: 14px;
 }
 
 ::-webkit-scrollbar-track {
   background: hsl(var(--surface-2));
-  border-radius: 6px;
+  border-radius: 7px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, hsl(var(--sunset-orange)), hsl(var(--pink-rose)));
-  border-radius: 6px;
+  background: linear-gradient(135deg, 
+    hsl(var(--sunset-orange)), 
+    hsl(var(--pink-rose)), 
+    hsl(var(--vibrant-purple))
+  );
+  border-radius: 7px;
   border: 2px solid hsl(var(--surface-2));
+  box-shadow: inset 0 0 6px rgba(255, 140, 0, 0.3);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, hsl(var(--vibrant-purple)), hsl(var(--sunset-orange)));
+  background: linear-gradient(135deg, 
+    hsl(var(--vibrant-purple)), 
+    hsl(var(--electric-blue)), 
+    hsl(var(--emerald-green))
+  );
+  box-shadow: inset 0 0 10px rgba(59, 130, 246, 0.4);
 }
 
-/* Orange Selection */
+/* Colorful Selection */
 ::selection {
-  background: hsl(var(--sunset-orange) / 0.3);
+  background: linear-gradient(135deg, 
+    hsl(var(--sunset-orange) / 0.3), 
+    hsl(var(--electric-blue) / 0.3)
+  );
   color: hsl(var(--text-primary));
 }
 
-/* Focus states with orange */
+/* Enhanced focus states with colorful rings */
 .focus-ring {
-  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-2;
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+  box-shadow: 
+    0 0 0 2px hsl(var(--sunset-orange) / 0.5),
+    0 0 20px hsl(var(--electric-blue) / 0.3);
 }
 
-/* Global animation classes for all elements */
+/* Global superfast animations for all elements */
 * {
-  animation-duration: 0.15s !important;
+  animation-duration: 0.1s !important;
 }
 
-/* Make everything super responsive and fast */
+/* Make everything super responsive, fast, and colorful */
 button, a, input, select, textarea {
-  transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition: all 0.08s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 button:hover, a:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 5px 15px rgba(255, 140, 0, 0.3);
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 
+    0 5px 20px rgba(255, 140, 0, 0.4),
+    0 0 15px rgba(59, 130, 246, 0.2);
 }
 
-/* Cards and containers get fast hover effects */
+/* Cards and containers get fast colorful hover effects */
 .card, [class*="card"] {
-  transition: all 0.15s ease !important;
+  transition: all 0.1s ease !important;
+  border: 1px solid hsl(var(--border));
 }
 
 .card:hover, [class*="card"]:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(255, 140, 0, 0.2);
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 
+    0 15px 40px rgba(255, 140, 0, 0.25),
+    0 0 30px rgba(59, 130, 246, 0.15),
+    0 0 20px rgba(147, 51, 234, 0.1);
+  border-color: hsl(var(--sunset-orange) / 0.4);
 }
