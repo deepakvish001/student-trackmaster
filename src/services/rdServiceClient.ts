@@ -1,129 +1,100 @@
 
 /**
- * RD Service Client for UIDAI compliant fingerprint capture
- * Handles connection failures gracefully and provides fallback mechanisms
+ * RD Service Client for Fingerprint Authentication
+ * Handles communication with RD Service running on localhost:11100
  */
 
-interface RDServiceOptions {
-  fCount: number;
-  fType: number;
-  iCount: number;
-  iType: number;
-  pCount: number;
-  pType: number;
-  format: number;
-  pidVer: string;
-  env: string;
-  wadh: string;
-  timeout: number;
-}
-
-interface RDServiceResponse {
-  httpStaus: boolean;
-  data: any;
-  err: string;
-}
-
-interface CaptureResult {
-  success: boolean;
-  pidData?: string;
+export interface RDServiceResponse {
+  errCode: string;
+  errInfo: string;
+  fCount: string;
+  fType: string;
+  nmPoints: string;
+  qScore: string;
+  pidData: string;
   imageData?: string;
+  ci?: string;
+  sessionKey?: string;
+  hmac?: string;
   quality?: number;
-  error?: string;
 }
 
-class RDServiceClient {
-  private static instance: RDServiceClient;
-  private baseUrl = 'http://127.0.0.1:11100';
-  private serviceAvailable = false;
-  private lastCheckTime = 0;
-  private checkInterval = 30000; // Check every 30 seconds
-  private retryCount = 0;
-  private maxRetries = 3;
-  private connectionCheckInProgress = false;
+export interface DeviceInfo {
+  dpId: string;
+  rdsId: string;
+  rdsVer: string;
+  dc: string;
+  mi: string;
+  mc: string;
+}
 
-  static getInstance(): RDServiceClient {
-    if (!RDServiceClient.instance) {
-      RDServiceClient.instance = new RDServiceClient();
-    }
-    return RDServiceClient.instance;
+export class RDServiceClient {
+  private baseUrl = 'http://127.0.0.1:11100';
+  private deviceInfo: DeviceInfo | null = null;
+  private lastAvailabilityCheck = 0;
+  private availabilityCache: { result: boolean; timestamp: number } | null = null;
+  private readonly CACHE_DURATION = 5000; // 5 seconds cache
+
+  constructor() {
+    // Initialize device info on construction
+    this.initializeDeviceInfo();
   }
 
-  private constructor() {
-    // Initial availability check
-    this.checkServiceAvailability();
+  private async initializeDeviceInfo() {
+    try {
+      this.deviceInfo = await this.getDeviceInfo();
+    } catch (error) {
+      console.warn('Failed to initialize device info:', error);
+    }
   }
 
   /**
-   * Check if RD Service is available with throttling
+   * Check if RD Service is available with caching
    */
   async isServiceAvailable(): Promise<boolean> {
     const now = Date.now();
     
-    // Throttle checks to prevent spam
-    if (now - this.lastCheckTime < this.checkInterval && this.retryCount < this.maxRetries) {
-      return this.serviceAvailable;
+    // Return cached result if still valid
+    if (this.availabilityCache && (now - this.availabilityCache.timestamp < this.CACHE_DURATION)) {
+      return this.availabilityCache.result;
     }
-
-    if (this.connectionCheckInProgress) {
-      return this.serviceAvailable;
-    }
-
-    return this.checkServiceAvailability();
-  }
-
-  /**
-   * Internal method to check service availability
-   */
-  private async checkServiceAvailability(): Promise<boolean> {
-    if (this.connectionCheckInProgress) {
-      return this.serviceAvailable;
-    }
-
-    this.connectionCheckInProgress = true;
-    this.lastCheckTime = Date.now();
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeout = setTimeout(() => controller.abort(), 3000); // 3 second timeout
 
       const response = await fetch(`${this.baseUrl}/rd/info`, {
         method: 'GET',
         signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        cache: 'no-cache'
       });
 
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        this.serviceAvailable = true;
-        this.retryCount = 0;
-        console.log('✅ RD Service is available');
-        return true;
-      } else {
-        throw new Error(`HTTP ${response.status}`);
-      }
-    } catch (error) {
-      this.serviceAvailable = false;
-      this.retryCount++;
+      clearTimeout(timeout);
       
-      // Only log every few attempts to reduce spam
-      if (this.retryCount <= 3 || this.retryCount % 10 === 0) {
-        console.warn(`⚠️ RD Service not available (attempt ${this.retryCount}):`, error instanceof Error ? error.message : 'Unknown error');
-      }
+      const isAvailable = response.ok;
+      
+      // Cache the result
+      this.availabilityCache = {
+        result: isAvailable,
+        timestamp: now
+      };
+      
+      return isAvailable;
+    } catch (error) {
+      // Cache the failed result as well
+      this.availabilityCache = {
+        result: false,
+        timestamp: now
+      };
       
       return false;
-    } finally {
-      this.connectionCheckInProgress = false;
     }
   }
 
   /**
    * Get device information
    */
-  async getDeviceInfo(): Promise<any> {
+  async getDeviceInfo(): Promise<DeviceInfo> {
     if (!await this.isServiceAvailable()) {
       throw new Error('RD Service is not available');
     }
@@ -131,198 +102,122 @@ class RDServiceClient {
     try {
       const response = await fetch(`${this.baseUrl}/rd/info`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        cache: 'no-cache'
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      return await response.json();
+      const xmlText = await response.text();
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+      
+      const deviceInfo: DeviceInfo = {
+        dpId: xmlDoc.querySelector('dpId')?.textContent || '',
+        rdsId: xmlDoc.querySelector('rdsId')?.textContent || '',
+        rdsVer: xmlDoc.querySelector('rdsVer')?.textContent || '',
+        dc: xmlDoc.querySelector('dc')?.textContent || '',
+        mi: xmlDoc.querySelector('mi')?.textContent || '',
+        mc: xmlDoc.querySelector('mc')?.textContent || ''
+      };
+
+      this.deviceInfo = deviceInfo;
+      return deviceInfo;
     } catch (error) {
-      console.error('❌ Failed to get device info:', error);
-      throw error;
+      console.error('Failed to get device info:', error);
+      throw new Error('Failed to get device information');
     }
   }
 
   /**
-   * Capture fingerprint with PidData format
+   * Capture fingerprint with specified timeout
    */
-  async captureFingerprint(): Promise<CaptureResult> {
+  async captureFingerprint(timeout: number = 10000): Promise<RDServiceResponse> {
     if (!await this.isServiceAvailable()) {
-      return {
-        success: false,
-        error: 'RD Service is not available. Please ensure the RD Service is running on port 11100.'
-      };
+      throw new Error('RD Service is not available');
     }
 
+    const requestBody = `<?xml version="1.0" encoding="UTF-8"?>
+      <PidOptions ver="1.0">
+        <Opts fCount="1" fType="0" iCount="0" pCount="0" format="0" pidVer="2.0" timeout="${timeout}" posh="UNKNOWN" env="P"/>
+      </PidOptions>`;
+
     try {
-      const captureXML = this.buildCaptureXML({
-        fCount: 1,
-        fType: 0,
-        iCount: 0,
-        iType: 0,
-        pCount: 0,
-        pType: 0,
-        format: 0,
-        pidVer: "2.0",
-        env: "P",
-        wadh: "",
-        timeout: 10000
-      });
+      const controller = new AbortController();
+      const requestTimeout = setTimeout(() => controller.abort(), timeout + 2000);
 
       const response = await fetch(`${this.baseUrl}/rd/capture`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/xml',
         },
-        body: captureXML,
+        body: requestBody,
+        signal: controller.signal,
+        cache: 'no-cache'
       });
 
+      clearTimeout(requestTimeout);
+
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const xmlResponse = await response.text();
-      return this.parseXMLResponse(xmlResponse);
-    } catch (error) {
-      console.error('❌ Fingerprint capture failed:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown capture error'
-      };
-    }
-  }
-
-  /**
-   * Build capture XML request
-   */
-  private buildCaptureXML(options: RDServiceOptions): string {
-    return `<?xml version="1.0" encoding="UTF-8"?>
-<PidOptions ver="1.0">
-  <Opts fCount="${options.fCount}" fType="${options.fType}" iCount="${options.iCount}" 
-        iType="${options.iType}" pCount="${options.pCount}" pType="${options.pType}" 
-        format="${options.format}" pidVer="${options.pidVer}" timeout="${options.timeout}" 
-        env="${options.env}" wadh="${options.wadh}" />
-</PidOptions>`;
-  }
-
-  /**
-   * Parse XML response and extract fingerprint data
-   */
-  private parseXMLResponse(xmlResponse: string): CaptureResult {
-    try {
+      const xmlText = await response.text();
       const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xmlResponse, 'text/xml');
-      
-      const pidData = xmlDoc.querySelector('PidData');
-      if (!pidData) {
-        throw new Error('Invalid XML response: PidData not found');
-      }
+      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
 
-      const resp = pidData.querySelector('Resp');
-      if (!resp) {
-        throw new Error('Invalid XML response: Resp not found');
-      }
-
-      const errorCode = resp.getAttribute('errCode');
-      const errorInfo = resp.getAttribute('errInfo');
-
-      if (errorCode !== '0') {
-        throw new Error(`Capture failed: ${errorInfo} (Code: ${errorCode})`);
-      }
-
-      // Extract quality from Data element
-      const dataElement = pidData.querySelector('Data');
-      const quality = dataElement ? parseInt(dataElement.getAttribute('qScore') || '0') : 0;
-
-      // Extract image data from Bios element
-      let imageData = '';
-      const biosElement = pidData.querySelector('Bios');
-      if (biosElement && biosElement.textContent) {
-        imageData = this.extractImageFromBios(biosElement.textContent);
-      }
-
-      return {
-        success: true,
-        pidData: xmlResponse,
-        imageData,
-        quality
+      // Parse the response
+      const result: RDServiceResponse = {
+        errCode: xmlDoc.querySelector('Resp')?.getAttribute('errCode') || '',
+        errInfo: xmlDoc.querySelector('Resp')?.getAttribute('errInfo') || '',
+        fCount: xmlDoc.querySelector('Resp')?.getAttribute('fCount') || '',
+        fType: xmlDoc.querySelector('Resp')?.getAttribute('fType') || '',
+        nmPoints: xmlDoc.querySelector('Resp')?.getAttribute('nmPoints') || '',
+        qScore: xmlDoc.querySelector('Resp')?.getAttribute('qScore') || '',
+        pidData: xmlDoc.querySelector('PidData')?.textContent || '',
+        imageData: xmlDoc.querySelector('Image')?.textContent || '',
+        ci: xmlDoc.querySelector('Param')?.getAttribute('ci') || '',
+        sessionKey: xmlDoc.querySelector('Param')?.getAttribute('sessionKey') || '',
+        hmac: xmlDoc.querySelector('Hmac')?.textContent || ''
       };
+
+      // Add quality score as number
+      if (result.qScore) {
+        result.quality = parseInt(result.qScore);
+      }
+
+      // Check if capture was successful
+      if (result.errCode !== '0') {
+        throw new Error(`Capture failed: ${result.errInfo}`);
+      }
+
+      return result;
     } catch (error) {
-      console.error('❌ XML parsing failed:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'XML parsing failed'
-      };
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw new Error('Fingerprint capture timed out');
+        }
+        throw error;
+      }
+      throw new Error('Failed to capture fingerprint');
     }
   }
 
   /**
-   * Extract image data from Bios element
+   * Get cached device info
    */
-  private extractImageFromBios(biosData: string): string {
-    try {
-      // Decode base64 Bios data
-      const decodedBios = atob(biosData);
-      
-      // For demonstration, we'll create a simple image representation
-      // In a real implementation, you would parse the actual biometric data format
-      const canvas = document.createElement('canvas');
-      canvas.width = 256;
-      canvas.height = 256;
-      const ctx = canvas.getContext('2d');
-      
-      if (!ctx) return '';
-      
-      // Create a simple pattern from the biometric data
-      const imageData = ctx.createImageData(256, 256);
-      const data = imageData.data;
-      
-      for (let i = 0; i < data.length; i += 4) {
-        const pixelIndex = Math.floor(i / 4);
-        const bioValue = decodedBios.charCodeAt(pixelIndex % decodedBios.length);
-        
-        // Create a fingerprint-like pattern
-        const intensity = (bioValue + (pixelIndex % 256)) % 256;
-        
-        data[i] = intensity;     // Red
-        data[i + 1] = intensity; // Green
-        data[i + 2] = intensity; // Blue
-        data[i + 3] = 255;       // Alpha
-      }
-      
-      ctx.putImageData(imageData, 0, 0);
-      return canvas.toDataURL('image/png');
-    } catch (error) {
-      console.error('❌ Image extraction failed:', error);
-      return '';
-    }
+  getCachedDeviceInfo(): DeviceInfo | null {
+    return this.deviceInfo;
   }
 
   /**
-   * Reset connection state (useful for manual retry)
+   * Clear availability cache
    */
-  resetConnection(): void {
-    this.serviceAvailable = false;
-    this.lastCheckTime = 0;
-    this.retryCount = 0;
-    this.connectionCheckInProgress = false;
-  }
-
-  /**
-   * Get connection status
-   */
-  getConnectionStatus(): { isAvailable: boolean; retryCount: number; lastCheck: number } {
-    return {
-      isAvailable: this.serviceAvailable,
-      retryCount: this.retryCount,
-      lastCheck: this.lastCheckTime
-    };
+  clearCache(): void {
+    this.availabilityCache = null;
   }
 }
 
-export const rdServiceClient = RDServiceClient.getInstance();
-export type { CaptureResult, RDServiceResponse };
+// Export singleton instance
+export const rdServiceClient = new RDServiceClient();
