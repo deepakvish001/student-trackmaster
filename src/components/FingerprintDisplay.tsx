@@ -1,5 +1,8 @@
+
 import { useState, useEffect, useMemo } from "react";
-import { AlertCircle, Check, Fingerprint, Image } from "lucide-react";
+import { AlertCircle, Check, Fingerprint, Image, Wifi } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface FingerprintDisplayProps {
   value: string;
@@ -7,7 +10,10 @@ interface FingerprintDisplayProps {
   quality?: number | null;
   isCapturing?: boolean;
   showQuality?: boolean;
-  imageData?: string; // Separate prop for image data
+  imageData?: string;
+  onCapture?: () => void;
+  onRecapture?: () => void;
+  isConnected?: boolean;
 }
 
 export function FingerprintDisplay({ 
@@ -16,7 +22,10 @@ export function FingerprintDisplay({
   quality, 
   isCapturing = false,
   showQuality = true,
-  imageData 
+  imageData,
+  onCapture,
+  onRecapture,
+  isConnected = true
 }: FingerprintDisplayProps) {
   const [imageError, setImageError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -26,24 +35,12 @@ export function FingerprintDisplay({
     if (!value && !imageData) return null;
     if (isCapturing) return null;
     
-    console.log(`Processing fingerprint display data for finger ${index + 1}:`, {
-      valueLength: value?.length || 0,
-      imageDataLength: imageData?.length || 0,
-      valuePreview: value?.substring(0, 50) || 'N/A',
-      imageDataPreview: imageData?.substring(0, 50) || 'N/A',
-      startsWithDataUri: value?.startsWith('data:image/') || imageData?.startsWith('data:image/'),
-      containsImageSignature: value?.includes('iVBOR') || value?.includes('/9j/') || imageData?.includes('iVBOR') || imageData?.includes('/9j/')
-    });
-    
     // First priority: dedicated imageData prop
     if (imageData) {
-      console.log(`Using dedicated image data for finger ${index + 1}`);
       if (imageData.startsWith('data:image/')) {
         return imageData;
       }
-      // If imageData is long enough, it's likely processed image data
       if (imageData.length > 50000) {
-        console.log(`🖼️ Image data detected (${imageData.length} chars) for finger ${index + 1}`);
         return imageData;
       }
     }
@@ -51,13 +48,10 @@ export function FingerprintDisplay({
     // Second priority: check if value contains image data
     if (value) {
       if (value.startsWith('data:image/')) {
-        console.log(`Found complete image data URI for finger ${index + 1}`);
         return value;
       }
       
-      // Check if it's a long string (likely processed image data)
       if (value.length > 50000) {
-        console.log(`🖼️ Large data detected (${value.length} chars), treating as image for finger ${index + 1}`);
         return value;
       }
       
@@ -72,31 +66,26 @@ export function FingerprintDisplay({
         
         for (const { sig, mime } of imageSignatures) {
           if (value.includes(sig)) {
-            console.log(`Found ${mime} signature for finger ${index + 1}`);
             return `data:${mime};base64,${value}`;
           }
         }
       }
     }
     
-    console.log(`📄 Data appears to be template data, not image`);
     return null;
-  }, [value, imageData, index, isCapturing]);
+  }, [value, imageData, isCapturing]);
 
-  // Determine data type based on enhanced logic
   const dataType = useMemo(() => {
     if (!value && !imageData) return 'none';
-    
-    // If we have imageData prop or a long value, it's likely an image
     if (imageData && imageData.length > 50000) return 'image';
     if (value && value.length > 50000) return 'image';
     if (fingerprintImageUrl) return 'image';
-    
-    // Otherwise, if we have data, it's template
     if (value || imageData) return 'template';
-    
     return 'none';
   }, [value, imageData, fingerprintImageUrl]);
+
+  const hasFingerprint = dataType === 'image' && fingerprintImageUrl;
+  const hasTemplateOnly = dataType === 'template' && !fingerprintImageUrl;
 
   useEffect(() => {
     if (fingerprintImageUrl && !isCapturing) {
@@ -111,52 +100,82 @@ export function FingerprintDisplay({
   }, [value, imageData, isCapturing, fingerprintImageUrl]);
 
   const handleImageLoad = () => {
-    console.log(`✅ Fingerprint image ${index + 1} loaded successfully`);
     setImageError(false);
     setIsLoading(false);
   };
 
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    console.error(`❌ Error loading fingerprint image ${index + 1}:`, e);
+  const handleImageError = () => {
     setImageError(true);
     setIsLoading(false);
   };
 
   return (
-    <div className="flex flex-col items-center space-y-2">
-      <div className={`relative w-40 h-40 border-2 rounded-lg flex items-center justify-center bg-white transition-all duration-300 ${
+    <div className="bg-white border rounded-lg p-4 w-full max-w-[200px] mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-2">
+          <span className="font-medium text-sm">Finger {index + 1}</span>
+          <div className="flex items-center space-x-1">
+            <Wifi className={`h-3 w-3 ${isConnected ? 'text-green-500' : 'text-red-500'}`} />
+            <span className={`text-xs ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
+              {isConnected ? 'Connected' : 'Disconnected'}
+            </span>
+          </div>
+        </div>
+        
+        {/* Status Badge */}
+        {hasFingerprint && (
+          <Badge className="bg-blue-500 text-white text-xs px-2 py-1">
+            Captured
+          </Badge>
+        )}
+        {hasTemplateOnly && (
+          <Badge variant="secondary" className="text-xs px-2 py-1">
+            Template
+          </Badge>
+        )}
+        {!hasFingerprint && !hasTemplateOnly && !isCapturing && (
+          <Badge variant="outline" className="text-xs px-2 py-1">
+            Ready
+          </Badge>
+        )}
+        {isCapturing && (
+          <Badge className="bg-yellow-500 text-white text-xs px-2 py-1 animate-pulse">
+            Capturing
+          </Badge>
+        )}
+      </div>
+
+      {/* Fingerprint Display Area */}
+      <div className={`relative w-full h-40 border-2 rounded-lg flex items-center justify-center bg-gray-50 transition-all duration-300 ${
         isCapturing 
-          ? 'border-primary border-dashed animate-pulse shadow-lg' 
-          : dataType === 'image'
-            ? 'border-green-500 shadow-md'
-            : dataType === 'template'
-              ? 'border-blue-500 shadow-md'
-              : 'border-gray-300 hover:border-primary'
+          ? 'border-blue-500 border-dashed animate-pulse' 
+          : hasFingerprint
+            ? 'border-green-500'
+            : hasTemplateOnly
+              ? 'border-blue-400'
+              : 'border-gray-300'
       }`}>
         {isCapturing ? (
-          <div className="flex flex-col items-center space-y-2 text-primary">
+          <div className="flex flex-col items-center space-y-2 text-blue-600">
             <Fingerprint className="h-8 w-8 animate-pulse" />
             <span className="text-sm font-medium">Scanning...</span>
             <div className="flex space-x-1">
-              <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
-              <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-              <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
             </div>
           </div>
-        ) : (value || imageData) ? (
+        ) : hasFingerprint ? (
           <div className="relative w-full h-full flex items-center justify-center">
-            {dataType === 'image' ? (
-              isLoading ? (
-                <div className="flex items-center justify-center w-full h-full">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              ) : (
+            {isLoading ? (
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            ) : (
+              <div className="relative w-full h-full">
                 <img 
-                  src={fingerprintImageUrl || (imageData || value)}
+                  src={fingerprintImageUrl}
                   alt={`Fingerprint ${index + 1}`}
-                  className={`max-w-36 max-h-36 object-contain transition-all duration-300 ${
-                    imageError ? 'opacity-50' : ''
-                  } rounded border`}
+                  className="w-full h-full object-contain rounded border"
                   onError={handleImageError}
                   onLoad={handleImageLoad}
                   style={{ 
@@ -164,43 +183,37 @@ export function FingerprintDisplay({
                     imageRendering: 'crisp-edges'
                   }}
                 />
-              )
-            ) : (
-              <div className="flex flex-col items-center space-y-2 text-blue-600">
-                <div className="relative">
-                  <Fingerprint className="h-8 w-8" />
-                  <Check className="h-4 w-4 absolute -top-1 -right-1 bg-blue-600 text-white rounded-full p-0.5" />
-                </div>
-                <span className="text-sm font-medium">Template Only</span>
-                <div className="text-xs text-gray-500 text-center px-2">
-                  No image captured
-                  <br />
-                  (Template data only)
-                </div>
-              </div>
-            )}
-            
-            {showQuality && quality !== undefined && quality !== null && (
-              <div className={`absolute bottom-1 right-1 rounded-full p-1 ${
-                quality >= 60 ? 'bg-green-500' : 
-                quality >= 40 ? 'bg-yellow-500' : 'bg-red-500'
-              }`}>
-                {quality >= 60 ? (
-                  <Check className="h-3 w-3 text-white" />
-                ) : (
-                  <AlertCircle className="h-3 w-3 text-white" />
+                {/* Quality indicator overlay */}
+                {showQuality && quality !== undefined && quality !== null && (
+                  <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md">
+                    <div className={`w-2 h-2 rounded-full ${
+                      quality >= 60 ? 'bg-green-500' : 
+                      quality >= 40 ? 'bg-yellow-500' : 'bg-red-500'
+                    }`}></div>
+                  </div>
                 )}
               </div>
             )}
-
-            {imageError && dataType === 'image' && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-50 rounded">
+            
+            {imageError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded">
                 <div className="text-center text-gray-500">
                   <AlertCircle className="h-6 w-6 mx-auto mb-1" />
                   <span className="text-xs">Image Load Error</span>
                 </div>
               </div>
             )}
+          </div>
+        ) : hasTemplateOnly ? (
+          <div className="flex flex-col items-center space-y-2 text-blue-600">
+            <div className="relative">
+              <Fingerprint className="h-8 w-8" />
+              <Check className="h-4 w-4 absolute -top-1 -right-1 bg-blue-600 text-white rounded-full p-0.5" />
+            </div>
+            <span className="text-sm font-medium">Template Only</span>
+            <div className="text-xs text-gray-500 text-center">
+              No image captured
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center space-y-2 text-gray-400">
@@ -209,33 +222,54 @@ export function FingerprintDisplay({
           </div>
         )}
       </div>
-      
-      <div className="text-center">
-        <div className="font-medium text-sm">Finger {index + 1}</div>
-        {showQuality && quality !== undefined && quality !== null && (
-          <div className={`text-xs mt-1 font-medium ${
+
+      {/* Quality Display */}
+      {showQuality && quality !== undefined && quality !== null && hasFingerprint && (
+        <div className="mt-3 flex items-center justify-center space-x-2">
+          <div className="flex items-center space-x-1">
+            <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+            <span className="text-xs text-gray-600">Quality:</span>
+          </div>
+          <span className={`text-sm font-medium ${
             quality >= 60 ? 'text-green-600' : 
             quality >= 40 ? 'text-yellow-600' : 'text-red-600'
           }`}>
-            Quality: {quality}%
-          </div>
-        )}
-        {(value || imageData) && (
-          <div className="text-xs mt-1 flex items-center justify-center space-x-1">
-            {dataType === 'image' ? (
-              <div className="text-green-600 flex items-center space-x-1 font-medium">
-                <Image className="h-3 w-3" />
-                <span>Image ✓</span>
-              </div>
-            ) : (
-              <div className="text-blue-600 flex items-center space-x-1">
-                <Fingerprint className="h-3 w-3" />
-                <span>Template ✓</span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+            {quality}%
+          </span>
+          {hasFingerprint && (
+            <div className="flex items-center space-x-1 text-green-600">
+              <Image className="h-3 w-3" />
+              <span className="text-xs">Image ✓</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Action Button */}
+      {onCapture && (
+        <div className="mt-4">
+          {!hasFingerprint && !hasTemplateOnly ? (
+            <Button
+              onClick={onCapture}
+              disabled={!isConnected || isCapturing}
+              className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+              size="sm"
+            >
+              <Fingerprint className="mr-2 h-4 w-4" />
+              Capture
+            </Button>
+          ) : (
+            <Button
+              onClick={onRecapture}
+              variant="outline"
+              className="w-full"
+              size="sm"
+            >
+              Recapture
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
