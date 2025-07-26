@@ -8,6 +8,7 @@ interface FingerprintDisplayProps {
   quality?: number | null;
   isCapturing?: boolean;
   showQuality?: boolean;
+  imageData?: string; // Separate prop for image data
 }
 
 export function FingerprintDisplay({ 
@@ -15,82 +16,76 @@ export function FingerprintDisplay({
   index, 
   quality, 
   isCapturing = false,
-  showQuality = true 
+  showQuality = true,
+  imageData 
 }: FingerprintDisplayProps) {
   const [imageError, setImageError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Enhanced fingerprint image processing with better detection
+  // Prioritize imageData prop, then check if value contains image data
   const fingerprintImageUrl = useMemo(() => {
-    if (!value || isCapturing) return null;
+    if (!value && !imageData) return null;
+    if (isCapturing) return null;
     
-    console.log(`Processing fingerprint display data for finger ${index + 1}:`, {
-      dataLength: value.length,
-      dataPreview: value.substring(0, 100),
-      startsWithDataUri: value.startsWith('data:'),
-      containsImageSignature: value.includes('iVBOR') || value.includes('/9j/') || value.includes('UklGR')
-    });
-    
-    // If it's already a complete data URI (captured image), use it directly
-    if (value.startsWith('data:image/')) {
-      console.log('✅ Found complete image data URI - displaying real fingerprint image');
-      return value;
+    // First priority: dedicated imageData prop
+    if (imageData) {
+      console.log(`Using dedicated image data for finger ${index + 1}`);
+      if (imageData.startsWith('data:image/')) {
+        return imageData;
+      }
+      // Convert base64 to data URI if needed
+      return `data:image/png;base64,${imageData}`;
     }
     
-    // Check for base64 image patterns more thoroughly
-    if (value.length > 500) { // Reduced threshold for better detection
-      // Look for common base64 image signatures at any position in the string
-      const imageSignatures = [
-        { sig: 'iVBOR', mime: 'image/png' },    // PNG
-        { sig: '/9j/', mime: 'image/jpeg' },   // JPEG
-        { sig: 'UklGR', mime: 'image/webp' },  // WebP (RIFF)
-        { sig: 'R0lGOD', mime: 'image/gif' },  // GIF
-        { sig: 'Qk02', mime: 'image/bmp' },   // BMP
-      ];
+    // Second priority: check if value contains image data
+    if (value) {
+      if (value.startsWith('data:image/')) {
+        console.log(`Found complete image data URI for finger ${index + 1}`);
+        return value;
+      }
       
-      for (const { sig, mime } of imageSignatures) {
-        const sigIndex = value.indexOf(sig);
-        if (sigIndex !== -1) {
-          console.log(`✅ Found ${mime} signature at position ${sigIndex} - converting to data URI`);
-          // Extract base64 data from the signature position
-          const base64Data = sigIndex === 0 ? value : value.substring(sigIndex);
-          return `data:${mime};base64,${base64Data}`;
+      // Check for base64 image patterns
+      if (value.length > 500) {
+        const imageSignatures = [
+          { sig: 'iVBOR', mime: 'image/png' },
+          { sig: '/9j/', mime: 'image/jpeg' },
+          { sig: 'UklGR', mime: 'image/webp' },
+          { sig: 'R0lGOD', mime: 'image/gif' }
+        ];
+        
+        for (const { sig, mime } of imageSignatures) {
+          if (value.includes(sig)) {
+            console.log(`Found ${mime} signature for finger ${index + 1}`);
+            return `data:${mime};base64,${value}`;
+          }
         }
       }
-      
-      // Try as raw base64 with PNG default if it's long enough and looks like base64
-      if (value.length > 1000 && /^[A-Za-z0-9+/=]+$/.test(value)) {
-        console.log('✅ Treating as raw base64 PNG data');
-        return `data:image/png;base64,${value}`;
-      }
     }
     
-    // If it's a short string, it's likely ISO template data
-    console.log('📄 Data appears to be template data, not image');
     return null;
-  }, [value, index, isCapturing]);
+  }, [value, imageData, index, isCapturing]);
 
-  // Determine data type for better user feedback
+  // Determine data type
   const dataType = useMemo(() => {
-    if (!value) return 'none';
+    if (!value && !imageData) return 'none';
     if (fingerprintImageUrl) return 'image';
     return 'template';
-  }, [value, fingerprintImageUrl]);
+  }, [value, imageData, fingerprintImageUrl]);
 
   useEffect(() => {
-    if (value && !isCapturing && fingerprintImageUrl) {
+    if (fingerprintImageUrl && !isCapturing) {
       setIsLoading(true);
       setImageError(false);
       const timer = setTimeout(() => setIsLoading(false), 300);
       return () => clearTimeout(timer);
     }
-    if (!value) {
+    if (!value && !imageData) {
       setImageError(false);
     }
-  }, [value, isCapturing, fingerprintImageUrl]);
+  }, [value, imageData, isCapturing, fingerprintImageUrl]);
 
   const handleImageLoad = () => {
-    console.log(`✅ Real fingerprint image ${index + 1} loaded successfully`);
+    console.log(`✅ Fingerprint image ${index + 1} loaded successfully`);
     setImageError(false);
     setIsLoading(false);
   };
@@ -122,7 +117,7 @@ export function FingerprintDisplay({
               <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
             </div>
           </div>
-        ) : value ? (
+        ) : (value || imageData) ? (
           <div className="relative w-full h-full flex items-center justify-center">
             {dataType === 'image' ? (
               isLoading ? (
@@ -132,20 +127,19 @@ export function FingerprintDisplay({
               ) : (
                 <img 
                   src={fingerprintImageUrl!}
-                  alt={`Real Fingerprint ${index + 1}`}
+                  alt={`Fingerprint ${index + 1}`}
                   className={`max-w-36 max-h-36 object-contain transition-all duration-300 ${
-                    imageError ? 'opacity-50' : 'animate-scale-in'
+                    imageError ? 'opacity-50' : ''
                   } rounded border`}
                   onError={handleImageError}
                   onLoad={handleImageLoad}
                   style={{ 
-                    filter: 'contrast(1.2) brightness(1.1) saturate(1.1)',
+                    filter: 'contrast(1.2) brightness(1.1)',
                     imageRendering: 'crisp-edges'
                   }}
                 />
               )
             ) : (
-              // Show template saved indicator for non-image data (ISO templates)
               <div className="flex flex-col items-center space-y-2 text-blue-600">
                 <div className="relative">
                   <Fingerprint className="h-8 w-8" />
@@ -200,12 +194,12 @@ export function FingerprintDisplay({
             Quality: {quality}%
           </div>
         )}
-        {value && (
+        {(value || imageData) && (
           <div className="text-xs mt-1 flex items-center justify-center space-x-1">
             {dataType === 'image' ? (
               <div className="text-green-600 flex items-center space-x-1 font-medium">
                 <Image className="h-3 w-3" />
-                <span>Real Image ✓</span>
+                <span>Image ✓</span>
               </div>
             ) : (
               <div className="text-blue-600 flex items-center space-x-1">

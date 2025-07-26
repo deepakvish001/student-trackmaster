@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -44,17 +45,12 @@ export function EnhancedMFS100Capture({
     isCapturing: boolean;
     currentStep: string;
     progress: number;
-    attempt: number;
-    maxAttempts: number;
   }>({
     isCapturing: false,
     currentStep: '',
-    progress: 0,
-    attempt: 0,
-    maxAttempts: 3
+    progress: 0
   });
 
-  // Store image data separately from template data
   const [capturedImageData, setCapturedImageData] = useState<string>("");
   const [captureQuality, setCaptureQuality] = useState<number | null>(null);
 
@@ -67,16 +63,14 @@ export function EnhancedMFS100Capture({
     resetCapture
   } = useFingerprintCaptureState();
 
-  const handleProgressUpdate = useCallback((status: string, attempt?: number) => {
+  const handleProgressUpdate = useCallback((status: string) => {
     setCaptureProgress(prev => ({
       ...prev,
       currentStep: status,
-      attempt: attempt || prev.attempt,
-      progress: attempt ? (attempt / prev.maxAttempts) * 100 : prev.progress
+      progress: Math.min(prev.progress + 25, 90)
     }));
   }, []);
 
-  // Updated capture function using modern client
   const handleCapture = useCallback(async () => {
     if (!isConnected || !isInitialized) {
       toast.error(`Device not ready: Please check MFS100 connection`);
@@ -88,16 +82,13 @@ export function EnhancedMFS100Capture({
       setCaptureProgress({
         isCapturing: true,
         currentStep: 'Preparing device...',
-        progress: 10,
-        attempt: 0,
-        maxAttempts: 3
+        progress: 10
       });
 
       toast.info(`Place ${fingerName} on scanner`, { duration: 4000 });
 
-      handleProgressUpdate('Capturing fingerprint...', 1);
+      handleProgressUpdate('Capturing fingerprint...');
       
-      // Use modern async client
       const result = await mfs100Client.captureFingerprint({
         quality: targetQuality,
         timeout: 15,
@@ -108,14 +99,14 @@ export function EnhancedMFS100Capture({
         throw new Error(result.data?.ErrorDescription || result.err || "Capture failed");
       }
 
-      handleProgressUpdate('Processing image...', 2);
+      handleProgressUpdate('Processing image...');
       
       const quality = result.data.Quality || 0;
       setCaptureQuality(quality);
       
       let processedImage = "";
 
-      // Process bitmap data if available
+      // Focus on bitmap data processing for image capture
       if (result.data.BitmapData) {
         processedImage = processFingerprintBitmap(
           result.data.BitmapData,
@@ -125,17 +116,17 @@ export function EnhancedMFS100Capture({
         setCapturedImageData(processedImage);
       }
 
-      if (result.data.IsoTemplate) {
+      if (processedImage) {
         showPreview({
-          template: result.data.IsoTemplate,
+          template: result.data.IsoTemplate || '',
           imageData: processedImage,
           quality: quality
         });
 
-        toast.success(`${fingerName} captured! Please review and accept.`);
-        handleProgressUpdate('Capture completed!', 3);
+        toast.success(`${fingerName} image captured! Please review and accept.`);
+        handleProgressUpdate('Capture completed!');
       } else {
-        throw new Error("No template data received");
+        throw new Error("Failed to capture fingerprint image");
       }
 
     } catch (error) {
@@ -144,25 +135,22 @@ export function EnhancedMFS100Capture({
       toast.error(errorMessage, { duration: 5000 });
       
       resetCapture();
-      setCaptureProgress(prev => ({
-        ...prev,
+      setCaptureProgress({
+        isCapturing: false,
         currentStep: 'Capture failed',
         progress: 0
-      }));
+      });
     } finally {
       setTimeout(() => {
-        setCaptureProgress(prev => ({
-          ...prev,
+        setCaptureProgress({
           isCapturing: false,
           currentStep: '',
-          progress: 0,
-          attempt: 0
-        }));
+          progress: 0
+        });
       }, 2000);
     }
   }, [isConnected, isInitialized, targetQuality, fingerName, startCapture, showPreview, resetCapture, handleProgressUpdate, mfs100Client]);
 
-  // Simplified bitmap processing without performance optimization cache
   const processFingerprintBitmap = useCallback((bitmapData: string, width: number, height: number): string => {
     try {
       const canvas = document.createElement('canvas');
@@ -178,7 +166,7 @@ export function EnhancedMFS100Capture({
       
       const totalPixels = Math.min(binaryData.length, width * height);
       for (let i = 0; i < totalPixels; i++) {
-        const pixelValue = 255 - binaryData.charCodeAt(i); // Invert for better visibility
+        const pixelValue = 255 - binaryData.charCodeAt(i);
         const pixelIndex = i * 4;
         
         data[pixelIndex] = pixelValue;     
@@ -188,7 +176,7 @@ export function EnhancedMFS100Capture({
       }
       
       ctx.putImageData(imageData, 0, 0);
-      return canvas.toDataURL('image/png', 0.8);
+      return canvas.toDataURL('image/png', 0.9);
       
     } catch (error) {
       console.error('Bitmap processing error:', error);
@@ -199,18 +187,14 @@ export function EnhancedMFS100Capture({
   const handleAcceptCapture = useCallback(() => {
     if (!captureData) return;
 
-    // Save template data
-    onChange(captureData.template);
-    
-    // Save image data if available
-    if (captureData.imageData) {
-      onImageChange?.(captureData.imageData);
-    }
+    // Save the image as the main value
+    onChange(captureData.imageData);
+    onImageChange?.(captureData.imageData);
     
     acceptCapture();
     onAccepted?.();
     
-    toast.success(`${fingerName} accepted and saved!`);
+    toast.success(`${fingerName} image accepted and saved!`);
   }, [captureData, onChange, onImageChange, acceptCapture, onAccepted, fingerName]);
 
   const handleRecapture = useCallback(() => {
@@ -246,23 +230,22 @@ export function EnhancedMFS100Capture({
     return isConnected ? 'Connected' : 'Disconnected';
   };
 
-  // Determine what to show in the display
-  const displayValue = captureState === 'accepted' ? capturedImageData : '';
+  // Show the captured image
+  const displayImageData = captureState === 'accepted' ? capturedImageData : '';
   const displayQuality = captureState === 'accepted' ? captureQuality : null;
 
   return (
-    <div className="flex flex-col items-center space-y-4 animate-fade-in">
-      {/* Fingerprint Display */}
+    <div className="flex flex-col items-center space-y-4">
       <div className="relative">
         <FingerprintDisplay 
-          value={displayValue}
+          value={displayImageData}
+          imageData={displayImageData}
           index={index}
           quality={displayQuality}
           isCapturing={captureState === 'capturing'}
           showQuality={true}
         />
         
-        {/* Capturing overlay */}
         {captureState === 'capturing' && (
           <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center">
             <div className="bg-white p-3 rounded-lg shadow-lg text-center">
@@ -277,24 +260,22 @@ export function EnhancedMFS100Capture({
           </div>
         )}
 
-        {/* Accepted indicator */}
         {captureState === 'accepted' && (
           <div className="absolute -top-2 -right-2">
-            <div className="bg-green-500 text-white rounded-full p-1 animate-bounce">
+            <div className="bg-green-500 text-white rounded-full p-1">
               <CheckCircle className="h-4 w-4" />
             </div>
           </div>
         )}
       </div>
 
-      {/* Device Status */}
       <div className="flex flex-col items-center space-y-2">
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-2">
             {isConnected ? (
               <div className="flex items-center space-x-1">
                 <Wifi className="h-4 w-4 text-green-500" />
-                <div className={`w-2 h-2 rounded-full animate-pulse ${getConnectionStatusColor()}`}></div>
+                <div className={`w-2 h-2 rounded-full ${getConnectionStatusColor()}`}></div>
               </div>
             ) : (
               <WifiOff className="h-4 w-4 text-red-500" />
@@ -312,16 +293,13 @@ export function EnhancedMFS100Capture({
           )}
         </div>
 
-        {/* Device Info */}
         {deviceInfo && isConnected && (
           <div className="text-xs text-center text-gray-600">
             {deviceInfo.Make} {deviceInfo.Model}
-            {deviceInfo.SerialNo && <div>S/N: {deviceInfo.SerialNo}</div>}
           </div>
         )}
       </div>
 
-      {/* Error States */}
       {!isConnected && !isChecking && error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -339,26 +317,19 @@ export function EnhancedMFS100Capture({
         </Alert>
       )}
 
-      {/* Progress Display */}
       {captureProgress.isCapturing && captureProgress.currentStep && (
         <div className="w-full text-center space-y-2">
           <div className="text-sm text-gray-600">{captureProgress.currentStep}</div>
-          {captureProgress.attempt > 0 && (
-            <div className="text-xs text-gray-500">
-              Attempt {captureProgress.attempt} of {captureProgress.maxAttempts}
-            </div>
-          )}
         </div>
       )}
 
-      {/* Capture Button */}
       <Button
         type="button"
         onClick={handleCapture}
         disabled={captureState === 'capturing' || captureState === 'accepted' || !isConnected || !isInitialized}
-        className={`w-full transition-all duration-300 rounded-md ${
+        className={`w-full transition-all duration-300 ${
           captureState === 'capturing' 
-            ? 'bg-blue-500 hover:bg-blue-600 animate-pulse cursor-wait' 
+            ? 'bg-blue-500 hover:bg-blue-600 animate-pulse' 
             : captureState === 'accepted'
               ? 'bg-green-500 hover:bg-green-600'
             : isConnected && isInitialized
@@ -371,18 +342,17 @@ export function EnhancedMFS100Capture({
         {captureState === 'capturing' 
           ? `Capturing ${fingerName}...` 
           : captureState === 'accepted'
-            ? `${fingerName} Accepted ✓`
+            ? `${fingerName} Image Saved ✓`
           : isConnected && isInitialized
             ? `Capture ${fingerName}` 
             : 'Device Not Ready'
         }
       </Button>
 
-      {/* Success Status */}
       {captureState === 'accepted' && (
         <div className="flex items-center space-x-2 text-sm text-green-600">
           <CheckCircle className="h-4 w-4" />
-          <span>Fingerprint captured and saved</span>
+          <span>Fingerprint image captured and saved</span>
         </div>
       )}
     </div>

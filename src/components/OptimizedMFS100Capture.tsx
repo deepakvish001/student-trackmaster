@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +16,6 @@ interface OptimizedMFS100CaptureProps {
   onImageChange?: (imageData: string) => void;
   fingerName?: string;
   targetQuality?: number;
-  captureMode?: 'both' | 'image-only' | 'template-only';
 }
 
 export function OptimizedMFS100Capture({ 
@@ -24,8 +24,7 @@ export function OptimizedMFS100Capture({
   onChange, 
   onImageChange,
   fingerName = `Finger ${index + 1}`,
-  targetQuality = 60,
-  captureMode = 'both'
+  targetQuality = 60
 }: OptimizedMFS100CaptureProps) {
   const [isCapturing, setIsCapturing] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string>("");
@@ -34,7 +33,7 @@ export function OptimizedMFS100Capture({
   
   const { isConnected, isChecking, error, forceCheck } = useOptimizedDeviceConnection('mfs100');
 
-  // Initialize SDK only once
+  // Initialize SDK
   useEffect(() => {
     let mounted = true;
     
@@ -82,9 +81,9 @@ export function OptimizedMFS100Capture({
       const quality = result.data.Quality || 0;
       setCaptureQuality(quality);
 
-      // Process and prioritize image data
+      // Process image data - this is the main focus
       let processedImage = "";
-      if (result.data.BitmapData && captureMode !== 'template-only') {
+      if (result.data.BitmapData) {
         processedImage = processFingerprintBitmap(
           result.data.BitmapData,
           result.data.InWidth || 256,
@@ -93,35 +92,21 @@ export function OptimizedMFS100Capture({
         
         if (processedImage) {
           setCapturedImage(processedImage);
-          // Always call onImageChange when we have image data
+          // Save the image as the main value
+          onChange(processedImage);
           onImageChange?.(processedImage);
-          console.log(`✅ Real fingerprint image captured for ${fingerName}`, {
+          
+          console.log(`✅ Fingerprint image captured for ${fingerName}`, {
             quality,
-            imageDataLength: processedImage.length,
-            hasTemplate: !!result.data.IsoTemplate
+            imageDataLength: processedImage.length
           });
+          
+          toast.success(`${fingerName} image captured! Quality: ${quality}%`);
+        } else {
+          throw new Error("Failed to process fingerprint image");
         }
-      }
-
-      // Handle template data based on capture mode
-      if (result.data.IsoTemplate && captureMode !== 'image-only') {
-        onChange(result.data.IsoTemplate);
-      } else if (captureMode === 'image-only' && processedImage) {
-        // For image-only mode, save the image data as the primary value
-        onChange(processedImage);
-      }
-
-      // Success message based on what was captured
-      if (processedImage && result.data.IsoTemplate && captureMode === 'both') {
-        toast.success(`${fingerName} captured! Image and template saved. Quality: ${quality}%`);
-      } else if (processedImage && captureMode === 'image-only') {
-        toast.success(`${fingerName} image captured! Quality: ${quality}%`);
-      } else if (result.data.IsoTemplate && captureMode === 'template-only') {
-        toast.success(`${fingerName} template captured! Quality: ${quality}%`);
-      } else if (processedImage) {
-        toast.success(`${fingerName} image captured! Quality: ${quality}%`);
       } else {
-        throw new Error("No usable fingerprint data captured");
+        throw new Error("No fingerprint image data received from device");
       }
 
     } catch (error) {
@@ -131,7 +116,7 @@ export function OptimizedMFS100Capture({
     } finally {
       setIsCapturing(false);
     }
-  }, [isConnected, isInitialized, targetQuality, fingerName, onChange, onImageChange, captureMode]);
+  }, [isConnected, isInitialized, targetQuality, fingerName, onChange, onImageChange]);
 
   // Enhanced bitmap processing for clearer images
   const processFingerprintBitmap = useCallback((bitmapData: string, width: number, height: number): string => {
@@ -163,7 +148,7 @@ export function OptimizedMFS100Capture({
         let pixelValue = 255 - binaryData.charCodeAt(i);
         
         // Apply contrast enhancement
-        pixelValue = Math.min(255, Math.max(0, pixelValue * 1.2 + 10));
+        pixelValue = Math.min(255, Math.max(0, pixelValue * 1.3 + 20));
         
         const pixelIndex = i * 4;
         data[pixelIndex] = pixelValue;     // Red
@@ -189,13 +174,11 @@ export function OptimizedMFS100Capture({
     return isConnected ? "bg-green-500" : "bg-red-500";
   };
 
-  // Determine what to display - prioritize captured image over template
-  const displayValue = capturedImage || (captureMode === 'image-only' && value.startsWith('data:image/') ? value : "");
-
   return (
     <div className="flex flex-col items-center space-y-4">
       <FingerprintDisplay 
-        value={displayValue}
+        value={capturedImage || value}
+        imageData={capturedImage}
         index={index}
         quality={captureQuality}
         isCapturing={isCapturing}
@@ -222,12 +205,6 @@ export function OptimizedMFS100Capture({
         {captureQuality && (
           <Badge variant={captureQuality >= 70 ? "default" : "secondary"}>
             Quality: {captureQuality}%
-          </Badge>
-        )}
-
-        {captureMode !== 'both' && (
-          <Badge variant="outline">
-            {captureMode === 'image-only' ? 'Image Only' : 'Template Only'}
           </Badge>
         )}
       </div>
@@ -274,12 +251,10 @@ export function OptimizedMFS100Capture({
       </Button>
 
       {/* Success Status */}
-      {(capturedImage || value) && (
+      {capturedImage && (
         <div className="flex items-center space-x-2 text-sm text-green-600">
           <CheckCircle className="h-4 w-4" />
-          <span>
-            {capturedImage ? 'Real fingerprint image captured' : 'Fingerprint data saved'}
-          </span>
+          <span>Fingerprint image captured successfully</span>
         </div>
       )}
     </div>
