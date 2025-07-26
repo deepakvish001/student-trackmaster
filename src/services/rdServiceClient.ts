@@ -35,7 +35,7 @@ interface CaptureResult {
 class RDServiceClient {
   private static instance: RDServiceClient;
   private baseUrl = 'http://127.0.0.1:11100';
-  private isServiceAvailable = false;
+  private serviceAvailable = false;
   private lastCheckTime = 0;
   private checkInterval = 30000; // Check every 30 seconds
   private retryCount = 0;
@@ -62,11 +62,11 @@ class RDServiceClient {
     
     // Throttle checks to prevent spam
     if (now - this.lastCheckTime < this.checkInterval && this.retryCount < this.maxRetries) {
-      return this.isServiceAvailable;
+      return this.serviceAvailable;
     }
 
     if (this.connectionCheckInProgress) {
-      return this.isServiceAvailable;
+      return this.serviceAvailable;
     }
 
     return this.checkServiceAvailability();
@@ -77,7 +77,7 @@ class RDServiceClient {
    */
   private async checkServiceAvailability(): Promise<boolean> {
     if (this.connectionCheckInProgress) {
-      return this.isServiceAvailable;
+      return this.serviceAvailable;
     }
 
     this.connectionCheckInProgress = true;
@@ -98,7 +98,7 @@ class RDServiceClient {
       clearTimeout(timeoutId);
 
       if (response.ok) {
-        this.isServiceAvailable = true;
+        this.serviceAvailable = true;
         this.retryCount = 0;
         console.log('✅ RD Service is available');
         return true;
@@ -106,7 +106,7 @@ class RDServiceClient {
         throw new Error(`HTTP ${response.status}`);
       }
     } catch (error) {
-      this.isServiceAvailable = false;
+      this.serviceAvailable = false;
       this.retryCount++;
       
       // Only log every few attempts to reduce spam
@@ -306,7 +306,7 @@ class RDServiceClient {
    * Reset connection state (useful for manual retry)
    */
   resetConnection(): void {
-    this.isServiceAvailable = false;
+    this.serviceAvailable = false;
     this.lastCheckTime = 0;
     this.retryCount = 0;
     this.connectionCheckInProgress = false;
@@ -317,7 +317,7 @@ class RDServiceClient {
    */
   getConnectionStatus(): { isAvailable: boolean; retryCount: number; lastCheck: number } {
     return {
-      isAvailable: this.isServiceAvailable,
+      isAvailable: this.serviceAvailable,
       retryCount: this.retryCount,
       lastCheck: this.lastCheckTime
     };
