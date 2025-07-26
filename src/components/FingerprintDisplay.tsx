@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { AlertCircle, Check, Fingerprint, Image } from "lucide-react";
 
@@ -22,10 +21,19 @@ export function FingerprintDisplay({
   const [imageError, setImageError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Prioritize imageData prop, then check if value contains image data
+  // Enhanced image detection logic
   const fingerprintImageUrl = useMemo(() => {
     if (!value && !imageData) return null;
     if (isCapturing) return null;
+    
+    console.log(`Processing fingerprint display data for finger ${index + 1}:`, {
+      valueLength: value?.length || 0,
+      imageDataLength: imageData?.length || 0,
+      valuePreview: value?.substring(0, 50) || 'N/A',
+      imageDataPreview: imageData?.substring(0, 50) || 'N/A',
+      startsWithDataUri: value?.startsWith('data:image/') || imageData?.startsWith('data:image/'),
+      containsImageSignature: value?.includes('iVBOR') || value?.includes('/9j/') || imageData?.includes('iVBOR') || imageData?.includes('/9j/')
+    });
     
     // First priority: dedicated imageData prop
     if (imageData) {
@@ -33,14 +41,23 @@ export function FingerprintDisplay({
       if (imageData.startsWith('data:image/')) {
         return imageData;
       }
-      // Convert base64 to data URI if needed
-      return `data:image/png;base64,${imageData}`;
+      // If imageData is long enough, it's likely processed image data
+      if (imageData.length > 50000) {
+        console.log(`🖼️ Image data detected (${imageData.length} chars) for finger ${index + 1}`);
+        return imageData;
+      }
     }
     
     // Second priority: check if value contains image data
     if (value) {
       if (value.startsWith('data:image/')) {
         console.log(`Found complete image data URI for finger ${index + 1}`);
+        return value;
+      }
+      
+      // Check if it's a long string (likely processed image data)
+      if (value.length > 50000) {
+        console.log(`🖼️ Large data detected (${value.length} chars), treating as image for finger ${index + 1}`);
         return value;
       }
       
@@ -62,14 +79,23 @@ export function FingerprintDisplay({
       }
     }
     
+    console.log(`📄 Data appears to be template data, not image`);
     return null;
   }, [value, imageData, index, isCapturing]);
 
-  // Determine data type
+  // Determine data type based on enhanced logic
   const dataType = useMemo(() => {
     if (!value && !imageData) return 'none';
+    
+    // If we have imageData prop or a long value, it's likely an image
+    if (imageData && imageData.length > 50000) return 'image';
+    if (value && value.length > 50000) return 'image';
     if (fingerprintImageUrl) return 'image';
-    return 'template';
+    
+    // Otherwise, if we have data, it's template
+    if (value || imageData) return 'template';
+    
+    return 'none';
   }, [value, imageData, fingerprintImageUrl]);
 
   useEffect(() => {
@@ -126,7 +152,7 @@ export function FingerprintDisplay({
                 </div>
               ) : (
                 <img 
-                  src={fingerprintImageUrl!}
+                  src={fingerprintImageUrl || (imageData || value)}
                   alt={`Fingerprint ${index + 1}`}
                   className={`max-w-36 max-h-36 object-contain transition-all duration-300 ${
                     imageError ? 'opacity-50' : ''
