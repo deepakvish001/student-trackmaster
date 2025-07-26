@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -71,6 +70,66 @@ export function EnhancedMFS100Capture({
     }));
   }, []);
 
+  // Enhanced bitmap processing for crystal-clear fingerprint images
+  const processFingerprintBitmap = useCallback((bitmapData: string, width: number = 256, height: number = 256): string => {
+    try {
+      if (!bitmapData || bitmapData.length === 0) {
+        console.warn('No bitmap data provided for processing');
+        return "";
+      }
+
+      console.log(`Processing fingerprint bitmap for ${fingerName}: ${bitmapData.length} bytes, dimensions: ${width}x${height}`);
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        throw new Error('Failed to get canvas context');
+      }
+
+      // Convert base64 bitmap data to binary
+      const binaryData = atob(bitmapData);
+      const imageData = ctx.createImageData(width, height);
+      const data = imageData.data;
+      
+      // Process each pixel - MFS100 provides raw grayscale bitmap data
+      const totalPixels = Math.min(binaryData.length, width * height);
+      
+      for (let i = 0; i < totalPixels; i++) {
+        let pixelValue = binaryData.charCodeAt(i);
+        
+        // Invert the pixel values - MFS100 typically returns inverted images
+        pixelValue = 255 - pixelValue;
+        
+        // Apply contrast and brightness enhancement
+        pixelValue = Math.min(255, Math.max(0, pixelValue * 1.3 + 20));
+        
+        const pixelIndex = i * 4;
+        if (pixelIndex + 3 < data.length) {
+          data[pixelIndex] = pixelValue;     // Red
+          data[pixelIndex + 1] = pixelValue; // Green
+          data[pixelIndex + 2] = pixelValue; // Blue
+          data[pixelIndex + 3] = 255;        // Alpha (fully opaque)
+        }
+      }
+      
+      // Put the processed image data onto the canvas
+      ctx.putImageData(imageData, 0, 0);
+      
+      // Convert to high-quality PNG data URI
+      const result = canvas.toDataURL('image/png', 1.0);
+      console.log(`✅ Fingerprint image processed successfully for ${fingerName}, result length: ${result.length}`);
+      
+      return result;
+      
+    } catch (error) {
+      console.error('Fingerprint bitmap processing error:', error);
+      return "";
+    }
+  }, [fingerName]);
+
   const handleCapture = useCallback(async () => {
     if (!isConnected || !isInitialized) {
       toast.error(`Device not ready: Please check MFS100 connection`);
@@ -106,27 +165,30 @@ export function EnhancedMFS100Capture({
       
       let processedImage = "";
 
-      // Focus on bitmap data processing for image capture
+      // Process the raw bitmap data into a displayable image
       if (result.data.BitmapData) {
         processedImage = processFingerprintBitmap(
           result.data.BitmapData,
           result.data.InWidth || 256,
           result.data.InHeight || 256
         );
-        setCapturedImageData(processedImage);
-      }
+        
+        if (processedImage) {
+          setCapturedImageData(processedImage);
+          
+          showPreview({
+            template: result.data.IsoTemplate || '',
+            imageData: processedImage,
+            quality: quality
+          });
 
-      if (processedImage) {
-        showPreview({
-          template: result.data.IsoTemplate || '',
-          imageData: processedImage,
-          quality: quality
-        });
-
-        toast.success(`${fingerName} image captured! Please review and accept.`);
-        handleProgressUpdate('Capture completed!');
+          toast.success(`${fingerName} image captured! Please review and accept.`);
+          handleProgressUpdate('Capture completed!');
+        } else {
+          throw new Error("Failed to process fingerprint image");
+        }
       } else {
-        throw new Error("Failed to capture fingerprint image");
+        throw new Error("No fingerprint image data received from device");
       }
 
     } catch (error) {
@@ -149,45 +211,12 @@ export function EnhancedMFS100Capture({
         });
       }, 2000);
     }
-  }, [isConnected, isInitialized, targetQuality, fingerName, startCapture, showPreview, resetCapture, handleProgressUpdate, mfs100Client]);
-
-  const processFingerprintBitmap = useCallback((bitmapData: string, width: number, height: number): string => {
-    try {
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      
-      if (!ctx) return "";
-      
-      const binaryData = atob(bitmapData);
-      const imageData = ctx.createImageData(width, height);
-      const data = imageData.data;
-      
-      const totalPixels = Math.min(binaryData.length, width * height);
-      for (let i = 0; i < totalPixels; i++) {
-        const pixelValue = 255 - binaryData.charCodeAt(i);
-        const pixelIndex = i * 4;
-        
-        data[pixelIndex] = pixelValue;     
-        data[pixelIndex + 1] = pixelValue; 
-        data[pixelIndex + 2] = pixelValue; 
-        data[pixelIndex + 3] = 255;        
-      }
-      
-      ctx.putImageData(imageData, 0, 0);
-      return canvas.toDataURL('image/png', 0.9);
-      
-    } catch (error) {
-      console.error('Bitmap processing error:', error);
-      return "";
-    }
-  }, []);
+  }, [isConnected, isInitialized, targetQuality, fingerName, startCapture, showPreview, resetCapture, handleProgressUpdate, mfs100Client, processFingerprintBitmap]);
 
   const handleAcceptCapture = useCallback(() => {
     if (!captureData) return;
 
-    // Save the image as the main value
+    // Save the processed image as the main value
     onChange(captureData.imageData);
     onImageChange?.(captureData.imageData);
     
@@ -230,7 +259,7 @@ export function EnhancedMFS100Capture({
     return isConnected ? 'Connected' : 'Disconnected';
   };
 
-  // Show the captured image
+  // Show the captured image (processed image data)
   const displayImageData = captureState === 'accepted' ? capturedImageData : '';
   const displayQuality = captureState === 'accepted' ? captureQuality : null;
 
