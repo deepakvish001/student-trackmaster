@@ -11,18 +11,18 @@ import { useRDService } from "@/hooks/useRDService";
 
 interface RDServiceFingerprintCaptureProps {
   index: number;
-  value: string;
-  onChange: (value: string) => void;
-  onImageChange?: (imageData: string) => void;
+  onCaptureSuccess: (pidData: string, quality: number, imageData?: string) => void;
+  onCaptureError: (error: string) => void;
+  disabled?: boolean;
   fingerName?: string;
   targetQuality?: number;
 }
 
 export function RDServiceFingerprintCapture({ 
   index, 
-  value, 
-  onChange, 
-  onImageChange,
+  onCaptureSuccess,
+  onCaptureError,
+  disabled = false,
   fingerName = `Finger ${index + 1}`,
   targetQuality = 60
 }: RDServiceFingerprintCaptureProps) {
@@ -44,7 +44,9 @@ export function RDServiceFingerprintCapture({
 
   const handleCapture = useCallback(async () => {
     if (!isAvailable) {
-      toast.error("RD Service is not available. Please check your connection.");
+      const errorMsg = "RD Service is not available. Please check your connection.";
+      toast.error(errorMsg);
+      onCaptureError(errorMsg);
       return;
     }
 
@@ -65,13 +67,11 @@ export function RDServiceFingerprintCapture({
       // Store the PID data (encrypted biometric data)
       if (result.pidData) {
         setPidData(result.pidData);
-        onChange(result.pidData);
       }
 
       // Store the image data separately
       if (result.imageData) {
         setCapturedImage(result.imageData);
-        onImageChange?.(result.imageData);
       }
 
       // Store quality
@@ -90,14 +90,22 @@ export function RDServiceFingerprintCapture({
         hasPidData: !!result.pidData
       });
 
+      // Call the success callback
+      onCaptureSuccess(
+        result.pidData || '',
+        result.quality || 0,
+        result.imageData
+      );
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Capture failed';
       console.error('❌ Capture error:', error);
       toast.error(`Failed to capture ${fingerName}: ${errorMessage}`);
+      onCaptureError(errorMessage);
     } finally {
       setIsCapturing(false);
     }
-  }, [isAvailable, fingerName, captureFingerprint, onChange, onImageChange]);
+  }, [isAvailable, fingerName, captureFingerprint, onCaptureSuccess, onCaptureError]);
 
   const handleDownloadPidData = useCallback(() => {
     if (!pidData) return;
@@ -134,13 +142,12 @@ export function RDServiceFingerprintCapture({
       <CardContent className="space-y-4">
         {/* Fingerprint Display */}
         <FingerprintDisplay 
-          value={capturedImage || value}
+          value={capturedImage}
           imageData={capturedImage}
           index={index}
           quality={captureQuality}
           isCapturing={isCapturing}
           showQuality={true}
-          isConnected={isAvailable}
         />
 
         {/* Status Information */}
@@ -219,7 +226,7 @@ export function RDServiceFingerprintCapture({
         <div className="space-y-2">
           <Button
             onClick={handleCapture}
-            disabled={isCapturing || !isAvailable}
+            disabled={isCapturing || !isAvailable || disabled}
             className={`w-full transition-all duration-300 ${
               isCapturing 
                 ? 'bg-blue-500 hover:bg-blue-600 animate-pulse' 
