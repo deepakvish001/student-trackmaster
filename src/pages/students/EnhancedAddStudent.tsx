@@ -1,6 +1,6 @@
 /**
- * Phase 2: Enhanced Add Student Page with Biometric Security
- * Advanced student registration with encryption and enhanced validation
+ * Phase 2: Enhanced Add Student Page with RD Service Biometric Security
+ * UIDAI-compliant student registration with PidData format
  */
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,8 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { BatchSelector } from "@/components/BatchSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ModernFingerprintCapture } from "@/components/modern/ModernFingerprintCapture";
+import { RDServiceFingerprintCapture } from "@/components/rd/RDServiceFingerprintCapture";
 import { validateStudentDataWithBiometrics } from "@/utils/enhancedSecurityValidation";
 import { encryptFingerprintData, auditBiometricAccess } from "@/utils/biometricSecurity";
 import { sanitizeTextInput, sanitizeEmail, sanitizePhoneNumber } from "@/utils/inputSanitization";
@@ -58,7 +57,6 @@ const formSchema = z.object({
   address: z.string().min(5, "Address must be at least 5 characters").max(500, "Address must not exceed 500 characters"),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
   fingerprints: z.array(z.string()).length(5, "All 5 fingerprints are required"),
-  fingerprintImages: z.array(z.string()).optional(),
 });
 
 export default function EnhancedAddStudent() {
@@ -75,7 +73,6 @@ export default function EnhancedAddStudent() {
       address: "",
       email: "",
       fingerprints: ["", "", "", "", ""],
-      fingerprintImages: ["", "", "", "", ""],
     },
   });
 
@@ -84,6 +81,7 @@ export default function EnhancedAddStudent() {
   const [realTimeProgress, setRealTimeProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [formValidationScore, setFormValidationScore] = useState(0);
+  const [capturedQualities, setCapturedQualities] = useState<(number | null)[]>([null, null, null, null, null]);
 
   // Real-time clock update
   useEffect(() => {
@@ -103,7 +101,7 @@ export default function EnhancedAddStudent() {
       if (value.address && value.address.length >= 5) score += 15;
       if (value.batchId) score += 15;
       
-      const validFingerprints = value.fingerprints?.filter(fp => fp && fp.length > 100).length || 0;
+      const validFingerprints = value.fingerprints?.filter(fp => fp && fp.length > 50).length || 0;
       score += validFingerprints * 6; // 30 points total for all 5 fingerprints
       
       setFormValidationScore(Math.min(score, 100));
@@ -113,33 +111,46 @@ export default function EnhancedAddStudent() {
     return watchForm.unsubscribe;
   }, [form.watch]);
 
-  // Handle fingerprint changes with real-time validation
-  const handleFingerprintChange = (index: number, value: string) => {
-    console.log(`Enhanced fingerprint ${index + 1} changed:`, value ? `${value.substring(0, 50)}...` : 'empty');
+  // Handle RD Service fingerprint capture
+  const handleRDServiceCapture = (index: number, pidData: string, quality: number) => {
+    console.log(`RD Service fingerprint ${index + 1} captured:`, {
+      quality,
+      pidDataLength: pidData.length,
+      pidDataPreview: pidData.substring(0, 200) + '...'
+    });
+    
     const currentFingerprints = form.getValues("fingerprints");
-    currentFingerprints[index] = value;
+    currentFingerprints[index] = pidData;
     form.setValue("fingerprints", currentFingerprints);
+    
+    // Update quality tracking
+    const newQualities = [...capturedQualities];
+    newQualities[index] = quality;
+    setCapturedQualities(newQualities);
     
     // Trigger validation
     form.trigger("fingerprints");
     
-    // Update biometric summary in real-time
-    updateBiometricSummary(currentFingerprints);
+    // Update biometric summary
+    updateBiometricSummary(currentFingerprints, newQualities);
+    
+    toast.success(`Finger ${index + 1} captured successfully! Quality: ${quality}%`);
   };
 
-  const handleFingerprintImageChange = (index: number, imageData: string) => {
-    console.log(`Enhanced fingerprint image ${index + 1} changed:`, imageData ? `${imageData.length} characters` : 'empty');
-    const currentImages = form.getValues("fingerprintImages") || ["", "", "", "", ""];
-    currentImages[index] = imageData;
-    form.setValue("fingerprintImages", currentImages);
+  const handleRDServiceError = (index: number, error: string) => {
+    console.error(`RD Service capture error for finger ${index + 1}:`, error);
+    toast.error(`Finger ${index + 1} capture failed: ${error}`);
   };
 
-  const updateBiometricSummary = (fingerprints: string[]) => {
-    const validCount = fingerprints.filter(fp => fp && fp.length > 100).length;
+  const updateBiometricSummary = (fingerprints: string[], qualities: (number | null)[]) => {
+    const validCount = fingerprints.filter(fp => fp && fp.length > 50).length;
+    const avgQuality = qualities.filter(q => q !== null).reduce((sum, q) => sum + (q || 0), 0) / Math.max(validCount, 1);
+    
     setBiometricSummary({
       captured: validCount,
       total: 5,
       completionPercent: Math.round((validCount / 5) * 100),
+      avgQuality: Math.round(avgQuality),
       securityLevel: validCount === 5 ? 'high' : validCount >= 3 ? 'medium' : 'low'
     });
   };
@@ -169,7 +180,7 @@ export default function EnhancedAddStudent() {
     }
 
     setIsSubmitting(true);
-    console.log('Starting enhanced form submission...', {
+    console.log('Starting RD Service form submission...', {
       name: values.name,
       fingerprintCount: values.fingerprints.filter(fp => fp).length,
       securityLevel,
@@ -178,32 +189,27 @@ export default function EnhancedAddStudent() {
 
     try {
       // Log the start of student creation
-      await logEvent('STUDENT_CREATION_STARTED', 'students', undefined, undefined, {
+      await logEvent('RD_SERVICE_STUDENT_CREATION_STARTED', 'students', undefined, undefined, {
         studentName: values.name,
-        fingerprintCount: values.fingerprints.filter(fp => fp).length
+        fingerprintCount: values.fingerprints.filter(fp => fp).length,
+        avgQuality: biometricSummary?.avgQuality || 0
       });
 
-      // Security check: Ensure user is authenticated
+      // Security checks
       if (!user) {
         await logEvent('UNAUTHORIZED_STUDENT_CREATION');
-        auditBiometricAccess('UNAUTHORIZED_STUDENT_CREATION', { success: false });
         toast.error("You must be logged in to add students");
         navigate("/login");
         return;
       }
 
-      // Security check: Ensure encryption is available
       if (!encryptionKey) {
         await logEvent('MISSING_ENCRYPTION_KEY');
-        auditBiometricAccess('MISSING_ENCRYPTION_KEY', { 
-          userId: user.id,
-          success: false 
-        });
         toast.error("Biometric security not initialized. Please refresh and try again.");
         return;
       }
 
-      // Enhanced validation with biometric security
+      // Sanitize input data
       const sanitizedData = {
         name: sanitizeTextInput(values.name),
         mobile: sanitizePhoneNumber(values.mobile),
@@ -211,33 +217,24 @@ export default function EnhancedAddStudent() {
         address: sanitizeTextInput(values.address),
         email: values.email ? sanitizeEmail(values.email) : "",
         fingerprints: values.fingerprints,
-        fingerprintImages: values.fingerprintImages
       };
 
-      console.log('Enhanced sanitized data:', {
+      console.log('RD Service sanitized data:', {
         ...sanitizedData,
-        fingerprints: sanitizedData.fingerprints.map((fp, i) => `Finger ${i + 1}: ${fp ? 'captured' : 'empty'}`),
-        fingerprintImages: sanitizedData.fingerprintImages?.map((img, i) => `Image ${i + 1}: ${img ? 'captured' : 'empty'}`)
+        fingerprints: sanitizedData.fingerprints.map((fp, i) => `PidData ${i + 1}: ${fp ? 'captured' : 'empty'}`)
       });
 
-      // Advanced biometric validation
+      // Validate with biometric data
       const validation = await validateStudentDataWithBiometrics(sanitizedData);
       if (!validation.isValid) {
-        await logEvent('STUDENT_VALIDATION_FAILED', undefined, undefined, undefined, {
+        await logEvent('RD_SERVICE_VALIDATION_FAILED', undefined, undefined, undefined, {
           errors: validation.errors
         });
-        auditBiometricAccess('STUDENT_VALIDATION_FAILED', {
-          userId: user.id,
-          errors: validation.errors,
-          success: false
-        });
-        toast.error(`Enhanced validation failed: ${validation.errors.join(', ')}`);
+        toast.error(`RD Service validation failed: ${validation.errors.join(', ')}`);
         return;
       }
 
-      console.log('Enhanced validation successful:', validation.biometricSummary);
-
-      // Encrypt biometric data before storage
+      // Encrypt PidData before storage
       const encryptedFingerprints: any = {};
       for (let i = 0; i < 5; i++) {
         if (validation.sanitizedData![`finger_${i + 1}`]) {
@@ -245,98 +242,75 @@ export default function EnhancedAddStudent() {
             const encrypted = await encryptFingerprintData(
               validation.sanitizedData![`finger_${i + 1}`],
               encryptionKey,
-              { fingerId: i + 1, userId: user.id }
+              { fingerId: i + 1, userId: user.id, format: 'PidData' }
             );
             
-            // Store encrypted data as JSON string
             encryptedFingerprints[`finger_${i + 1}`] = JSON.stringify({
               encrypted: encrypted.encryptedData,
               iv: encrypted.iv,
               authTag: encrypted.authTag,
               timestamp: encrypted.timestamp,
-              version: '1.0'
+              format: 'PidData',
+              version: '2.0'
             });
             
-            console.log(`Fingerprint ${i + 1} encrypted successfully`);
+            console.log(`PidData ${i + 1} encrypted successfully`);
           } catch (error) {
-            console.error(`Failed to encrypt fingerprint ${i + 1}:`, error);
+            console.error(`Failed to encrypt PidData ${i + 1}:`, error);
             throw new Error(`Failed to secure biometric data for finger ${i + 1}`);
           }
         }
       }
 
-      console.log('All biometric data encrypted, proceeding with database insert...');
-
-      // Insert with enhanced security
+      // Insert into database
       const { data, error } = await supabase.from('students').insert({
         student_name: validation.sanitizedData!.student_name,
         batch_id: validation.sanitizedData!.batch_id,
         ...encryptedFingerprints,
-        finger_1_image: validation.sanitizedData!.finger_1_image || null,
-        finger_2_image: validation.sanitizedData!.finger_2_image || null,
-        finger_3_image: validation.sanitizedData!.finger_3_image || null,
-        finger_4_image: validation.sanitizedData!.finger_4_image || null,
-        finger_5_image: validation.sanitizedData!.finger_5_image || null,
       }).select();
 
       if (error) {
-        console.error('Enhanced database insert error:', error);
+        console.error('RD Service database insert error:', error);
         await logEvent('DATABASE_ERROR', 'students', undefined, undefined, {
           error: error.message
-        });
-        auditBiometricAccess('DATABASE_ERROR', {
-          userId: user.id,
-          error: error.message,
-          success: false
         });
         throw error;
       }
 
-      console.log('Enhanced student created successfully:', data);
+      console.log('RD Service student created successfully:', data);
       
-      await logEvent('STUDENT_CREATED_SUCCESS', 'students', data[0].id, undefined, {
+      await logEvent('RD_SERVICE_STUDENT_CREATED', 'students', data[0].id, undefined, {
         studentName: validation.sanitizedData!.student_name,
         biometricSummary: validation.biometricSummary
       });
       
-      auditBiometricAccess('STUDENT_CREATED', {
+      auditBiometricAccess('RD_SERVICE_STUDENT_CREATED', {
         userId: user.id,
         studentName: validation.sanitizedData!.student_name,
         biometricSummary: validation.biometricSummary,
-        securityLevel: validation.biometricSummary!.securityLevel,
+        format: 'PidData',
         success: true
       });
       
-      toast.success(`Student registered with ${validation.biometricSummary!.securityLevel} security level!`);
+      toast.success(`Student registered with RD Service! Security level: ${validation.biometricSummary!.securityLevel}`);
       
       // Reset form
       form.reset();
       setBiometricSummary(null);
+      setCapturedQualities([null, null, null, null, null]);
       
       // Navigate to students list
       navigate("/students");
       
     } catch (error) {
-      console.error('Enhanced error adding student:', error);
+      console.error('RD Service error adding student:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
-      await logEvent('STUDENT_CREATION_FAILED', 'students', undefined, undefined, {
+      await logEvent('RD_SERVICE_STUDENT_CREATION_FAILED', 'students', undefined, undefined, {
         error: errorMessage
       });
       
-      auditBiometricAccess('STUDENT_CREATION_FAILED', {
-        userId: user?.id,
-        error: errorMessage,
-        success: false
-      });
-      
-      if (errorMessage.includes('duplicate key') || errorMessage.includes('unique constraint')) {
-        toast.error("A student with this information already exists.");
-      } else if (errorMessage.includes('foreign key')) {
-        toast.error("Selected batch is invalid. Please select a valid batch.");
-      } else {
-        toast.error(`Failed to add student: ${errorMessage}`);
-      }
+      toast.error(`Failed to add student: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -366,7 +340,7 @@ export default function EnhancedAddStudent() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="space-y-2">
               <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                🚀 Enhanced Biometric Registration
+                🏛️ RD Service Registration
               </h1>
               <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                 <div className="flex items-center space-x-1">
@@ -385,16 +359,14 @@ export default function EnhancedAddStudent() {
             </div>
             
             <div className="flex flex-wrap items-center gap-3">
+              <Badge variant="outline" className="text-blue-600 bg-blue-50 border-blue-200 font-semibold px-4 py-2">
+                <Shield className="h-4 w-4 mr-2" />
+                UIDAI Compliant
+              </Badge>
               <Badge variant="outline" className={`${getSecurityColor(securityLevel)} border font-semibold px-4 py-2`}>
                 <Shield className="h-4 w-4 mr-2" />
                 Security: {securityLevel.toUpperCase()}
               </Badge>
-              {encryptionKey && (
-                <Badge variant="outline" className="text-electric-blue bg-electric-blue/10 border-electric-blue/20 font-semibold px-4 py-2">
-                  <Lock className="h-4 w-4 mr-2" />
-                  AES-256 Active
-                </Badge>
-              )}
             </div>
           </div>
 
@@ -417,9 +389,9 @@ export default function EnhancedAddStudent() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <p className="text-xs text-emerald-green font-semibold uppercase tracking-wide">Encryption Status</p>
+                    <p className="text-xs text-emerald-green font-semibold uppercase tracking-wide">RD Service</p>
                     <p className="text-lg font-bold text-emerald-green">
-                      {encryptionKey ? "🔒 Active" : "❌ Inactive"}
+                      localhost:11100
                     </p>
                   </div>
                   <Lock className="h-8 w-8 text-emerald-green" />
@@ -431,7 +403,7 @@ export default function EnhancedAddStudent() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <p className="text-xs text-sunset-orange font-semibold uppercase tracking-wide">Biometric Quality</p>
+                    <p className="text-xs text-sunset-orange font-semibold uppercase tracking-wide">PidData Quality</p>
                     <p className="text-lg font-bold text-sunset-orange">
                       {biometricSummary ? `${biometricSummary.captured}/5` : "0/5"}
                     </p>
@@ -445,8 +417,10 @@ export default function EnhancedAddStudent() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <p className="text-xs text-pink-rose font-semibold uppercase tracking-wide">Real-time Score</p>
-                    <p className="text-2xl font-bold text-pink-rose">{formValidationScore}/100</p>
+                    <p className="text-xs text-pink-rose font-semibold uppercase tracking-wide">Avg Quality</p>
+                    <p className="text-2xl font-bold text-pink-rose">
+                      {biometricSummary?.avgQuality || 0}%
+                    </p>
                   </div>
                   <Zap className="h-8 w-8 text-pink-rose" />
                 </div>
@@ -456,10 +430,10 @@ export default function EnhancedAddStudent() {
 
           {/* Enhanced Security Alerts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Alert className="glass border-electric-blue/30 bg-electric-blue/5">
-              <Lock className="h-5 w-5 text-electric-blue" />
-              <AlertDescription className="text-electric-blue font-medium">
-                🔐 <strong>Military-grade encryption:</strong> All biometric data secured with AES-256-GCM
+            <Alert className="glass border-blue-500/30 bg-blue-500/5">
+              <Shield className="h-5 w-5 text-blue-500" />
+              <AlertDescription className="text-blue-500 font-medium">
+                🏛️ <strong>UIDAI Compliance:</strong> Using official RD Service for PidData capture
               </AlertDescription>
             </Alert>
             
@@ -479,7 +453,7 @@ export default function EnhancedAddStudent() {
                   biometricSummary.securityLevel === 'medium' ? 'text-sunset-orange' :
                   'text-pink-rose'
                 }`}>
-                  🔍 <strong>Biometric Status:</strong> {biometricSummary.captured}/5 captured ({biometricSummary.completionPercent}%) - {biometricSummary.securityLevel.toUpperCase()} security
+                  📊 <strong>PidData Status:</strong> {biometricSummary.captured}/5 captured ({biometricSummary.completionPercent}%) - {biometricSummary.securityLevel.toUpperCase()} security
                 </AlertDescription>
               </Alert>
             )}
@@ -492,14 +466,14 @@ export default function EnhancedAddStudent() {
                 <div className="p-2 rounded-lg bg-electric-blue/20">
                   <User className="h-6 w-6 text-electric-blue" />
                 </div>
-                <span>Student Registration Portal</span>
+                <span>RD Service Registration Portal</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-8 space-y-8">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                   
-                  {/* Enhanced Personal Information Section */}
+                  {/* Personal Information Section */}
                   <div className="space-y-6">
                     <div className="flex items-center space-x-3 pb-4 border-b border-foreground/10">
                       <div className="p-2 rounded-lg bg-electric-blue/20">
@@ -633,22 +607,22 @@ export default function EnhancedAddStudent() {
                     />
                   </div>
 
-                  {/* Enhanced Biometric Capture Section */}
+                  {/* RD Service Biometric Capture Section */}
                   <div className="space-y-6">
                     <div className="flex items-center space-x-3 pb-4 border-b border-foreground/10">
-                      <div className="p-2 rounded-lg bg-emerald-green/20">
-                        <Lock className="h-5 w-5 text-emerald-green" />
+                      <div className="p-2 rounded-lg bg-blue-500/20">
+                        <Shield className="h-5 w-5 text-blue-500" />
                       </div>
-                      <h3 className="text-xl font-bold text-emerald-green">Encrypted Biometric Capture</h3>
-                      <Badge className="bg-emerald-green/20 text-emerald-green border-emerald-green/30">
-                        Real-time Encryption
+                      <h3 className="text-xl font-bold text-blue-500">UIDAI-Compliant PidData Capture</h3>
+                      <Badge className="bg-blue-500/20 text-blue-500 border-blue-500/30">
+                        RD Service
                       </Badge>
                     </div>
                     
-                    <Alert className="glass border-emerald-green/20 bg-emerald-green/5">
-                      <Lock className="h-4 w-4 text-emerald-green" />
-                      <AlertDescription className="text-emerald-green font-medium">
-                        All fingerprint data is encrypted using military-grade AES-256-GCM before storage. Connect your Mantra MFS100 device for optimal capture quality.
+                    <Alert className="glass border-blue-500/20 bg-blue-500/5">
+                      <Shield className="h-4 w-4 text-blue-500" />
+                      <AlertDescription className="text-blue-500 font-medium">
+                        🏛️ Using official RD Service at localhost:11100 for UIDAI-compliant PidData capture. Ensure MFS100 RD Service is running.
                       </AlertDescription>
                     </Alert>
                     
@@ -662,12 +636,11 @@ export default function EnhancedAddStudent() {
                             <FormItem>
                               <FormControl>
                                 <div className="glass-card border-foreground/10 p-2 rounded-xl hover-lift">
-                                  <ModernFingerprintCapture
+                                  <RDServiceFingerprintCapture
                                     index={index}
-                                    value={field.value}
-                                    onChange={(value) => handleFingerprintChange(index, value)}
-                                    onImageChange={(imageData) => handleFingerprintImageChange(index, imageData)}
-                                    targetQuality={70}
+                                    onCaptureSuccess={(pidData, quality) => handleRDServiceCapture(index, pidData, quality)}
+                                    onCaptureError={(error) => handleRDServiceError(index, error)}
+                                    disabled={isSubmitting}
                                   />
                                 </div>
                               </FormControl>
@@ -679,25 +652,25 @@ export default function EnhancedAddStudent() {
                     </div>
                   </div>
 
-                  {/* Enhanced Submit Button */}
+                  {/* Submit Button */}
                   <div className="flex justify-center pt-8">
                     <Button 
                       type="submit" 
-                      className="relative overflow-hidden bg-gradient-to-r from-electric-blue via-emerald-green to-pink-rose text-white font-bold py-4 px-12 rounded-2xl text-lg shadow-2xl transform transition-all duration-300 hover:scale-105 hover:shadow-electric-blue/25 disabled:opacity-50 disabled:hover:scale-100"
+                      className="relative overflow-hidden bg-gradient-to-r from-blue-500 via-emerald-green to-pink-rose text-white font-bold py-4 px-12 rounded-2xl text-lg shadow-2xl transform transition-all duration-300 hover:scale-105 hover:shadow-blue-500/25 disabled:opacity-50 disabled:hover:scale-100"
                       size="lg"
                       disabled={isSubmitting || !encryptionKey || formValidationScore < 70}
                     >
-                      <div className="absolute inset-0 bg-gradient-to-r from-electric-blue/20 via-emerald-green/20 to-pink-rose/20 animate-shimmer"></div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-emerald-green/20 to-pink-rose/20 animate-shimmer"></div>
                       <div className="relative flex items-center space-x-3">
                         {isSubmitting ? (
                           <>
                             <Loader2 className="h-6 w-6 animate-spin" />
-                            <span>🔐 Securing & Registering...</span>
+                            <span>🏛️ Processing PidData...</span>
                           </>
                         ) : (
                           <>
-                            <Lock className="h-6 w-6" />
-                            <span>🚀 Register Student (Encrypted)</span>
+                            <Shield className="h-6 w-6" />
+                            <span>🚀 Register with RD Service</span>
                           </>
                         )}
                       </div>
