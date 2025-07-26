@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,7 @@ export function ModernFingerprintCapture({
   const [lastError, setLastError] = useState<string>('');
   const [quality, setQuality] = useState<number | null>(null);
   const [attempts, setAttempts] = useState(0);
+  const [processedImageData, setProcessedImageData] = useState<string>('');
 
   const maxAttempts = 3;
 
@@ -45,6 +47,66 @@ export function ModernFingerprintCapture({
       setAttempts(0);
     }
   }, [value]);
+
+  // Process raw bitmap data into displayable image format
+  const processFingerprintBitmap = useCallback((bitmapData: string, width: number = 256, height: number = 256): string => {
+    try {
+      if (!bitmapData || bitmapData.length === 0) {
+        console.warn('No bitmap data provided for processing');
+        return "";
+      }
+
+      console.log(`Processing fingerprint bitmap for finger ${index + 1}: ${bitmapData.length} bytes, dimensions: ${width}x${height}`);
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        throw new Error('Failed to get canvas context');
+      }
+
+      // Convert base64 bitmap data to binary
+      const binaryData = atob(bitmapData);
+      const imageData = ctx.createImageData(width, height);
+      const data = imageData.data;
+      
+      // Process each pixel - MFS100 provides raw grayscale bitmap data
+      const totalPixels = Math.min(binaryData.length, width * height);
+      
+      for (let i = 0; i < totalPixels; i++) {
+        let pixelValue = binaryData.charCodeAt(i);
+        
+        // Invert the pixel values - MFS100 typically returns inverted images
+        pixelValue = 255 - pixelValue;
+        
+        // Apply contrast and brightness enhancement
+        pixelValue = Math.min(255, Math.max(0, pixelValue * 1.3 + 20));
+        
+        const pixelIndex = i * 4;
+        if (pixelIndex + 3 < data.length) {
+          data[pixelIndex] = pixelValue;     // Red
+          data[pixelIndex + 1] = pixelValue; // Green
+          data[pixelIndex + 2] = pixelValue; // Blue
+          data[pixelIndex + 3] = 255;        // Alpha (fully opaque)
+        }
+      }
+      
+      // Put the processed image data onto the canvas
+      ctx.putImageData(imageData, 0, 0);
+      
+      // Convert to high-quality PNG data URI
+      const result = canvas.toDataURL('image/png', 1.0);
+      console.log(`✅ Fingerprint image processed successfully for finger ${index + 1}, result length: ${result.length}`);
+      
+      return result;
+      
+    } catch (error) {
+      console.error('Fingerprint bitmap processing error:', error);
+      return "";
+    }
+  }, [index]);
 
   const handleCapture = async () => {
     if (!isConnected || !client) {
@@ -93,9 +155,23 @@ export function ModernFingerprintCapture({
           onChange(result.data.IsoTemplate);
         }
 
-        // Store image data if available - use BitmapData from MFS100 response
-        if (result.data.BitmapData && onImageChange) {
-          onImageChange(result.data.BitmapData);
+        // Process and store image data if available
+        if (result.data.BitmapData) {
+          const processedImage = processFingerprintBitmap(
+            result.data.BitmapData,
+            result.data.InWidth || 256,
+            result.data.InHeight || 256
+          );
+          
+          if (processedImage) {
+            setProcessedImageData(processedImage);
+            if (onImageChange) {
+              onImageChange(processedImage);
+            }
+            console.log(`✅ Processed fingerprint image for finger ${index + 1}, length: ${processedImage.length}`);
+          } else {
+            console.warn(`Failed to process image for finger ${index + 1}`);
+          }
         }
 
         setLastError('');
@@ -108,6 +184,7 @@ export function ModernFingerprintCapture({
       const errorMessage = error instanceof Error ? error.message : 'Unknown capture error';
       setLastError(errorMessage);
       setQuality(null);
+      setProcessedImageData('');
     } finally {
       setIsCapturing(false);
       setCaptureProgress(0);
@@ -117,6 +194,7 @@ export function ModernFingerprintCapture({
   const handleRetry = () => {
     setLastError('');
     setQuality(null);
+    setProcessedImageData('');
     onChange('');
     if (onImageChange) {
       onImageChange('');
@@ -125,14 +203,14 @@ export function ModernFingerprintCapture({
 
   const getStatusColor = () => {
     if (!isConnected) return 'bg-red-500';
-    if (value) return 'bg-green-500';
+    if (value && processedImageData) return 'bg-green-500';
     if (isCapturing) return 'bg-blue-500';
     return 'bg-gray-400';
   };
 
   const getStatusText = () => {
     if (!isConnected) return 'Disconnected';
-    if (value) return 'Captured';
+    if (value && processedImageData) return 'Captured';
     if (isCapturing) return 'Capturing...';
     return 'Ready';
   };
@@ -175,6 +253,7 @@ export function ModernFingerprintCapture({
         <div className="flex justify-center">
           <FingerprintDisplay
             value={value}
+            imageData={processedImageData}
             index={index}
             quality={quality}
             isCapturing={isCapturing}
@@ -198,7 +277,7 @@ export function ModernFingerprintCapture({
         )}
 
         {/* Quality Indicator */}
-        {quality !== null && value && (
+        {quality !== null && (value || processedImageData) && (
           <div className="flex items-center justify-center space-x-2">
             {quality >= targetQuality ? (
               <CheckCircle className="h-4 w-4 text-green-500" />
@@ -230,7 +309,7 @@ export function ModernFingerprintCapture({
 
         {/* Action Buttons */}
         <div className="flex space-x-2">
-          {!value ? (
+          {!value || !processedImageData ? (
             <Button
               onClick={handleCapture}
               disabled={!isConnected || isCapturing || attempts >= maxAttempts}
