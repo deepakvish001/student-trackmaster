@@ -30,59 +30,46 @@ export function FingerprintDisplay({
   const [imageError, setImageError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Enhanced image detection logic
+  // Simplified and fixed image detection logic
   const fingerprintImageUrl = useMemo(() => {
-    if (!value && !imageData) return null;
     if (isCapturing) return null;
     
-    // First priority: dedicated imageData prop
-    if (imageData) {
+    // First priority: dedicated imageData prop (processed fingerprint image)
+    if (imageData && imageData.length > 1000) {
+      console.log(`Using imageData for finger ${index + 1}, length: ${imageData.length}`);
+      
+      // Check if it's already a data URL
       if (imageData.startsWith('data:image/')) {
         return imageData;
       }
+      
+      // If it's a very long string, treat it as base64 image data
       if (imageData.length > 50000) {
-        return imageData;
+        return `data:image/png;base64,${imageData}`;
       }
+      
+      return imageData;
     }
     
     // Second priority: check if value contains image data
-    if (value) {
+    if (value && value.length > 50000) {
+      console.log(`Using value as image for finger ${index + 1}, length: ${value.length}`);
+      
       if (value.startsWith('data:image/')) {
         return value;
       }
       
-      if (value.length > 50000) {
-        return value;
-      }
-      
-      // Check for base64 image patterns
-      if (value.length > 500) {
-        const imageSignatures = [
-          { sig: 'iVBOR', mime: 'image/png' },
-          { sig: '/9j/', mime: 'image/jpeg' },
-          { sig: 'UklGR', mime: 'image/webp' },
-          { sig: 'R0lGOD', mime: 'image/gif' }
-        ];
-        
-        for (const { sig, mime } of imageSignatures) {
-          if (value.includes(sig)) {
-            return `data:${mime};base64,${value}`;
-          }
-        }
-      }
+      return `data:image/png;base64,${value}`;
     }
     
     return null;
-  }, [value, imageData, isCapturing]);
+  }, [value, imageData, isCapturing, index]);
 
   const dataType = useMemo(() => {
-    if (!value && !imageData) return 'none';
-    if (imageData && imageData.length > 50000) return 'image';
-    if (value && value.length > 50000) return 'image';
     if (fingerprintImageUrl) return 'image';
-    if (value || imageData) return 'template';
+    if (value && value.length > 100) return 'template';
     return 'none';
-  }, [value, imageData, fingerprintImageUrl]);
+  }, [value, fingerprintImageUrl]);
 
   const hasFingerprint = dataType === 'image' && fingerprintImageUrl;
   const hasTemplateOnly = dataType === 'template' && !fingerprintImageUrl;
@@ -91,7 +78,7 @@ export function FingerprintDisplay({
     if (fingerprintImageUrl && !isCapturing) {
       setIsLoading(true);
       setImageError(false);
-      const timer = setTimeout(() => setIsLoading(false), 300);
+      const timer = setTimeout(() => setIsLoading(false), 500);
       return () => clearTimeout(timer);
     }
     if (!value && !imageData) {
@@ -102,19 +89,21 @@ export function FingerprintDisplay({
   const handleImageLoad = () => {
     setImageError(false);
     setIsLoading(false);
+    console.log(`✅ Fingerprint image loaded successfully for finger ${index + 1}`);
   };
 
   const handleImageError = () => {
     setImageError(true);
     setIsLoading(false);
+    console.error(`❌ Failed to load fingerprint image for finger ${index + 1}`);
   };
 
   return (
-    <div className="bg-white border rounded-lg p-4 w-full max-w-[200px] mx-auto">
+    <div className="bg-white border rounded-lg p-4 w-full max-w-[280px] mx-auto shadow-sm">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center space-x-2">
-          <span className="font-medium text-sm">Finger {index + 1}</span>
+          <span className="font-medium text-base">Finger {index + 1}</span>
           <div className="flex items-center space-x-1">
             <Wifi className={`h-3 w-3 ${isConnected ? 'text-green-500' : 'text-red-500'}`} />
             <span className={`text-xs ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
@@ -125,13 +114,13 @@ export function FingerprintDisplay({
         
         {/* Status Badge */}
         {hasFingerprint && (
-          <Badge className="bg-blue-500 text-white text-xs px-2 py-1">
+          <Badge className="bg-green-500 text-white text-xs px-2 py-1">
             Captured
           </Badge>
         )}
         {hasTemplateOnly && (
           <Badge variant="secondary" className="text-xs px-2 py-1">
-            Template
+            Template Only
           </Badge>
         )}
         {!hasFingerprint && !hasTemplateOnly && !isCapturing && (
@@ -140,14 +129,14 @@ export function FingerprintDisplay({
           </Badge>
         )}
         {isCapturing && (
-          <Badge className="bg-yellow-500 text-white text-xs px-2 py-1 animate-pulse">
-            Capturing
+          <Badge className="bg-blue-500 text-white text-xs px-2 py-1 animate-pulse">
+            Capturing...
           </Badge>
         )}
       </div>
 
       {/* Fingerprint Display Area */}
-      <div className={`relative w-full h-40 border-2 rounded-lg flex items-center justify-center bg-gray-50 transition-all duration-300 ${
+      <div className={`relative w-full h-48 border-2 rounded-lg flex items-center justify-center bg-gray-50 transition-all duration-300 ${
         isCapturing 
           ? 'border-blue-500 border-dashed animate-pulse' 
           : hasFingerprint
@@ -185,11 +174,8 @@ export function FingerprintDisplay({
                 />
                 {/* Quality indicator overlay */}
                 {showQuality && quality !== undefined && quality !== null && (
-                  <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md">
-                    <div className={`w-2 h-2 rounded-full ${
-                      quality >= 60 ? 'bg-green-500' : 
-                      quality >= 40 ? 'bg-yellow-500' : 'bg-red-500'
-                    }`}></div>
+                  <div className="absolute top-2 right-2 bg-black bg-opacity-60 text-white rounded px-2 py-1 text-xs">
+                    {quality}%
                   </div>
                 )}
               </div>
@@ -200,6 +186,7 @@ export function FingerprintDisplay({
                 <div className="text-center text-gray-500">
                   <AlertCircle className="h-6 w-6 mx-auto mb-1" />
                   <span className="text-xs">Image Load Error</span>
+                  <div className="text-xs mt-1">Check console for details</div>
                 </div>
               </div>
             )}
@@ -212,7 +199,7 @@ export function FingerprintDisplay({
             </div>
             <span className="text-sm font-medium">Template Only</span>
             <div className="text-xs text-gray-500 text-center">
-              No image captured
+              No image data available
             </div>
           </div>
         ) : (
@@ -223,19 +210,25 @@ export function FingerprintDisplay({
         )}
       </div>
 
-      {/* Quality Display */}
-      {showQuality && quality !== undefined && quality !== null && hasFingerprint && (
-        <div className="mt-3 flex items-center justify-center space-x-2">
-          <div className="flex items-center space-x-1">
-            <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-            <span className="text-xs text-gray-600">Quality:</span>
+      {/* Quality and Status Display */}
+      {showQuality && quality !== undefined && quality !== null && (
+        <div className="mt-3 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1">
+              <div className={`w-3 h-3 rounded-full ${
+                quality >= 60 ? 'bg-green-500' : 
+                quality >= 40 ? 'bg-yellow-500' : 'bg-red-500'
+              }`}></div>
+              <span className="text-xs text-gray-600">Quality:</span>
+            </div>
+            <span className={`text-sm font-medium ${
+              quality >= 60 ? 'text-green-600' : 
+              quality >= 40 ? 'text-yellow-600' : 'text-red-600'
+            }`}>
+              {quality}%
+            </span>
           </div>
-          <span className={`text-sm font-medium ${
-            quality >= 60 ? 'text-green-600' : 
-            quality >= 40 ? 'text-yellow-600' : 'text-red-600'
-          }`}>
-            {quality}%
-          </span>
+          
           {hasFingerprint && (
             <div className="flex items-center space-x-1 text-green-600">
               <Image className="h-3 w-3" />
