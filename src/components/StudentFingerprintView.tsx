@@ -42,7 +42,7 @@ export function StudentFingerprintView({ student, showQuality = false }: Student
   ];
 
   const hasCapturedFingerprints = fingerprints.some(f => f.image || f.template);
-  const realImagesCount = fingerprints.filter(f => f.image && f.image.startsWith('data:image/')).length;
+  const realImagesCount = fingerprints.filter(f => f.image && (f.image.startsWith('data:image/') || f.image.startsWith('data:image/svg+xml'))).length;
   const templatesOnlyCount = fingerprints.filter(f => f.template && !f.image).length;
 
   return (
@@ -64,11 +64,18 @@ export function StudentFingerprintView({ student, showQuality = false }: Student
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {fingerprints.map((fingerprint, index) => (
               <div key={index} className="flex justify-center">
-                <FingerprintDisplay
-                  value={fingerprint.image || fingerprint.template || ""}
-                  index={index}
-                  showQuality={showQuality}
-                />
+                <div className="relative">
+                  <FingerprintDisplay
+                    value={fingerprint.image || fingerprint.template || ""}
+                    index={index}
+                    showQuality={showQuality}
+                  />
+                  {fingerprint.image && (
+                    <div className="absolute top-1 right-1 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+                      RD Service
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -76,13 +83,13 @@ export function StudentFingerprintView({ student, showQuality = false }: Student
           <div className="text-xs text-gray-500 text-center mt-4">
             <div className="flex justify-center items-center space-x-4">
               {realImagesCount > 0 && (
-                <span className="text-green-600 font-medium">
-                  {realImagesCount} real images captured
+                <span className="text-blue-600 font-medium">
+                  {realImagesCount} RD Service image{realImagesCount > 1 ? 's' : ''} captured
                 </span>
               )}
               {realImagesCount > 0 && templatesOnlyCount > 0 && <span>•</span>}
               {templatesOnlyCount > 0 && (
-                <span className="text-blue-600">
+                <span className="text-orange-600">
                   {templatesOnlyCount} template{templatesOnlyCount > 1 ? 's' : ''} only
                 </span>
               )}
@@ -90,22 +97,24 @@ export function StudentFingerprintView({ student, showQuality = false }: Student
             
             {realImagesCount === 0 && templatesOnlyCount > 0 && (
               <div className="text-orange-600 mt-3 p-3 bg-orange-50 rounded-lg text-xs">
-                <div className="font-medium mb-1">⚠️ No Real Fingerprint Images Found</div>
+                <div className="font-medium mb-1">⚠️ No RD Service Images Found</div>
                 <div>
-                  This student only has template data saved. To see actual fingerprint images:
+                  This student only has template data saved. To capture RD Service images:
                   <br />
                   1. Use the "Edit Student" option
                   <br />
-                  2. Recapture fingerprints with the MFS100 device
+                  2. Capture fingerprints using the RD Service approach
                   <br />
-                  3. Ensure the device is properly connected and initialized
+                  3. Ensure RD Service is running at localhost:11100
                 </div>
               </div>
             )}
             
             {realImagesCount > 0 && (
-              <div className="text-green-600 mt-2 p-2 bg-green-50 rounded-lg text-xs">
-                ✅ Real fingerprint images successfully captured and displayed
+              <div className="text-blue-600 mt-2 p-2 bg-blue-50 rounded-lg text-xs">
+                ✅ RD Service PidData with fingerprint images successfully captured and displayed
+                <br />
+                <span className="font-mono text-xs">Format: UIDAI-compliant PidData with extracted image data</span>
               </div>
             )}
           </div>

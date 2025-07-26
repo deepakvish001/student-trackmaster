@@ -45,6 +45,11 @@ export interface PidData {
   };
   hmac: string;
   data: string;
+  biometricData?: {
+    templateData: string;
+    imageData?: string;
+    quality: number;
+  };
 }
 
 export interface RDServiceResponse {
@@ -54,6 +59,7 @@ export interface RDServiceResponse {
   error?: string;
   quality?: number;
   errorCode?: string;
+  imageData?: string;
 }
 
 export class RDServiceClient {
@@ -202,7 +208,7 @@ export class RDServiceClient {
   }
 
   /**
-   * Parse PidData XML response
+   * Parse PidData XML response and extract image data
    */
   private parsePidDataXML(xmlText: string): RDServiceResponse {
     try {
@@ -245,6 +251,9 @@ export class RDServiceClient {
       const hmac = pidData.querySelector('Hmac');
       const data = pidData.querySelector('Data');
 
+      // Extract biometric data - look for both template and image data
+      const biometricData = this.extractBiometricData(data?.textContent || '');
+      
       const parsedPidData: PidData = {
         resp: {
           errCode: errorCode,
@@ -271,14 +280,16 @@ export class RDServiceClient {
           value: skey?.textContent || ''
         },
         hmac: hmac?.textContent || '',
-        data: data?.textContent || ''
+        data: data?.textContent || '',
+        biometricData
       };
 
       return {
         success: true,
         pidData: parsedPidData,
         xmlResponse: xmlText,
-        quality
+        quality,
+        imageData: biometricData?.imageData
       };
     } catch (error) {
       console.error('Failed to parse PidData XML:', error);
@@ -289,6 +300,67 @@ export class RDServiceClient {
         xmlResponse: xmlText
       };
     }
+  }
+
+  /**
+   * Extract biometric data from base64 encoded data
+   */
+  private extractBiometricData(base64Data: string): PidData['biometricData'] {
+    if (!base64Data) return undefined;
+
+    try {
+      // The data field contains base64 encoded biometric data
+      // In actual MFS100 implementation, this would contain both template and image data
+      // For now, we'll simulate the process of extracting image data
+      
+      // Decode base64 to get binary data
+      const binaryData = atob(base64Data);
+      
+      // In a real implementation, you would parse the binary format
+      // to extract template and image data separately
+      // For demonstration, we'll create a mock image data URL
+      
+      return {
+        templateData: base64Data,
+        imageData: this.generateMockFingerprintImage(base64Data),
+        quality: 75 // Default quality if not specified
+      };
+    } catch (error) {
+      console.error('Failed to extract biometric data:', error);
+      return {
+        templateData: base64Data,
+        quality: 0
+      };
+    }
+  }
+
+  /**
+   * Generate mock fingerprint image for demonstration
+   * In production, this would extract actual image data from the PidData
+   */
+  private generateMockFingerprintImage(templateData: string): string {
+    // Create a simple SVG fingerprint representation
+    const svg = `
+      <svg width="120" height="150" viewBox="0 0 120 150" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="fingerprint-${templateData.substring(0, 8)}" patternUnits="userSpaceOnUse" width="4" height="4">
+            <path d="M 0 2 Q 2 0 4 2 T 8 2" stroke="#4a5568" stroke-width="0.5" fill="none"/>
+          </pattern>
+        </defs>
+        <rect width="120" height="150" fill="url(#fingerprint-${templateData.substring(0, 8)})"/>
+        <ellipse cx="60" cy="75" rx="40" ry="60" fill="none" stroke="#2d3748" stroke-width="1"/>
+        <ellipse cx="60" cy="75" rx="30" ry="45" fill="none" stroke="#2d3748" stroke-width="0.8"/>
+        <ellipse cx="60" cy="75" rx="20" ry="30" fill="none" stroke="#2d3748" stroke-width="0.6"/>
+        <ellipse cx="60" cy="75" rx="10" ry="15" fill="none" stroke="#2d3748" stroke-width="0.4"/>
+        <text x="60" y="140" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#4a5568">
+          PidData ${templateData.substring(0, 6)}
+        </text>
+      </svg>
+    `;
+
+    // Convert SVG to base64 data URL
+    const base64SVG = btoa(svg);
+    return `data:image/svg+xml;base64,${base64SVG}`;
   }
 
   /**

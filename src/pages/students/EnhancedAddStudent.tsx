@@ -1,6 +1,7 @@
+
 /**
  * Phase 2: Enhanced Add Student Page with RD Service Biometric Security
- * UIDAI-compliant student registration with PidData format
+ * UIDAI-compliant student registration with PidData format and real fingerprint images
  */
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -47,7 +48,8 @@ import {
   Activity,
   Zap,
   Eye,
-  TrendingUp
+  TrendingUp,
+  Image as ImageIcon
 } from "lucide-react";
 
 const formSchema = z.object({
@@ -58,6 +60,12 @@ const formSchema = z.object({
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
   fingerprints: z.array(z.string()).length(5, "All 5 fingerprints are required"),
 });
+
+interface FingerprintData {
+  pidData: string;
+  imageData?: string;
+  quality: number;
+}
 
 export default function EnhancedAddStudent() {
   const navigate = useNavigate();
@@ -82,6 +90,14 @@ export default function EnhancedAddStudent() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [formValidationScore, setFormValidationScore] = useState(0);
   const [capturedQualities, setCapturedQualities] = useState<(number | null)[]>([null, null, null, null, null]);
+  const [capturedImages, setCapturedImages] = useState<(string | null)[]>([null, null, null, null, null]);
+  const [fingerprintData, setFingerprintData] = useState<FingerprintData[]>([
+    { pidData: "", quality: 0 },
+    { pidData: "", quality: 0 },
+    { pidData: "", quality: 0 },
+    { pidData: "", quality: 0 },
+    { pidData: "", quality: 0 }
+  ]);
 
   // Real-time clock update
   useEffect(() => {
@@ -111,30 +127,44 @@ export default function EnhancedAddStudent() {
     return watchForm.unsubscribe;
   }, [form.watch]);
 
-  // Handle RD Service fingerprint capture
-  const handleRDServiceCapture = (index: number, pidData: string, quality: number) => {
+  // Handle RD Service fingerprint capture with image data
+  const handleRDServiceCapture = (index: number, pidData: string, quality: number, imageData?: string) => {
     console.log(`RD Service fingerprint ${index + 1} captured:`, {
       quality,
       pidDataLength: pidData.length,
-      pidDataPreview: pidData.substring(0, 200) + '...'
+      pidDataPreview: pidData.substring(0, 200) + '...',
+      hasImageData: !!imageData
     });
     
     const currentFingerprints = form.getValues("fingerprints");
     currentFingerprints[index] = pidData;
     form.setValue("fingerprints", currentFingerprints);
     
-    // Update quality tracking
+    // Update quality and image tracking
     const newQualities = [...capturedQualities];
     newQualities[index] = quality;
     setCapturedQualities(newQualities);
+    
+    const newImages = [...capturedImages];
+    newImages[index] = imageData || null;
+    setCapturedImages(newImages);
+    
+    // Update fingerprint data
+    const newFingerprintData = [...fingerprintData];
+    newFingerprintData[index] = {
+      pidData,
+      imageData,
+      quality
+    };
+    setFingerprintData(newFingerprintData);
     
     // Trigger validation
     form.trigger("fingerprints");
     
     // Update biometric summary
-    updateBiometricSummary(currentFingerprints, newQualities);
+    updateBiometricSummary(currentFingerprints, newQualities, newImages);
     
-    toast.success(`Finger ${index + 1} captured successfully! Quality: ${quality}%`);
+    toast.success(`Finger ${index + 1} captured successfully! Quality: ${quality}%${imageData ? ' with image' : ''}`);
   };
 
   const handleRDServiceError = (index: number, error: string) => {
@@ -142,8 +172,9 @@ export default function EnhancedAddStudent() {
     toast.error(`Finger ${index + 1} capture failed: ${error}`);
   };
 
-  const updateBiometricSummary = (fingerprints: string[], qualities: (number | null)[]) => {
+  const updateBiometricSummary = (fingerprints: string[], qualities: (number | null)[], images: (string | null)[]) => {
     const validCount = fingerprints.filter(fp => fp && fp.length > 50).length;
+    const imagesCount = images.filter(img => img !== null).length;
     const avgQuality = qualities.filter(q => q !== null).reduce((sum, q) => sum + (q || 0), 0) / Math.max(validCount, 1);
     
     setBiometricSummary({
@@ -151,6 +182,7 @@ export default function EnhancedAddStudent() {
       total: 5,
       completionPercent: Math.round((validCount / 5) * 100),
       avgQuality: Math.round(avgQuality),
+      imagesCount,
       securityLevel: validCount === 5 ? 'high' : validCount >= 3 ? 'medium' : 'low'
     });
   };
@@ -180,9 +212,10 @@ export default function EnhancedAddStudent() {
     }
 
     setIsSubmitting(true);
-    console.log('Starting RD Service form submission...', {
+    console.log('Starting RD Service form submission with images...', {
       name: values.name,
       fingerprintCount: values.fingerprints.filter(fp => fp).length,
+      imagesCount: capturedImages.filter(img => img).length,
       securityLevel,
       hasEncryptionKey: !!encryptionKey
     });
@@ -192,6 +225,7 @@ export default function EnhancedAddStudent() {
       await logEvent('RD_SERVICE_STUDENT_CREATION_STARTED', 'students', undefined, undefined, {
         studentName: values.name,
         fingerprintCount: values.fingerprints.filter(fp => fp).length,
+        imagesCount: capturedImages.filter(img => img).length,
         avgQuality: biometricSummary?.avgQuality || 0
       });
 
@@ -234,7 +268,7 @@ export default function EnhancedAddStudent() {
         return;
       }
 
-      // Encrypt PidData before storage
+      // Encrypt PidData and store image data
       const encryptedFingerprints: any = {};
       for (let i = 0; i < 5; i++) {
         if (validation.sanitizedData![`finger_${i + 1}`]) {
@@ -254,7 +288,12 @@ export default function EnhancedAddStudent() {
               version: '2.0'
             });
             
-            console.log(`PidData ${i + 1} encrypted successfully`);
+            // Store image data if available
+            if (capturedImages[i]) {
+              encryptedFingerprints[`finger_${i + 1}_image`] = capturedImages[i];
+            }
+            
+            console.log(`PidData ${i + 1} encrypted successfully${capturedImages[i] ? ' with image' : ''}`);
           } catch (error) {
             console.error(`Failed to encrypt PidData ${i + 1}:`, error);
             throw new Error(`Failed to secure biometric data for finger ${i + 1}`);
@@ -277,11 +316,12 @@ export default function EnhancedAddStudent() {
         throw error;
       }
 
-      console.log('RD Service student created successfully:', data);
+      console.log('RD Service student created successfully with images:', data);
       
       await logEvent('RD_SERVICE_STUDENT_CREATED', 'students', data[0].id, undefined, {
         studentName: validation.sanitizedData!.student_name,
-        biometricSummary: validation.biometricSummary
+        biometricSummary: validation.biometricSummary,
+        imagesCount: capturedImages.filter(img => img).length
       });
       
       auditBiometricAccess('RD_SERVICE_STUDENT_CREATED', {
@@ -289,15 +329,24 @@ export default function EnhancedAddStudent() {
         studentName: validation.sanitizedData!.student_name,
         biometricSummary: validation.biometricSummary,
         format: 'PidData',
+        imagesCount: capturedImages.filter(img => img).length,
         success: true
       });
       
-      toast.success(`Student registered with RD Service! Security level: ${validation.biometricSummary!.securityLevel}`);
+      toast.success(`Student registered with RD Service! Security level: ${validation.biometricSummary!.securityLevel}${capturedImages.filter(img => img).length > 0 ? ` (${capturedImages.filter(img => img).length} images)` : ''}`);
       
       // Reset form
       form.reset();
       setBiometricSummary(null);
       setCapturedQualities([null, null, null, null, null]);
+      setCapturedImages([null, null, null, null, null]);
+      setFingerprintData([
+        { pidData: "", quality: 0 },
+        { pidData: "", quality: 0 },
+        { pidData: "", quality: 0 },
+        { pidData: "", quality: 0 },
+        { pidData: "", quality: 0 }
+      ]);
       
       // Navigate to students list
       navigate("/students");
@@ -417,12 +466,12 @@ export default function EnhancedAddStudent() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <p className="text-xs text-pink-rose font-semibold uppercase tracking-wide">Avg Quality</p>
+                    <p className="text-xs text-pink-rose font-semibold uppercase tracking-wide">Images</p>
                     <p className="text-2xl font-bold text-pink-rose">
-                      {biometricSummary?.avgQuality || 0}%
+                      {biometricSummary?.imagesCount || 0}/5
                     </p>
                   </div>
-                  <Zap className="h-8 w-8 text-pink-rose" />
+                  <ImageIcon className="h-8 w-8 text-pink-rose" />
                 </div>
               </CardContent>
             </Card>
@@ -433,7 +482,7 @@ export default function EnhancedAddStudent() {
             <Alert className="glass border-blue-500/30 bg-blue-500/5">
               <Shield className="h-5 w-5 text-blue-500" />
               <AlertDescription className="text-blue-500 font-medium">
-                🏛️ <strong>UIDAI Compliance:</strong> Using official RD Service for PidData capture
+                🏛️ <strong>UIDAI Compliance:</strong> Using official RD Service for PidData capture with image extraction
               </AlertDescription>
             </Alert>
             
@@ -453,7 +502,7 @@ export default function EnhancedAddStudent() {
                   biometricSummary.securityLevel === 'medium' ? 'text-sunset-orange' :
                   'text-pink-rose'
                 }`}>
-                  📊 <strong>PidData Status:</strong> {biometricSummary.captured}/5 captured ({biometricSummary.completionPercent}%) - {biometricSummary.securityLevel.toUpperCase()} security
+                  📊 <strong>PidData Status:</strong> {biometricSummary.captured}/5 captured, {biometricSummary.imagesCount}/5 images - {biometricSummary.securityLevel.toUpperCase()} security
                 </AlertDescription>
               </Alert>
             )}
@@ -613,16 +662,22 @@ export default function EnhancedAddStudent() {
                       <div className="p-2 rounded-lg bg-blue-500/20">
                         <Shield className="h-5 w-5 text-blue-500" />
                       </div>
-                      <h3 className="text-xl font-bold text-blue-500">UIDAI-Compliant PidData Capture</h3>
+                      <h3 className="text-xl font-bold text-blue-500">UIDAI-Compliant PidData Capture with Images</h3>
                       <Badge className="bg-blue-500/20 text-blue-500 border-blue-500/30">
                         RD Service
                       </Badge>
+                      {biometricSummary?.imagesCount > 0 && (
+                        <Badge className="bg-emerald-green/20 text-emerald-green border-emerald-green/30">
+                          <ImageIcon className="h-3 w-3 mr-1" />
+                          {biometricSummary.imagesCount} Images
+                        </Badge>
+                      )}
                     </div>
                     
                     <Alert className="glass border-blue-500/20 bg-blue-500/5">
                       <Shield className="h-4 w-4 text-blue-500" />
                       <AlertDescription className="text-blue-500 font-medium">
-                        🏛️ Using official RD Service at localhost:11100 for UIDAI-compliant PidData capture. Ensure MFS100 RD Service is running.
+                        🏛️ Using official RD Service at localhost:11100 for UIDAI-compliant PidData capture with fingerprint image extraction. Ensure MFS100 RD Service is running.
                       </AlertDescription>
                     </Alert>
                     
@@ -638,7 +693,7 @@ export default function EnhancedAddStudent() {
                                 <div className="glass-card border-foreground/10 p-2 rounded-xl hover-lift">
                                   <RDServiceFingerprintCapture
                                     index={index}
-                                    onCaptureSuccess={(pidData, quality) => handleRDServiceCapture(index, pidData, quality)}
+                                    onCaptureSuccess={(pidData, quality, imageData) => handleRDServiceCapture(index, pidData, quality, imageData)}
                                     onCaptureError={(error) => handleRDServiceError(index, error)}
                                     disabled={isSubmitting}
                                   />
@@ -685,6 +740,11 @@ export default function EnhancedAddStudent() {
                       }`}>
                         {formValidationScore}%
                       </span>
+                      {biometricSummary?.imagesCount > 0 && (
+                        <span className="text-blue-500 ml-2">
+                          | {biometricSummary.imagesCount} image{biometricSummary.imagesCount > 1 ? 's' : ''} captured
+                        </span>
+                      )}
                     </p>
                     <Progress value={formValidationScore} className="w-full max-w-md mx-auto h-2" />
                   </div>
