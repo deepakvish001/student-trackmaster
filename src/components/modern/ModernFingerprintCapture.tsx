@@ -48,11 +48,21 @@ export function ModernFingerprintCapture({
     }
   }, [value]);
 
-  // Process raw bitmap data into displayable image format
-  const processFingerprintBitmap = useCallback((bitmapData: string, width: number = 256, height: number = 256): string => {
+  // Fixed process raw bitmap data into displayable image format
+  const processFingerprintBitmap = useCallback((bitmapData: string, deviceWidth?: number, deviceHeight?: number): string => {
     try {
       if (!bitmapData || bitmapData.length === 0) {
         console.warn('No bitmap data provided for processing');
+        return "";
+      }
+
+      // Use standard MFS100 dimensions or fallback to device reported dimensions
+      const width = Math.floor(deviceWidth || 256);
+      const height = Math.floor(deviceHeight || 256);
+      
+      // Validate dimensions
+      if (width <= 0 || height <= 0 || !Number.isInteger(width) || !Number.isInteger(height)) {
+        console.error('Invalid canvas dimensions:', { width, height, deviceWidth, deviceHeight });
         return "";
       }
 
@@ -145,7 +155,11 @@ export function ModernFingerprintCapture({
           finger: index + 1,
           quality: result.data.Quality,
           templateLength: result.data.IsoTemplate?.length || 0,
-          imageLength: result.data.BitmapData?.length || 0
+          imageLength: result.data.BitmapData?.length || 0,
+          actualDimensions: {
+            width: result.data.InWidth,
+            height: result.data.InHeight
+          }
         });
 
         setQuality(result.data.Quality || null);
@@ -157,10 +171,14 @@ export function ModernFingerprintCapture({
 
         // Process and store image data if available
         if (result.data.BitmapData) {
+          // Use proper integer dimensions from device response
+          const imageWidth = Math.floor(result.data.InWidth || 256);
+          const imageHeight = Math.floor(result.data.InHeight || 256);
+          
           const processedImage = processFingerprintBitmap(
             result.data.BitmapData,
-            result.data.InWidth || 256,
-            result.data.InHeight || 256
+            imageWidth,
+            imageHeight
           );
           
           if (processedImage) {
