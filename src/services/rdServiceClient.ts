@@ -129,6 +129,7 @@ export class RDServiceClient {
     } = options;
 
     const captureXML = this.buildCaptureXML({
+      timeout,
       fCount,
       fType,
       iCount,
@@ -196,7 +197,7 @@ export class RDServiceClient {
   private buildCaptureXML(options: Required<RDServiceOptions>): string {
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <PidOptions ver="1.0">
-  <Opts fCount="${options.fCount}" fType="${options.fType}" iCount="${options.iCount}" iType="${options.iType}" pCount="${options.pCount}" pType="${options.pType}" format="${options.format}" pidVer="${options.pidVer}" timeout="${this.timeout}" env="${options.env}" wadh="${options.wadh}" />
+  <Opts fCount="${options.fCount}" fType="${options.fType}" iCount="${options.iCount}" iType="${options.iType}" pCount="${options.pCount}" pType="${options.pType}" format="${options.format}" pidVer="${options.pidVer}" timeout="${options.timeout}" env="${options.env}" wadh="${options.wadh}" />
 </PidOptions>`;
   }
 
@@ -246,8 +247,8 @@ export class RDServiceClient {
 
       const parsedPidData: PidData = {
         resp: {
-          errCode,
-          errInfo,
+          errCode: errorCode,
+          errInfo: errorInfo,
           fCount: resp.getAttribute('fCount') || '0',
           fType: resp.getAttribute('fType') || '0',
           iCount: resp.getAttribute('iCount') || '0',

@@ -242,7 +242,7 @@ export default function EnhancedAddStudent() {
             const encrypted = await encryptFingerprintData(
               validation.sanitizedData![`finger_${i + 1}`],
               encryptionKey,
-              { fingerId: i + 1, userId: user.id, format: 'PidData' }
+              { fingerId: i + 1, userId: user.id }
             );
             
             encryptedFingerprints[`finger_${i + 1}`] = JSON.stringify({
