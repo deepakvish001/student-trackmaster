@@ -1,93 +1,122 @@
 
 /**
- * RD Service Client - UIDAI-compliant fingerprint capture
- * Communicates with local RD Service at http://127.0.0.1:11100
+ * RD Service Client for UIDAI compliant fingerprint capture
+ * Handles connection failures gracefully and provides fallback mechanisms
  */
 
-export interface RDServiceOptions {
-  timeout?: number;
-  fCount?: number;
-  fType?: number;
-  iCount?: number;
-  iType?: number;
-  pCount?: number;
-  pType?: number;
-  format?: number;
-  pidVer?: string;
-  env?: string;
-  wadh?: string;
+interface RDServiceOptions {
+  fCount: number;
+  fType: number;
+  iCount: number;
+  iType: number;
+  pCount: number;
+  pType: number;
+  format: number;
+  pidVer: string;
+  env: string;
+  wadh: string;
+  timeout: number;
 }
 
-export interface PidData {
-  resp: {
-    errCode: string;
-    errInfo: string;
-    fCount: string;
-    fType: string;
-    iCount: string;
-    iType: string;
-    pCount: string;
-    pType: string;
-    nmPoints: string;
-    qScore: string;
-  };
-  deviceInfo: {
-    dpId: string;
-    rdsId: string;
-    rdsVer: string;
-    mi: string;
-    mc: string;
-    dc: string;
-  };
-  skey: {
-    ci: string;
-    value: string;
-  };
-  hmac: string;
-  data: string;
-  biometricData?: {
-    templateData: string;
-    imageData?: string;
-    quality: number;
-  };
+interface RDServiceResponse {
+  httpStaus: boolean;
+  data: any;
+  err: string;
 }
 
-export interface RDServiceResponse {
+interface CaptureResult {
   success: boolean;
-  pidData?: PidData;
-  xmlResponse?: string;
-  error?: string;
-  quality?: number;
-  errorCode?: string;
+  pidData?: string;
   imageData?: string;
+  quality?: number;
+  error?: string;
 }
 
-export class RDServiceClient {
+class RDServiceClient {
+  private static instance: RDServiceClient;
   private baseUrl = 'http://127.0.0.1:11100';
-  private timeout = 30000;
+  private isServiceAvailable = false;
+  private lastCheckTime = 0;
+  private checkInterval = 30000; // Check every 30 seconds
+  private retryCount = 0;
+  private maxRetries = 3;
+  private connectionCheckInProgress = false;
 
-  constructor(options: { baseUrl?: string; timeout?: number } = {}) {
-    this.baseUrl = options.baseUrl || this.baseUrl;
-    this.timeout = options.timeout || this.timeout;
+  static getInstance(): RDServiceClient {
+    if (!RDServiceClient.instance) {
+      RDServiceClient.instance = new RDServiceClient();
+    }
+    return RDServiceClient.instance;
+  }
+
+  private constructor() {
+    // Initial availability check
+    this.checkServiceAvailability();
   }
 
   /**
-   * Check if RD Service is available
+   * Check if RD Service is available with throttling
    */
   async isServiceAvailable(): Promise<boolean> {
+    const now = Date.now();
+    
+    // Throttle checks to prevent spam
+    if (now - this.lastCheckTime < this.checkInterval && this.retryCount < this.maxRetries) {
+      return this.isServiceAvailable;
+    }
+
+    if (this.connectionCheckInProgress) {
+      return this.isServiceAvailable;
+    }
+
+    return this.checkServiceAvailability();
+  }
+
+  /**
+   * Internal method to check service availability
+   */
+  private async checkServiceAvailability(): Promise<boolean> {
+    if (this.connectionCheckInProgress) {
+      return this.isServiceAvailable;
+    }
+
+    this.connectionCheckInProgress = true;
+    this.lastCheckTime = Date.now();
+
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
       const response = await fetch(`${this.baseUrl}/rd/info`, {
-        method: 'RDSERVICE',
+        method: 'GET',
+        signal: controller.signal,
         headers: {
-          'Content-Type': 'text/xml',
+          'Content-Type': 'application/json',
         },
-        signal: AbortSignal.timeout(5000),
       });
-      
-      return response.ok;
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        this.isServiceAvailable = true;
+        this.retryCount = 0;
+        console.log('✅ RD Service is available');
+        return true;
+      } else {
+        throw new Error(`HTTP ${response.status}`);
+      }
     } catch (error) {
-      console.error('RD Service availability check failed:', error);
+      this.isServiceAvailable = false;
+      this.retryCount++;
+      
+      // Only log every few attempts to reduce spam
+      if (this.retryCount <= 3 || this.retryCount % 10 === 0) {
+        console.warn(`⚠️ RD Service not available (attempt ${this.retryCount}):`, error instanceof Error ? error.message : 'Unknown error');
+      }
+      
       return false;
+    } finally {
+      this.connectionCheckInProgress = false;
     }
   }
 
@@ -95,302 +124,205 @@ export class RDServiceClient {
    * Get device information
    */
   async getDeviceInfo(): Promise<any> {
+    if (!await this.isServiceAvailable()) {
+      throw new Error('RD Service is not available');
+    }
+
     try {
       const response = await fetch(`${this.baseUrl}/rd/info`, {
-        method: 'RDSERVICE',
+        method: 'GET',
         headers: {
-          'Content-Type': 'text/xml',
+          'Content-Type': 'application/json',
         },
-        signal: AbortSignal.timeout(10000),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(`HTTP ${response.status}`);
       }
 
-      const xmlText = await response.text();
-      return this.parseDeviceInfoXML(xmlText);
+      return await response.json();
     } catch (error) {
-      console.error('Failed to get device info:', error);
+      console.error('❌ Failed to get device info:', error);
       throw error;
     }
   }
 
   /**
-   * Capture fingerprint using RD Service
+   * Capture fingerprint with PidData format
    */
-  async captureFingerprint(options: RDServiceOptions = {}): Promise<RDServiceResponse> {
-    const {
-      timeout = this.timeout,
-      fCount = 1,
-      fType = 0,
-      iCount = 0,
-      iType = 0,
-      pCount = 0,
-      pType = 0,
-      format = 0,
-      pidVer = '2.0',
-      env = 'P',
-      wadh = ''
-    } = options;
-
-    const captureXML = this.buildCaptureXML({
-      timeout,
-      fCount,
-      fType,
-      iCount,
-      iType,
-      pCount,
-      pType,
-      format,
-      pidVer,
-      env,
-      wadh
-    });
+  async captureFingerprint(): Promise<CaptureResult> {
+    if (!await this.isServiceAvailable()) {
+      return {
+        success: false,
+        error: 'RD Service is not available. Please ensure the RD Service is running on port 11100.'
+      };
+    }
 
     try {
-      console.log('Sending CAPTURE request to RD Service...');
-      
+      const captureXML = this.buildCaptureXML({
+        fCount: 1,
+        fType: 0,
+        iCount: 0,
+        iType: 0,
+        pCount: 0,
+        pType: 0,
+        format: 0,
+        pidVer: "2.0",
+        env: "P",
+        wadh: "",
+        timeout: 10000
+      });
+
       const response = await fetch(`${this.baseUrl}/rd/capture`, {
-        method: 'CAPTURE',
+        method: 'POST',
         headers: {
-          'Content-Type': 'text/xml',
+          'Content-Type': 'application/xml',
         },
         body: captureXML,
-        signal: AbortSignal.timeout(timeout),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(`HTTP ${response.status}`);
       }
 
       const xmlResponse = await response.text();
-      console.log('RD Service XML response:', xmlResponse);
-      
-      return this.parsePidDataXML(xmlResponse);
+      return this.parseXMLResponse(xmlResponse);
     } catch (error) {
-      console.error('Fingerprint capture failed:', error);
-      
-      if (error instanceof Error) {
-        if (error.name === 'TimeoutError') {
-          return {
-            success: false,
-            error: 'Capture timeout - please place finger on scanner and try again',
-            errorCode: 'TIMEOUT'
-          };
-        }
-        
-        if (error.message.includes('fetch')) {
-          return {
-            success: false,
-            error: 'RD Service not available - please ensure MFS100 RD Service is running',
-            errorCode: 'SERVICE_UNAVAILABLE'
-          };
-        }
-      }
-      
+      console.error('❌ Fingerprint capture failed:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown capture error',
-        errorCode: 'CAPTURE_FAILED'
+        error: error instanceof Error ? error.message : 'Unknown capture error'
       };
     }
   }
 
   /**
-   * Build XML for capture request
+   * Build capture XML request
    */
-  private buildCaptureXML(options: Required<RDServiceOptions>): string {
-    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+  private buildCaptureXML(options: RDServiceOptions): string {
+    return `<?xml version="1.0" encoding="UTF-8"?>
 <PidOptions ver="1.0">
-  <Opts fCount="${options.fCount}" fType="${options.fType}" iCount="${options.iCount}" iType="${options.iType}" pCount="${options.pCount}" pType="${options.pType}" format="${options.format}" pidVer="${options.pidVer}" timeout="${options.timeout}" env="${options.env}" wadh="${options.wadh}" />
+  <Opts fCount="${options.fCount}" fType="${options.fType}" iCount="${options.iCount}" 
+        iType="${options.iType}" pCount="${options.pCount}" pType="${options.pType}" 
+        format="${options.format}" pidVer="${options.pidVer}" timeout="${options.timeout}" 
+        env="${options.env}" wadh="${options.wadh}" />
 </PidOptions>`;
   }
 
   /**
-   * Parse PidData XML response and extract image data
+   * Parse XML response and extract fingerprint data
    */
-  private parsePidDataXML(xmlText: string): RDServiceResponse {
+  private parseXMLResponse(xmlResponse: string): CaptureResult {
     try {
       const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+      const xmlDoc = parser.parseFromString(xmlResponse, 'text/xml');
       
-      // Check for XML parsing errors
-      const parseError = xmlDoc.querySelector('parsererror');
-      if (parseError) {
-        throw new Error('Invalid XML response from RD Service');
-      }
-
       const pidData = xmlDoc.querySelector('PidData');
       if (!pidData) {
-        throw new Error('No PidData found in response');
+        throw new Error('Invalid XML response: PidData not found');
       }
 
       const resp = pidData.querySelector('Resp');
       if (!resp) {
-        throw new Error('No Resp element found in PidData');
+        throw new Error('Invalid XML response: Resp not found');
       }
 
-      const errorCode = resp.getAttribute('errCode') || '';
-      const errorInfo = resp.getAttribute('errInfo') || '';
-      const quality = parseInt(resp.getAttribute('qScore') || '0');
+      const errorCode = resp.getAttribute('errCode');
+      const errorInfo = resp.getAttribute('errInfo');
 
-      // Check if capture was successful
       if (errorCode !== '0') {
-        return {
-          success: false,
-          error: errorInfo || `Capture failed with error code: ${errorCode}`,
-          errorCode,
-          xmlResponse: xmlText
-        };
+        throw new Error(`Capture failed: ${errorInfo} (Code: ${errorCode})`);
       }
 
-      // Parse device info
-      const deviceInfo = pidData.querySelector('DeviceInfo');
-      const skey = pidData.querySelector('Skey');
-      const hmac = pidData.querySelector('Hmac');
-      const data = pidData.querySelector('Data');
+      // Extract quality from Data element
+      const dataElement = pidData.querySelector('Data');
+      const quality = dataElement ? parseInt(dataElement.getAttribute('qScore') || '0') : 0;
 
-      // Extract biometric data - look for both template and image data
-      const biometricData = this.extractBiometricData(data?.textContent || '');
-      
-      const parsedPidData: PidData = {
-        resp: {
-          errCode: errorCode,
-          errInfo: errorInfo,
-          fCount: resp.getAttribute('fCount') || '0',
-          fType: resp.getAttribute('fType') || '0',
-          iCount: resp.getAttribute('iCount') || '0',
-          iType: resp.getAttribute('iType') || '0',
-          pCount: resp.getAttribute('pCount') || '0',
-          pType: resp.getAttribute('pType') || '0',
-          nmPoints: resp.getAttribute('nmPoints') || '0',
-          qScore: resp.getAttribute('qScore') || '0'
-        },
-        deviceInfo: {
-          dpId: deviceInfo?.getAttribute('dpId') || '',
-          rdsId: deviceInfo?.getAttribute('rdsId') || '',
-          rdsVer: deviceInfo?.getAttribute('rdsVer') || '',
-          mi: deviceInfo?.getAttribute('mi') || '',
-          mc: deviceInfo?.getAttribute('mc') || '',
-          dc: deviceInfo?.getAttribute('dc') || ''
-        },
-        skey: {
-          ci: skey?.getAttribute('ci') || '',
-          value: skey?.textContent || ''
-        },
-        hmac: hmac?.textContent || '',
-        data: data?.textContent || '',
-        biometricData
-      };
+      // Extract image data from Bios element
+      let imageData = '';
+      const biosElement = pidData.querySelector('Bios');
+      if (biosElement && biosElement.textContent) {
+        imageData = this.extractImageFromBios(biosElement.textContent);
+      }
 
       return {
         success: true,
-        pidData: parsedPidData,
-        xmlResponse: xmlText,
-        quality,
-        imageData: biometricData?.imageData
+        pidData: xmlResponse,
+        imageData,
+        quality
       };
     } catch (error) {
-      console.error('Failed to parse PidData XML:', error);
+      console.error('❌ XML parsing failed:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to parse response',
-        errorCode: 'PARSE_ERROR',
-        xmlResponse: xmlText
+        error: error instanceof Error ? error.message : 'XML parsing failed'
       };
     }
   }
 
   /**
-   * Extract biometric data from base64 encoded data
+   * Extract image data from Bios element
    */
-  private extractBiometricData(base64Data: string): PidData['biometricData'] {
-    if (!base64Data) return undefined;
-
+  private extractImageFromBios(biosData: string): string {
     try {
-      // The data field contains base64 encoded biometric data
-      // In actual MFS100 implementation, this would contain both template and image data
-      // For now, we'll simulate the process of extracting image data
+      // Decode base64 Bios data
+      const decodedBios = atob(biosData);
       
-      // Decode base64 to get binary data
-      const binaryData = atob(base64Data);
+      // For demonstration, we'll create a simple image representation
+      // In a real implementation, you would parse the actual biometric data format
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
       
-      // In a real implementation, you would parse the binary format
-      // to extract template and image data separately
-      // For demonstration, we'll create a mock image data URL
+      if (!ctx) return '';
       
-      return {
-        templateData: base64Data,
-        imageData: this.generateMockFingerprintImage(base64Data),
-        quality: 75 // Default quality if not specified
-      };
-    } catch (error) {
-      console.error('Failed to extract biometric data:', error);
-      return {
-        templateData: base64Data,
-        quality: 0
-      };
-    }
-  }
-
-  /**
-   * Generate mock fingerprint image for demonstration
-   * In production, this would extract actual image data from the PidData
-   */
-  private generateMockFingerprintImage(templateData: string): string {
-    // Create a simple SVG fingerprint representation
-    const svg = `
-      <svg width="120" height="150" viewBox="0 0 120 150" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <pattern id="fingerprint-${templateData.substring(0, 8)}" patternUnits="userSpaceOnUse" width="4" height="4">
-            <path d="M 0 2 Q 2 0 4 2 T 8 2" stroke="#4a5568" stroke-width="0.5" fill="none"/>
-          </pattern>
-        </defs>
-        <rect width="120" height="150" fill="url(#fingerprint-${templateData.substring(0, 8)})"/>
-        <ellipse cx="60" cy="75" rx="40" ry="60" fill="none" stroke="#2d3748" stroke-width="1"/>
-        <ellipse cx="60" cy="75" rx="30" ry="45" fill="none" stroke="#2d3748" stroke-width="0.8"/>
-        <ellipse cx="60" cy="75" rx="20" ry="30" fill="none" stroke="#2d3748" stroke-width="0.6"/>
-        <ellipse cx="60" cy="75" rx="10" ry="15" fill="none" stroke="#2d3748" stroke-width="0.4"/>
-        <text x="60" y="140" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#4a5568">
-          PidData ${templateData.substring(0, 6)}
-        </text>
-      </svg>
-    `;
-
-    // Convert SVG to base64 data URL
-    const base64SVG = btoa(svg);
-    return `data:image/svg+xml;base64,${base64SVG}`;
-  }
-
-  /**
-   * Parse device info XML
-   */
-  private parseDeviceInfoXML(xmlText: string): any {
-    try {
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+      // Create a simple pattern from the biometric data
+      const imageData = ctx.createImageData(256, 256);
+      const data = imageData.data;
       
-      const deviceInfo = xmlDoc.querySelector('DeviceInfo');
-      if (!deviceInfo) {
-        throw new Error('No DeviceInfo found in response');
+      for (let i = 0; i < data.length; i += 4) {
+        const pixelIndex = Math.floor(i / 4);
+        const bioValue = decodedBios.charCodeAt(pixelIndex % decodedBios.length);
+        
+        // Create a fingerprint-like pattern
+        const intensity = (bioValue + (pixelIndex % 256)) % 256;
+        
+        data[i] = intensity;     // Red
+        data[i + 1] = intensity; // Green
+        data[i + 2] = intensity; // Blue
+        data[i + 3] = 255;       // Alpha
       }
-
-      return {
-        dpId: deviceInfo.getAttribute('dpId'),
-        rdsId: deviceInfo.getAttribute('rdsId'),
-        rdsVer: deviceInfo.getAttribute('rdsVer'),
-        mi: deviceInfo.getAttribute('mi'),
-        mc: deviceInfo.getAttribute('mc'),
-        dc: deviceInfo.getAttribute('dc'),
-        status: deviceInfo.getAttribute('status') || 'UNKNOWN'
-      };
+      
+      ctx.putImageData(imageData, 0, 0);
+      return canvas.toDataURL('image/png');
     } catch (error) {
-      console.error('Failed to parse device info XML:', error);
-      throw error;
+      console.error('❌ Image extraction failed:', error);
+      return '';
     }
+  }
+
+  /**
+   * Reset connection state (useful for manual retry)
+   */
+  resetConnection(): void {
+    this.isServiceAvailable = false;
+    this.lastCheckTime = 0;
+    this.retryCount = 0;
+    this.connectionCheckInProgress = false;
+  }
+
+  /**
+   * Get connection status
+   */
+  getConnectionStatus(): { isAvailable: boolean; retryCount: number; lastCheck: number } {
+    return {
+      isAvailable: this.isServiceAvailable,
+      retryCount: this.retryCount,
+      lastCheck: this.lastCheckTime
+    };
   }
 }
 
-// Export singleton instance
-export const rdServiceClient = new RDServiceClient();
+export const rdServiceClient = RDServiceClient.getInstance();
+export type { CaptureResult, RDServiceResponse };

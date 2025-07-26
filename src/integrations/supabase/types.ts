@@ -121,6 +121,72 @@ export type Database = {
           },
         ]
       }
+      system_health_logs: {
+        Row: {
+          check_type: string
+          checked_at: string
+          created_at: string
+          details: Json | null
+          id: string
+          response_time_ms: number | null
+          status: string
+        }
+        Insert: {
+          check_type: string
+          checked_at?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          response_time_ms?: number | null
+          status: string
+        }
+        Update: {
+          check_type?: string
+          checked_at?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          response_time_ms?: number | null
+          status?: string
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string
+          id: string
+          is_active: boolean
+          last_login_at: string | null
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name: string
+          id?: string
+          is_active?: boolean
+          last_login_at?: string | null
+          role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          last_login_at?: string | null
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

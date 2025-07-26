@@ -1,107 +1,77 @@
 
-/**
- * React hook for RD Service fingerprint capture
- */
-
 import { useState, useEffect, useCallback } from 'react';
-import { rdServiceClient, RDServiceResponse, RDServiceOptions } from '@/services/rdServiceClient';
+import { rdServiceClient } from '@/services/rdServiceClient';
+import type { CaptureResult } from '@/services/rdServiceClient';
 
-interface UseRDServiceOptions {
-  autoCheck?: boolean;
-  checkInterval?: number;
+interface RDServiceState {
+  isAvailable: boolean;
+  isChecking: boolean;
+  error: string | null;
+  deviceInfo: any;
+  retryCount: number;
+  lastCheck: number;
 }
 
-export function useRDService(options: UseRDServiceOptions = {}) {
-  const { autoCheck = true, checkInterval = 5000 } = options;
-  
-  const [isServiceAvailable, setIsServiceAvailable] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
-  const [deviceInfo, setDeviceInfo] = useState<any>(null);
-  const [lastCheck, setLastCheck] = useState<Date | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function useRDService() {
+  const [state, setState] = useState<RDServiceState>({
+    isAvailable: false,
+    isChecking: false,
+    error: null,
+    deviceInfo: null,
+    retryCount: 0,
+    lastCheck: 0
+  });
 
-  // Check service availability
-  const checkService = useCallback(async () => {
+  const checkAvailability = useCallback(async () => {
+    setState(prev => ({ ...prev, isChecking: true, error: null }));
+    
     try {
-      setIsChecking(true);
-      setError(null);
+      const isAvailable = await rdServiceClient.isServiceAvailable();
+      const status = rdServiceClient.getConnectionStatus();
       
-      const available = await rdServiceClient.isServiceAvailable();
-      setIsServiceAvailable(available);
-      
-      if (available) {
+      setState(prev => ({
+        ...prev,
+        isAvailable,
+        isChecking: false,
+        retryCount: status.retryCount,
+        lastCheck: status.lastCheck,
+        error: isAvailable ? null : 'RD Service not available'
+      }));
+
+      if (isAvailable) {
         try {
-          const info = await rdServiceClient.getDeviceInfo();
-          setDeviceInfo(info);
-        } catch (deviceError) {
-          console.warn('Could not get device info:', deviceError);
-          setDeviceInfo(null);
+          const deviceInfo = await rdServiceClient.getDeviceInfo();
+          setState(prev => ({ ...prev, deviceInfo }));
+        } catch (error) {
+          console.warn('Failed to get device info:', error);
         }
-      } else {
-        setDeviceInfo(null);
-        setError('RD Service not available - please ensure MFS100 RD Service is running');
       }
-      
-      setLastCheck(new Date());
     } catch (error) {
-      console.error('Service check failed:', error);
-      setIsServiceAvailable(false);
-      setDeviceInfo(null);
-      setError(error instanceof Error ? error.message : 'Service check failed');
-    } finally {
-      setIsChecking(false);
+      setState(prev => ({
+        ...prev,
+        isChecking: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }));
     }
   }, []);
 
-  // Capture fingerprint
-  const captureFingerprint = useCallback(async (captureOptions: RDServiceOptions = {}): Promise<RDServiceResponse> => {
-    if (!isServiceAvailable) {
-      return {
-        success: false,
-        error: 'RD Service not available',
-        errorCode: 'SERVICE_UNAVAILABLE'
-      };
-    }
+  const captureFingerprint = useCallback(async (): Promise<CaptureResult> => {
+    return rdServiceClient.captureFingerprint();
+  }, []);
 
-    try {
-      const result = await rdServiceClient.captureFingerprint(captureOptions);
-      return result;
-    } catch (error) {
-      console.error('Capture failed:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Capture failed',
-        errorCode: 'CAPTURE_ERROR'
-      };
-    }
-  }, [isServiceAvailable]);
+  const resetConnection = useCallback(() => {
+    rdServiceClient.resetConnection();
+    checkAvailability();
+  }, [checkAvailability]);
 
-  // Auto-check service availability
   useEffect(() => {
-    if (!autoCheck) return;
-
-    // Initial check
-    checkService();
-
-    // Set up interval
-    const interval = setInterval(checkService, checkInterval);
-
-    return () => clearInterval(interval);
-  }, [autoCheck, checkInterval, checkService]);
+    checkAvailability();
+  }, [checkAvailability]);
 
   return {
-    // Status
-    isServiceAvailable,
-    isChecking,
-    deviceInfo,
-    lastCheck,
-    error,
-    
-    // Actions
-    checkService,
+    ...state,
+    checkAvailability,
     captureFingerprint,
-    
-    // Client access
-    client: rdServiceClient
+    resetConnection
   };
 }
