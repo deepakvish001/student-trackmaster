@@ -1,6 +1,5 @@
-
 import { useState, useEffect, useRef } from 'react';
-import { rdServiceClient } from '@/services/rdServiceClient';
+import { rdServiceClient, DeviceInfo } from '@/services/rdServiceClient';
 
 export function useRDService() {
   const [isAvailable, setIsAvailable] = useState(false);
@@ -9,6 +8,7 @@ export function useRDService() {
   const [lastCheckTime, setLastCheckTime] = useState<number>(0);
   const [retryCount, setRetryCount] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
   
   // Refs to prevent memory leaks
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -63,6 +63,15 @@ export function useRDService() {
         setError(null);
         setRetryCount(0);
         
+        // Try to get device info when service becomes available
+        try {
+          const info = await rdServiceClient.getDeviceInfo();
+          setDeviceInfo(info);
+        } catch (err) {
+          console.warn('Failed to get device info:', err);
+          setDeviceInfo(null);
+        }
+        
         // If service becomes available, check more frequently
         if (!isInitialized) {
           setIsInitialized(true);
@@ -88,6 +97,7 @@ export function useRDService() {
   // Handle service unavailable state
   const handleServiceUnavailable = () => {
     setIsAvailable(false);
+    setDeviceInfo(null);
     
     if (retryCount < MAX_RETRIES) {
       const nextRetryCount = retryCount + 1;
@@ -167,6 +177,7 @@ export function useRDService() {
       // If capture fails, it might indicate service is no longer available
       if (mountedRef.current) {
         setIsAvailable(false);
+        setDeviceInfo(null);
         
         // Restart checking process
         setTimeout(() => {
@@ -187,13 +198,25 @@ export function useRDService() {
     checkAvailability(true);
   };
 
+  // Reset connection function
+  const resetConnection = () => {
+    setIsAvailable(false);
+    setDeviceInfo(null);
+    setError(null);
+    setRetryCount(0);
+    rdServiceClient.clearCache();
+    checkAvailability(true);
+  };
+
   // Get device info
   const getDeviceInfo = async () => {
     if (!isAvailable) {
       throw new Error('RD Service is not available');
     }
     
-    return rdServiceClient.getDeviceInfo();
+    const info = await rdServiceClient.getDeviceInfo();
+    setDeviceInfo(info);
+    return info;
   };
 
   return {
@@ -202,9 +225,11 @@ export function useRDService() {
     error,
     retryCount,
     maxRetries: MAX_RETRIES,
+    deviceInfo,
     captureFingerprint,
     getDeviceInfo,
     retry,
+    resetConnection,
     checkAvailability: () => checkAvailability(true)
   };
 }

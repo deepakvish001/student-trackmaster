@@ -60,8 +60,9 @@ export function RDServiceFingerprintCapture({
 
       const result = await captureFingerprint();
       
-      if (!result.success) {
-        throw new Error(result.error || "Capture failed");
+      // Check if capture was successful based on errCode
+      if (result.errCode !== "0") {
+        throw new Error(result.errInfo || "Capture failed");
       }
 
       // Store the PID data (encrypted biometric data)
