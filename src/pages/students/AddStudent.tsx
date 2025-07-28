@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/router';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import { useForm, Controller } from 'react-hook-form';
@@ -16,6 +16,7 @@ import { Fingerprint } from "lucide-react";
 import { FingerprintDisplay } from "@/components/FingerprintDisplay";
 import { RDServiceStatusIndicator } from "@/components/rd/RDServiceStatusIndicator";
 import { shouldSkipFingerprintValidation } from '@/utils/rdServiceValidator';
+import { validateStudentData } from '@/utils/securityValidation';
 
 const formSchema = yup.object().shape({
   name: yup.string().required('Name is required'),
@@ -32,7 +33,7 @@ interface FormData {
 }
 
 export default function AddStudent() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [isSubmitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     name: '',
@@ -149,7 +150,7 @@ export default function AddStudent() {
 
       // After successful submission
       toast.success('Student added successfully!');
-      router.push('/students');
+      navigate('/students');
 
     } catch (error) {
       console.error('Error submitting student:', error);
@@ -272,6 +273,7 @@ export default function AddStudent() {
               {[0, 1, 2, 3, 4].map((index) => (
                 <div key={index} className="flex flex-col items-center">
                   <FingerprintDisplay
+                    value={capturedFingerprints[index]?.template || ''}
                     index={index}
                     imageData={capturedFingerprints[index]?.imageData}
                     quality={capturedFingerprints[index]?.quality}
