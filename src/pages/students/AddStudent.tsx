@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -21,16 +20,16 @@ import { validateStudentData } from '@/utils/securityValidation';
 
 const formSchema = yup.object().shape({
   name: yup.string().required('Name is required'),
-  mobile: yup.string().matches(/^[0-9]{10}$/, 'Mobile number must be 10 digits'),
-  email: yup.string().email('Invalid email'),
-  address: yup.string(),
+  mobile: yup.string().required('Mobile number is required').matches(/^[0-9]{10}$/, 'Mobile number must be 10 digits'),
+  email: yup.string().email('Invalid email').optional(),
+  address: yup.string().required('Address is required'),
   batchId: yup.string().required('Batch is required'),
 });
 
 interface FormData {
   name: string;
   mobile: string;
-  email: string;
+  email?: string;
   address: string;
   batchId: string;
 }
@@ -302,7 +301,7 @@ export default function AddStudent() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="mobile">Mobile Number</Label>
+                    <Label htmlFor="mobile">Mobile Number *</Label>
                     <Controller
                       name="mobile"
                       control={control}
@@ -358,7 +357,7 @@ export default function AddStudent() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
+                  <Label htmlFor="address">Address *</Label>
                   <Controller
                     name="address"
                     control={control}
@@ -366,9 +365,11 @@ export default function AddStudent() {
                       <Input
                         {...field}
                         placeholder="Enter address"
+                        className={errors.address ? 'border-red-500' : ''}
                       />
                     )}
                   />
+                  {errors.address && <p className="text-red-500 text-sm">{errors.address.message}</p>}
                 </div>
               </CardContent>
             </Card>
