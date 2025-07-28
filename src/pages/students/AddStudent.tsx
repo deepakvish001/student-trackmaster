@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -27,13 +26,8 @@ const formSchema = yup.object().shape({
   batchId: yup.string().required('Batch is required'),
 });
 
-interface FormData {
-  name: string;
-  mobile: string;
-  email?: string;
-  address: string;
-  batchId: string;
-}
+// Use yup's InferType to automatically generate the correct FormData type
+type FormData = yup.InferType<typeof formSchema>;
 
 interface CapturedFingerprint {
   pidData: string;
