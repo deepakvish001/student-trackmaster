@@ -12,7 +12,7 @@ export interface ValidationResult {
 }
 
 // Enhanced student data validation with comprehensive security checks
-export const validateStudentData = (data: any): ValidationResult => {
+export const validateStudentData = (data: any, skipFingerprintValidation: boolean = false): ValidationResult => {
   const errors: string[] = [];
   const sanitizedData: any = {};
 
@@ -96,59 +96,78 @@ export const validateStudentData = (data: any): ValidationResult => {
       }
     }
 
-    // Enhanced fingerprint validation with security checks
-    if (!Array.isArray(data.fingerprints)) {
-      errors.push('Fingerprint data must be an array');
-    } else if (data.fingerprints.length !== 5) {
-      errors.push('Exactly 5 fingerprints are required');
-    } else {
-      const validFingerprints = data.fingerprints.filter((fp, index) => {
-        if (!fp || typeof fp !== 'string') {
-          logSecurityEvent('INVALID_FINGERPRINT_DATA', { 
-            index, 
-            type: typeof fp 
-          });
-          return false;
-        }
-        
-        // Check for minimum data length (fingerprint templates should be substantial)
-        if (fp.length < 100) {
-          logSecurityEvent('SUSPICIOUS_FINGERPRINT_SIZE', { 
-            index, 
-            size: fp.length 
-          });
-          return false;
-        }
-        
-        return true;
-      });
-      
-      if (validFingerprints.length < 5) {
-        errors.push('All 5 fingerprints must be properly captured');
+    // Enhanced fingerprint validation with security checks - only if not skipping
+    if (!skipFingerprintValidation) {
+      if (!Array.isArray(data.fingerprints)) {
+        errors.push('Fingerprint data must be an array');
+      } else if (data.fingerprints.length !== 5) {
+        errors.push('Exactly 5 fingerprints are required');
       } else {
-        // Store fingerprints in separate fields for database
-        sanitizedData.finger_1 = data.fingerprints[0];
-        sanitizedData.finger_2 = data.fingerprints[1];
-        sanitizedData.finger_3 = data.fingerprints[2];
-        sanitizedData.finger_4 = data.fingerprints[3];
-        sanitizedData.finger_5 = data.fingerprints[4];
+        const validFingerprints = data.fingerprints.filter((fp, index) => {
+          if (!fp || typeof fp !== 'string') {
+            logSecurityEvent('INVALID_FINGERPRINT_DATA', { 
+              index, 
+              type: typeof fp 
+            });
+            return false;
+          }
+          
+          // Check for minimum data length (fingerprint templates should be substantial)
+          if (fp.length < 100) {
+            logSecurityEvent('SUSPICIOUS_FINGERPRINT_SIZE', { 
+              index, 
+              size: fp.length 
+            });
+            return false;
+          }
+          
+          return true;
+        });
         
-        // Store fingerprint images if provided
-        if (data.fingerprintImages && Array.isArray(data.fingerprintImages)) {
-          sanitizedData.finger_1_image = data.fingerprintImages[0] || null;
-          sanitizedData.finger_2_image = data.fingerprintImages[1] || null;
-          sanitizedData.finger_3_image = data.fingerprintImages[2] || null;
-          sanitizedData.finger_4_image = data.fingerprintImages[3] || null;
-          sanitizedData.finger_5_image = data.fingerprintImages[4] || null;
+        if (validFingerprints.length < 5) {
+          errors.push('All 5 fingerprints must be properly captured');
+        } else {
+          // Store fingerprints in separate fields for database
+          sanitizedData.finger_1 = data.fingerprints[0];
+          sanitizedData.finger_2 = data.fingerprints[1];
+          sanitizedData.finger_3 = data.fingerprints[2];
+          sanitizedData.finger_4 = data.fingerprints[3];
+          sanitizedData.finger_5 = data.fingerprints[4];
+          
+          // Store fingerprint images if provided
+          if (data.fingerprintImages && Array.isArray(data.fingerprintImages)) {
+            sanitizedData.finger_1_image = data.fingerprintImages[0] || null;
+            sanitizedData.finger_2_image = data.fingerprintImages[1] || null;
+            sanitizedData.finger_3_image = data.fingerprintImages[2] || null;
+            sanitizedData.finger_4_image = data.fingerprintImages[3] || null;
+            sanitizedData.finger_5_image = data.fingerprintImages[4] || null;
+          }
         }
       }
+    } else {
+      // If skipping fingerprint validation, set empty values
+      sanitizedData.finger_1 = null;
+      sanitizedData.finger_2 = null;
+      sanitizedData.finger_3 = null;
+      sanitizedData.finger_4 = null;
+      sanitizedData.finger_5 = null;
+      sanitizedData.finger_1_image = null;
+      sanitizedData.finger_2_image = null;
+      sanitizedData.finger_3_image = null;
+      sanitizedData.finger_4_image = null;
+      sanitizedData.finger_5_image = null;
+      
+      logSecurityEvent('FINGERPRINT_VALIDATION_SKIPPED', { 
+        reason: 'RD Service not available' 
+      });
     }
 
     // Security audit logging
     if (errors.length > 0) {
       logSecurityEvent('STUDENT_VALIDATION_FAILED', { 
         errorCount: errors.length,
-        errors: errors.slice(0, 3) // Log first 3 errors only for security
+        errors: errors.slice(0, 3), // Log first 3 errors only for security
+        skipFingerprintValidation
       });
     }
 
