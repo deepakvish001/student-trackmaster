@@ -21,7 +21,7 @@ import { validateStudentData } from '@/utils/securityValidation';
 const formSchema = yup.object().shape({
   name: yup.string().required('Name is required'),
   mobile: yup.string().required('Mobile number is required').matches(/^[0-9]{10}$/, 'Mobile number must be 10 digits'),
-  email: yup.string().email('Invalid email').optional(),
+  email: yup.string().email('Invalid email').notRequired(),
   address: yup.string().required('Address is required'),
   batchId: yup.string().required('Batch is required'),
 });
@@ -168,7 +168,7 @@ export default function AddStudent() {
         .from('students')
         .insert({
           id: studentId,
-          student_name: data.name, // Use student_name instead of name
+          student_name: data.name,
           mobile: data.mobile || null,
           email: data.email || null,
           address: data.address || null,
