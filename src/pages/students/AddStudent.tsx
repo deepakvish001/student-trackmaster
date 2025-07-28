@@ -45,13 +45,6 @@ interface CapturedFingerprint {
 export default function AddStudent() {
   const navigate = useNavigate();
   const [isSubmitting, setSubmitting] = useState(false);
-  const [formData, setFormData] = useState<FormData>({
-    name: '',
-    mobile: '',
-    email: '',
-    address: '',
-    batchId: '',
-  });
 
   const [batches, setBatches] = useState<any[]>([]);
   const [capturedFingerprints, setCapturedFingerprints] = useState<Record<number, CapturedFingerprint>>({});
@@ -59,7 +52,13 @@ export default function AddStudent() {
 
   const { control, handleSubmit, formState: { errors }, reset } = useForm<FormData>({
     resolver: yupResolver(formSchema),
-    defaultValues: formData,
+    defaultValues: {
+      name: '',
+      mobile: '',
+      email: '',
+      address: '',
+      batchId: '',
+    },
   });
 
   // Load batches
@@ -69,8 +68,8 @@ export default function AddStudent() {
         const { data, error } = await supabase
           .from('batches')
           .select('*')
-          .eq('status', 'active')
-          .order('name');
+          .eq('is_enabled', true)
+          .order('batch_name');
 
         if (error) throw error;
         setBatches(data || []);
@@ -128,7 +127,7 @@ export default function AddStudent() {
 
       const studentId = uuidv4();
       
-      // Prepare fingerprint data for validation and storage
+      // Prepare fingerprint data for validation and storage in students table
       const fingerprintData: Record<string, string> = {};
       const fingerprintImages: Record<string, string> = {};
       
@@ -159,24 +158,34 @@ export default function AddStudent() {
         throw new Error(`Validation failed: ${validationResult.errors.join(', ')}`);
       }
 
-      // Insert student record
+      // Get current user for user_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Insert student record with correct field names
       const { data: student, error: studentError } = await supabase
         .from('students')
         .insert({
           id: studentId,
-          name: data.name,
+          student_name: data.name, // Use student_name instead of name
           mobile: data.mobile || null,
           email: data.email || null,
           address: data.address || null,
           batch_id: data.batchId,
-          status: 'active'
+          is_enabled: true,
+          user_id: user.id,
+          // Store fingerprint data in students table
+          ...fingerprintData,
+          ...fingerprintImages
         })
         .select()
         .single();
 
       if (studentError) throw studentError;
 
-      // Insert fingerprint records
+      // Insert individual fingerprint records in student_fingerprints table
       const fingerprintInserts = Object.entries(capturedFingerprints).map(([index, fingerprint]) => ({
         id: uuidv4(),
         student_id: studentId,
@@ -184,7 +193,8 @@ export default function AddStudent() {
         pid_data: fingerprint.pidData,
         quality_score: fingerprint.quality,
         image_data: fingerprint.imageData || null,
-        capture_timestamp: fingerprint.timestamp.toISOString()
+        capture_timestamp: fingerprint.timestamp.toISOString(),
+        user_id: user.id
       }));
 
       if (fingerprintInserts.length > 0) {
@@ -337,7 +347,7 @@ export default function AddStudent() {
                           <option value="">Select a batch</option>
                           {batches.map((batch) => (
                             <option key={batch.id} value={batch.id}>
-                              {batch.name}
+                              {batch.batch_name}
                             </option>
                           ))}
                         </select>

@@ -53,6 +53,53 @@ export type Database = {
         }
         Relationships: []
       }
+      student_fingerprints: {
+        Row: {
+          capture_timestamp: string
+          created_at: string
+          finger_index: number
+          id: string
+          image_data: string | null
+          pid_data: string
+          quality_score: number | null
+          student_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          capture_timestamp?: string
+          created_at?: string
+          finger_index: number
+          id?: string
+          image_data?: string | null
+          pid_data: string
+          quality_score?: number | null
+          student_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          capture_timestamp?: string
+          created_at?: string
+          finger_index?: number
+          id?: string
+          image_data?: string | null
+          pid_data?: string
+          quality_score?: number | null
+          student_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_fingerprints_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       students: {
         Row: {
           batch_id: string
