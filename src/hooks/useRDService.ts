@@ -6,22 +6,21 @@ export function useRDService() {
   const [isAvailable, setIsAvailable] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastCheckTime, setLastCheckTime] = useState<number>(0);
-  const [retryCount, setRetryCount] = useState(0);
-  const [isInitialized, setIsInitialized] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
-  const [mfs100Available, setMFS100Available] = useState(false);
+  const [serviceStatus, setServiceStatus] = useState<{
+    service: string;
+    message: string;
+  }>({
+    service: '',
+    message: 'Checking services...'
+  });
   
-  // Refs to prevent memory leaks
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const backoffTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
 
   // Configuration
-  const CHECK_INTERVAL = 5000; // Check every 5 seconds when available
-  const RETRY_INTERVAL = 30000; // Retry every 30 seconds when not available
-  const MAX_RETRIES = 3;
-  const MIN_CHECK_INTERVAL = 1000; // Minimum time between checks
+  const CHECK_INTERVAL = 10000; // Check every 10 seconds
+  const INITIAL_DELAY = 1000; // Initial check delay
 
   // Clean up on unmount
   useEffect(() => {
@@ -30,67 +29,63 @@ export function useRDService() {
       if (checkIntervalRef.current) {
         clearInterval(checkIntervalRef.current);
       }
-      if (backoffTimeoutRef.current) {
-        clearTimeout(backoffTimeoutRef.current);
-      }
     };
   }, []);
 
-  // Check service availability with rate limiting
-  const checkAvailability = async (force = false) => {
-    if (!mountedRef.current) return;
-
-    const now = Date.now();
-    
-    // Rate limiting: prevent too frequent checks
-    if (!force && now - lastCheckTime < MIN_CHECK_INTERVAL) {
-      return;
-    }
-
-    // Skip if already checking
-    if (isChecking) {
-      return;
-    }
+  // Check service availability
+  const checkAvailability = async (showLogs = false) => {
+    if (!mountedRef.current || isChecking) return;
 
     setIsChecking(true);
-    setLastCheckTime(now);
-
+    
     try {
-      const available = await rdServiceClient.isServiceAvailable();
+      const status = await rdServiceClient.getServiceStatus();
       
       if (!mountedRef.current) return;
 
-      if (available) {
-        setIsAvailable(true);
+      setIsAvailable(status.available);
+      setServiceStatus({
+        service: status.service,
+        message: status.message
+      });
+
+      if (status.available) {
         setError(null);
-        setRetryCount(0);
-        setMFS100Available(true);
         
-        // Try to get device info when service becomes available
+        // Try to get device info
         try {
           const info = await rdServiceClient.getDeviceInfo();
           setDeviceInfo(info);
-          console.log('MFS100 device info retrieved:', info);
+          
+          if (showLogs) {
+            console.log('✅ Fingerprint service connected:', {
+              service: status.service,
+              deviceInfo: info
+            });
+          }
         } catch (err) {
-          console.warn('Failed to get MFS100 device info:', err);
+          console.warn('Could not get device info:', err);
           setDeviceInfo(null);
         }
-        
-        // If service becomes available, check more frequently
-        if (!isInitialized) {
-          setIsInitialized(true);
-          startPeriodicCheck(CHECK_INTERVAL);
-        }
       } else {
-        handleServiceUnavailable();
+        setError(status.message);
+        setDeviceInfo(null);
+        
+        if (showLogs) {
+          console.warn('❌ No fingerprint service available');
+        }
       }
     } catch (err) {
       if (!mountedRef.current) return;
       
-      const errorMessage = err instanceof Error ? err.message : 'MFS100 service check failed';
-      console.warn('MFS100 service check failed:', errorMessage);
-      
-      handleServiceUnavailable();
+      const errorMessage = err instanceof Error ? err.message : 'Service check failed';
+      setIsAvailable(false);
+      setDeviceInfo(null);
+      setError(errorMessage);
+      setServiceStatus({
+        service: '',
+        message: errorMessage
+      });
     } finally {
       if (mountedRef.current) {
         setIsChecking(false);
@@ -98,126 +93,64 @@ export function useRDService() {
     }
   };
 
-  // Handle service unavailable state
-  const handleServiceUnavailable = () => {
-    setIsAvailable(false);
-    setDeviceInfo(null);
-    setMFS100Available(false);
-    
-    if (retryCount < MAX_RETRIES) {
-      const nextRetryCount = retryCount + 1;
-      setRetryCount(nextRetryCount);
-      
-      // Exponential backoff for retries
-      const backoffTime = Math.min(RETRY_INTERVAL * Math.pow(1.5, nextRetryCount - 1), 60000);
-      
-      setError(`MFS100 service not available. Retrying in ${Math.round(backoffTime/1000)}s (${nextRetryCount}/${MAX_RETRIES})`);
-      
-      // Schedule next retry
-      if (backoffTimeoutRef.current) {
-        clearTimeout(backoffTimeoutRef.current);
+  // Initialize and start periodic checking
+  useEffect(() => {
+    // Initial check with delay
+    const initTimeout = setTimeout(() => {
+      if (mountedRef.current) {
+        checkAvailability(true);
       }
-      
-      backoffTimeoutRef.current = setTimeout(() => {
-        if (mountedRef.current) {
-          checkAvailability(true);
-        }
-      }, backoffTime);
-    } else {
-      setError('MFS100 service is not available at https://localhost:8003. Please ensure the device is connected and the service is running.');
-      
-      // Stop periodic checking after max retries
-      if (checkIntervalRef.current) {
-        clearInterval(checkIntervalRef.current);
-        checkIntervalRef.current = null;
-      }
-    }
-  };
+    }, INITIAL_DELAY);
 
-  // Start periodic availability checking
-  const startPeriodicCheck = (interval: number) => {
-    if (checkIntervalRef.current) {
-      clearInterval(checkIntervalRef.current);
-    }
-    
+    // Start periodic checking
     checkIntervalRef.current = setInterval(() => {
       if (mountedRef.current) {
         checkAvailability();
       }
-    }, interval);
-  };
+    }, CHECK_INTERVAL);
 
-  // Initialize service checking
-  useEffect(() => {
-    if (!isInitialized) {
-      // Initial check with a small delay to avoid immediate spam
-      const initTimeout = setTimeout(() => {
-        if (mountedRef.current) {
-          checkAvailability(true);
-        }
-      }, 1000);
+    return () => {
+      clearTimeout(initTimeout);
+      if (checkIntervalRef.current) {
+        clearInterval(checkIntervalRef.current);
+      }
+    };
+  }, []);
 
-      return () => clearTimeout(initTimeout);
-    }
-  }, [isInitialized]);
-
-  // Capture fingerprint with proper error handling
+  // Capture fingerprint
   const captureFingerprint = async (timeout: number = 10000) => {
     if (!isAvailable) {
-      throw new Error('MFS100 service is not available. Please check your connection.');
+      throw new Error(error || 'No fingerprint service is available');
     }
 
     try {
       const result = await rdServiceClient.captureFingerprint(timeout);
       
-      // Update availability status based on capture result
-      if (result && mountedRef.current) {
+      // Verify service is still available after capture
+      if (mountedRef.current && result) {
         setIsAvailable(true);
         setError(null);
-        setRetryCount(0);
       }
       
       return result;
     } catch (err) {
-      // If capture fails, it might indicate service is no longer available
+      // If capture fails, recheck availability
       if (mountedRef.current) {
-        setIsAvailable(false);
-        setDeviceInfo(null);
-        
-        // Restart checking process
         setTimeout(() => {
           if (mountedRef.current) {
             checkAvailability(true);
           }
-        }, 2000);
+        }, 1000);
       }
       
       throw err;
     }
   };
 
-  // Manual retry function
-  const retry = () => {
-    setRetryCount(0);
-    setError(null);
-    checkAvailability(true);
-  };
-
-  // Reset connection function
-  const resetConnection = () => {
-    setIsAvailable(false);
-    setDeviceInfo(null);
-    setError(null);
-    setRetryCount(0);
-    setMFS100Available(false);
-    rdServiceClient.clearCache();
-    checkAvailability(true);
-  };
-
   // Get device info
   const getDeviceInfo = async () => {
     if (!isAvailable) {
-      throw new Error('MFS100 service is not available');
+      throw new Error('No fingerprint service is available');
     }
     
     const info = await rdServiceClient.getDeviceInfo();
@@ -225,14 +158,40 @@ export function useRDService() {
     return info;
   };
 
+  // Manual retry
+  const retry = () => {
+    setError(null);
+    rdServiceClient.clearCache();
+    checkAvailability(true);
+  };
+
+  // Reset connection
+  const resetConnection = () => {
+    setIsAvailable(false);
+    setDeviceInfo(null);
+    setError(null);
+    setServiceStatus({
+      service: '',
+      message: 'Resetting...'
+    });
+    rdServiceClient.clearCache();
+    
+    setTimeout(() => {
+      if (mountedRef.current) {
+        checkAvailability(true);
+      }
+    }, 500);
+  };
+
   return {
+    // Status
     isAvailable,
     isChecking,
     error,
-    retryCount,
-    maxRetries: MAX_RETRIES,
     deviceInfo,
-    mfs100Available,
+    serviceStatus,
+    
+    // Actions
     captureFingerprint,
     getDeviceInfo,
     retry,
