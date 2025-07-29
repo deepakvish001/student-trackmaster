@@ -361,11 +361,14 @@ export default function EnhancedAddStudent() {
                 key={index}
                 index={index}
                 fingerName={fingerName}
-                onCaptureStart={() => startCapture(index)}
-                onCaptureComplete={(template, imageData, quality) => 
-                  completeCapture(index, template, imageData, quality)
-                }
-                onClearCapture={() => clearFingerprint(index)}
+                onCaptureSuccess={(template, quality, imageData) => {
+                  startCapture(index);
+                  completeCapture(index, template, imageData || '', quality);
+                }}
+                onCaptureError={(error) => {
+                  toast.error(`${fingerName} capture failed: ${error}`);
+                }}
+                targetQuality={60}
               />
             ))}
           </div>
