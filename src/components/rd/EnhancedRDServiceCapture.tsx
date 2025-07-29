@@ -11,17 +11,17 @@ import { mfs100SessionManager } from '@/services/mfs100SessionManager';
 interface EnhancedRDServiceCaptureProps {
   index: number;
   fingerName: string;
-  onCaptureStart: () => void;
-  onCaptureComplete: (template: string, imageData: string, quality: number | null) => void;
-  onClearCapture: () => void;
+  onCaptureSuccess: (pidData: string, quality: number, imageData?: string) => void;
+  onCaptureError: (error: string) => void;
+  targetQuality?: number;
 }
 
 export function EnhancedRDServiceCapture({
   index,
   fingerName,
-  onCaptureStart,
-  onCaptureComplete,
-  onClearCapture
+  onCaptureSuccess,
+  onCaptureError,
+  targetQuality = 60
 }: EnhancedRDServiceCaptureProps) {
   const [isCapturing, setIsCapturing] = useState(false);
   const [captureStatus, setCaptureStatus] = useState<'idle' | 'captured' | 'failed'>('idle');
@@ -87,7 +87,6 @@ export function EnhancedRDServiceCapture({
     try {
       setIsCapturing(true);
       setError('');
-      onCaptureStart();
       
       toast.info(`Place ${fingerName} on scanner`, { duration: 4000 });
       
@@ -111,10 +110,10 @@ export function EnhancedRDServiceCapture({
           setQuality(captureQuality);
           setCaptureStatus('captured');
           
-          onCaptureComplete(
+          onCaptureSuccess(
             result.data.IsoTemplate || '',
-            processedImage,
-            captureQuality
+            captureQuality,
+            processedImage
           );
           
           toast.success(`${fingerName} captured! Quality: ${captureQuality}%`);
@@ -129,19 +128,19 @@ export function EnhancedRDServiceCapture({
       setError(errorMessage);
       setCaptureStatus('failed');
       toast.error(`${fingerName} capture failed: ${errorMessage}`);
+      onCaptureError(errorMessage);
     } finally {
       setIsCapturing(false);
     }
-  }, [isCapturing, fingerName, onCaptureStart, onCaptureComplete, processBitmapToImage]);
+  }, [isCapturing, fingerName, onCaptureSuccess, onCaptureError, processBitmapToImage]);
 
   const handleClear = useCallback(() => {
     setImageData('');
     setQuality(null);
     setCaptureStatus('idle');
     setError('');
-    onClearCapture();
     toast.info(`${fingerName} cleared`);
-  }, [fingerName, onClearCapture]);
+  }, [fingerName]);
 
   const handleForceReconnect = useCallback(async () => {
     try {
