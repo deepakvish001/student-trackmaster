@@ -5,7 +5,7 @@ export const isRDServiceAvailable = async (): Promise<boolean> => {
   try {
     return await rdServiceClient.isServiceAvailable();
   } catch (error) {
-    console.warn('RD Service availability check failed:', error);
+    console.warn('MFS100 service availability check failed:', error);
     return false;
   }
 };

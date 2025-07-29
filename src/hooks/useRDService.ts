@@ -1,6 +1,6 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { rdServiceClient, DeviceInfo } from '@/services/rdServiceClient';
-import { isMFS100Available } from '@/utils/mfs100Native';
 
 export function useRDService() {
   const [isAvailable, setIsAvailable] = useState(false);
@@ -20,7 +20,7 @@ export function useRDService() {
   // Configuration
   const CHECK_INTERVAL = 5000; // Check every 5 seconds when available
   const RETRY_INTERVAL = 30000; // Retry every 30 seconds when not available
-  const MAX_RETRIES = 3; // Reduced retries since we have MFS100 fallback
+  const MAX_RETRIES = 3;
   const MIN_CHECK_INTERVAL = 1000; // Minimum time between checks
 
   // Clean up on unmount
@@ -64,14 +64,15 @@ export function useRDService() {
         setIsAvailable(true);
         setError(null);
         setRetryCount(0);
-        setMFS100Available(false);
+        setMFS100Available(true);
         
         // Try to get device info when service becomes available
         try {
           const info = await rdServiceClient.getDeviceInfo();
           setDeviceInfo(info);
+          console.log('MFS100 device info retrieved:', info);
         } catch (err) {
-          console.warn('Failed to get device info:', err);
+          console.warn('Failed to get MFS100 device info:', err);
           setDeviceInfo(null);
         }
         
@@ -81,23 +82,15 @@ export function useRDService() {
           startPeriodicCheck(CHECK_INTERVAL);
         }
       } else {
-        // Check MFS100 availability as fallback
-        const mfs100Available = await isMFS100Available();
-        setMFS100Available(mfs100Available);
-        
-        handleServiceUnavailable(mfs100Available);
+        handleServiceUnavailable();
       }
     } catch (err) {
       if (!mountedRef.current) return;
       
-      const errorMessage = err instanceof Error ? err.message : 'Service check failed';
-      console.warn('RD Service check failed:', errorMessage);
+      const errorMessage = err instanceof Error ? err.message : 'MFS100 service check failed';
+      console.warn('MFS100 service check failed:', errorMessage);
       
-      // Check MFS100 availability as fallback
-      const mfs100Available = await isMFS100Available();
-      setMFS100Available(mfs100Available);
-      
-      handleServiceUnavailable(mfs100Available);
+      handleServiceUnavailable();
     } finally {
       if (mountedRef.current) {
         setIsChecking(false);
@@ -106,31 +99,19 @@ export function useRDService() {
   };
 
   // Handle service unavailable state
-  const handleServiceUnavailable = (mfs100Available: boolean) => {
+  const handleServiceUnavailable = () => {
     setIsAvailable(false);
     setDeviceInfo(null);
+    setMFS100Available(false);
     
-    if (mfs100Available) {
-      setError('RD Service not available, but MFS100 service is detected. Consider using MFS100 fingerprint capture instead.');
-      setRetryCount(0);
-      
-      // Stop retrying if MFS100 is available
-      if (checkIntervalRef.current) {
-        clearInterval(checkIntervalRef.current);
-        checkIntervalRef.current = null;
-      }
-      if (backoffTimeoutRef.current) {
-        clearTimeout(backoffTimeoutRef.current);
-        backoffTimeoutRef.current = null;
-      }
-    } else if (retryCount < MAX_RETRIES) {
+    if (retryCount < MAX_RETRIES) {
       const nextRetryCount = retryCount + 1;
       setRetryCount(nextRetryCount);
       
       // Exponential backoff for retries
       const backoffTime = Math.min(RETRY_INTERVAL * Math.pow(1.5, nextRetryCount - 1), 60000);
       
-      setError(`RD Service not available. Retrying in ${Math.round(backoffTime/1000)}s (${nextRetryCount}/${MAX_RETRIES})`);
+      setError(`MFS100 service not available. Retrying in ${Math.round(backoffTime/1000)}s (${nextRetryCount}/${MAX_RETRIES})`);
       
       // Schedule next retry
       if (backoffTimeoutRef.current) {
@@ -143,7 +124,7 @@ export function useRDService() {
         }
       }, backoffTime);
     } else {
-      setError('RD Service is not available. Please install and start the RD Service, or use MFS100 fingerprint capture instead.');
+      setError('MFS100 service is not available at https://localhost:8003. Please ensure the device is connected and the service is running.');
       
       // Stop periodic checking after max retries
       if (checkIntervalRef.current) {
@@ -183,7 +164,7 @@ export function useRDService() {
   // Capture fingerprint with proper error handling
   const captureFingerprint = async (timeout: number = 10000) => {
     if (!isAvailable) {
-      throw new Error('RD Service is not available. Please check your connection.');
+      throw new Error('MFS100 service is not available. Please check your connection.');
     }
 
     try {
@@ -236,7 +217,7 @@ export function useRDService() {
   // Get device info
   const getDeviceInfo = async () => {
     if (!isAvailable) {
-      throw new Error('RD Service is not available');
+      throw new Error('MFS100 service is not available');
     }
     
     const info = await rdServiceClient.getDeviceInfo();
