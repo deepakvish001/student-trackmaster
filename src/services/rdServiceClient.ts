@@ -1,6 +1,7 @@
+
 /**
  * RD Service Client for Fingerprint Authentication
- * Optimized for better error handling and reduced connection attempts
+ * Optimized for better error handling and improved connection stability
  */
 
 import { isMFS100Available } from '@/utils/mfs100Native';
@@ -35,18 +36,20 @@ export class RDServiceClient {
   private deviceInfo: DeviceInfo | null = null;
   private lastAvailabilityCheck = 0;
   private availabilityCache: { result: boolean; timestamp: number; service?: string } | null = null;
-  private readonly CACHE_DURATION = 30000; // Increased to 30 seconds to reduce frequent checks
+  private readonly CACHE_DURATION = 15000; // Reduced to 15 seconds for better responsiveness
   private activeServiceUrl = '';
   private consecutiveFailures = 0;
-  private readonly MAX_CONSECUTIVE_FAILURES = 5;
-  private backoffDelay = 1000; // Start with 1 second backoff
+  private readonly MAX_CONSECUTIVE_FAILURES = 3; // Reduced from 5 to 3 for faster recovery
+  private backoffDelay = 500; // Reduced initial backoff to 500ms
+  private readonly MAX_BACKOFF_DELAY = 10000; // Maximum 10 seconds backoff
+  private readonly CONNECTION_TIMEOUT = 5000; // Increased connection timeout to 5 seconds
 
   constructor() {
-    console.log('RDServiceClient initialized. Services will be checked on demand.');
+    console.log('RDServiceClient initialized with improved connection handling.');
   }
 
   /**
-   * Check if MFS100 service or RD Service is available with exponential backoff
+   * Check if MFS100 service or RD Service is available with improved error handling
    */
   async isServiceAvailable(): Promise<boolean> {
     const now = Date.now();
@@ -57,12 +60,8 @@ export class RDServiceClient {
       return this.availabilityCache.result;
     }
 
-    // If we've had too many consecutive failures, increase backoff
+    // Check backoff delay
     if (this.consecutiveFailures >= this.MAX_CONSECUTIVE_FAILURES) {
-      this.backoffDelay = Math.min(this.backoffDelay * 2, 60000); // Max 1 minute backoff
-      console.log(`⏳ Service check backoff: ${this.backoffDelay}ms after ${this.consecutiveFailures} failures`);
-      
-      // Check if enough time has passed since last check
       if (now - this.lastAvailabilityCheck < this.backoffDelay) {
         return false;
       }
@@ -71,7 +70,7 @@ export class RDServiceClient {
     this.lastAvailabilityCheck = now;
 
     try {
-      // Try MFS100 service first
+      // Try MFS100 service first with improved error handling
       const mfs100Available = await this.checkMFS100Service();
       if (mfs100Available) {
         this.activeServiceUrl = this.baseUrl;
@@ -80,9 +79,8 @@ export class RDServiceClient {
           timestamp: now,
           service: this.baseUrl
         };
-        this.consecutiveFailures = 0;
-        this.backoffDelay = 1000; // Reset backoff
-        console.log('✅ MFS100 service is available');
+        this.resetFailureTracking();
+        console.log('✅ MFS100 service is available and stable');
         return true;
       }
 
@@ -95,47 +93,50 @@ export class RDServiceClient {
           timestamp: now,
           service: this.fallbackUrl
         };
-        this.consecutiveFailures = 0;
-        this.backoffDelay = 1000; // Reset backoff
-        console.log('✅ RD Service is available');
+        this.resetFailureTracking();
+        console.log('✅ RD Service is available and stable');
         return true;
       }
 
       // Both services failed
-      this.consecutiveFailures++;
-      this.availabilityCache = {
-        result: false,
-        timestamp: now
-      };
-      
-      // Only log detailed error message occasionally to reduce console noise
-      if (this.consecutiveFailures <= 3 || this.consecutiveFailures % 10 === 0) {
-        console.warn('❌ No fingerprint service available. Please ensure one of the following is running:');
-        console.warn('   1. MFS100 service at https://localhost:8003');
-        console.warn('   2. Standard RD Service at http://127.0.0.1:11100');
-      }
-      
+      this.handleServiceFailure();
       return false;
 
     } catch (error) {
-      this.consecutiveFailures++;
-      this.availabilityCache = {
-        result: false,
-        timestamp: now
-      };
-      
-      if (this.consecutiveFailures <= 3) {
-        console.error('Service availability check failed:', error);
-      }
-      
+      this.handleServiceFailure();
       return false;
+    }
+  }
+
+  private resetFailureTracking() {
+    this.consecutiveFailures = 0;
+    this.backoffDelay = 500;
+  }
+
+  private handleServiceFailure() {
+    this.consecutiveFailures++;
+    this.availabilityCache = {
+      result: false,
+      timestamp: Date.now()
+    };
+    
+    // Calculate exponential backoff with maximum limit
+    this.backoffDelay = Math.min(
+      this.backoffDelay * 2,
+      this.MAX_BACKOFF_DELAY
+    );
+    
+    // Only log detailed error message occasionally to reduce console noise
+    if (this.consecutiveFailures <= 2 || this.consecutiveFailures % 5 === 0) {
+      console.warn(`❌ Fingerprint service unavailable (${this.consecutiveFailures} failures). Retrying in ${this.backoffDelay}ms`);
+      console.warn('   Please ensure MFS100 service or RD Service is running and accessible.');
     }
   }
 
   private async checkMFS100Service(): Promise<boolean> {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 2000); // Reduced timeout
+      const timeout = setTimeout(() => controller.abort(), this.CONNECTION_TIMEOUT);
 
       const response = await fetch(`${this.baseUrl}/info`, {
         method: 'GET',
@@ -154,10 +155,15 @@ export class RDServiceClient {
       }
 
       const data = await response.json();
-      return data.ErrorCode === "0";
+      const isAvailable = data.ErrorCode === "0";
+      
+      if (isAvailable) {
+        console.log('✅ MFS100 service health check passed');
+      }
+      
+      return isAvailable;
     } catch (error) {
-      // Reduce console noise - only log first few failures
-      if (this.consecutiveFailures <= 2) {
+      if (this.consecutiveFailures <= 1) {
         console.debug('MFS100 service check failed:', error instanceof Error ? error.message : 'Unknown error');
       }
       return false;
@@ -167,7 +173,7 @@ export class RDServiceClient {
   private async checkRDService(): Promise<boolean> {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 2000); // Reduced timeout
+      const timeout = setTimeout(() => controller.abort(), this.CONNECTION_TIMEOUT);
 
       const response = await fetch(`${this.fallbackUrl}/info`, {
         method: 'RDSERVICE',
@@ -180,10 +186,15 @@ export class RDServiceClient {
       });
 
       clearTimeout(timeout);
-      return response.ok;
+      const isAvailable = response.ok;
+      
+      if (isAvailable) {
+        console.log('✅ RD Service health check passed');
+      }
+      
+      return isAvailable;
     } catch (error) {
-      // Reduce console noise - only log first few failures
-      if (this.consecutiveFailures <= 2) {
+      if (this.consecutiveFailures <= 1) {
         console.debug('RD Service check failed:', error instanceof Error ? error.message : 'Unknown error');
       }
       return false;
@@ -207,14 +218,20 @@ export class RDServiceClient {
 
   private async getMFS100DeviceInfo(): Promise<DeviceInfo> {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), this.CONNECTION_TIMEOUT);
+
       const response = await fetch(`${this.baseUrl}/info`, {
         method: 'GET',
+        signal: controller.signal,
         cache: 'no-cache',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         }
       });
+
+      clearTimeout(timeout);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -236,6 +253,7 @@ export class RDServiceClient {
       };
 
       this.deviceInfo = deviceInfo;
+      console.log('✅ Device info retrieved successfully');
       return deviceInfo;
     } catch (error) {
       console.error('Failed to get MFS100 device info:', error);
@@ -245,8 +263,12 @@ export class RDServiceClient {
 
   private async getRDServiceDeviceInfo(): Promise<DeviceInfo> {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), this.CONNECTION_TIMEOUT);
+
       const response = await fetch(`${this.fallbackUrl}/info`, {
         method: 'RDSERVICE',
+        signal: controller.signal,
         cache: 'no-cache',
         headers: {
           'Content-Type': 'text/xml',
@@ -254,11 +276,12 @@ export class RDServiceClient {
         }
       });
 
+      clearTimeout(timeout);
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const xmlText = await response.text();
       const deviceInfo: DeviceInfo = {
         dpId: 'RD_DEVICE',
         rdsId: 'RD_SERVICE',
@@ -269,6 +292,7 @@ export class RDServiceClient {
       };
 
       this.deviceInfo = deviceInfo;
+      console.log('✅ RD Service device info retrieved successfully');
       return deviceInfo;
     } catch (error) {
       console.error('Failed to get RD Service device info:', error);
@@ -277,9 +301,9 @@ export class RDServiceClient {
   }
 
   /**
-   * Capture fingerprint using the available service
+   * Capture fingerprint with improved timeout and retry logic
    */
-  async captureFingerprint(timeout: number = 10000): Promise<RDServiceResponse> {
+  async captureFingerprint(timeout: number = 20000): Promise<RDServiceResponse> {
     if (!await this.isServiceAvailable()) {
       throw new Error('No fingerprint service is available');
     }
@@ -294,12 +318,14 @@ export class RDServiceClient {
   private async captureMFS100Fingerprint(timeout: number): Promise<RDServiceResponse> {
     const requestBody = {
       Quality: 60,
-      TimeOut: Math.round(timeout / 1000)
+      TimeOut: Math.max(Math.round(timeout / 1000), 15) // Minimum 15 seconds timeout
     };
 
     try {
       const controller = new AbortController();
-      const requestTimeout = setTimeout(() => controller.abort(), timeout + 2000);
+      const requestTimeout = setTimeout(() => controller.abort(), timeout + 5000); // Add 5 seconds buffer
+
+      console.log(`🔍 Starting fingerprint capture with ${requestBody.TimeOut}s timeout`);
 
       const response = await fetch(`${this.baseUrl}/capture`, {
         method: 'POST',
@@ -332,15 +358,22 @@ export class RDServiceClient {
         quality: data.Quality || 0
       };
 
-      if (result.errCode !== "0") {
+      if (result.errCode === "0") {
+        console.log(`✅ Fingerprint capture successful (Quality: ${result.quality}%)`);
+        this.resetFailureTracking(); // Reset failure tracking on successful capture
+      } else {
+        console.warn(`❌ Fingerprint capture failed: ${result.errInfo}`);
         throw new Error(result.errInfo);
       }
 
       return result;
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Fingerprint capture timed out');
+        console.error('❌ Fingerprint capture timed out - please try again');
+        throw new Error('Fingerprint capture timed out. Please place your finger properly and try again.');
       }
+      
+      console.error('❌ Fingerprint capture error:', error);
       throw error;
     }
   }
@@ -369,13 +402,12 @@ export class RDServiceClient {
   clearCache(): void {
     this.availabilityCache = null;
     this.activeServiceUrl = '';
-    this.consecutiveFailures = 0;
-    this.backoffDelay = 1000;
-    console.log('Service cache cleared and failure tracking reset');
+    this.resetFailureTracking();
+    console.log('✅ Service cache cleared and failure tracking reset');
   }
 
   /**
-   * Check service availability and return status info
+   * Get service status with improved messaging
    */
   async getServiceStatus(): Promise<{
     available: boolean;
@@ -386,11 +418,12 @@ export class RDServiceClient {
     
     let message: string;
     if (available) {
-      message = `Connected to ${this.activeServiceUrl.includes('8003') ? 'MFS100' : 'RD Service'}`;
+      const serviceName = this.activeServiceUrl.includes('8003') ? 'MFS100' : 'RD Service';
+      message = `Connected to ${serviceName} (stable)`;
     } else if (this.consecutiveFailures >= this.MAX_CONSECUTIVE_FAILURES) {
-      message = `Service unavailable (${this.consecutiveFailures} failures). Next check in ${Math.round(this.backoffDelay / 1000)}s`;
+      message = `Service unavailable (${this.consecutiveFailures} failures). Retrying in ${Math.round(this.backoffDelay / 1000)}s`;
     } else {
-      message = 'No fingerprint service found. Please start MFS100 service or RD Service';
+      message = 'Connecting to fingerprint service...';
     }
     
     return {
@@ -398,6 +431,15 @@ export class RDServiceClient {
       service: this.activeServiceUrl,
       message
     };
+  }
+
+  /**
+   * Force immediate service reconnection
+   */
+  async forceReconnect(): Promise<boolean> {
+    console.log('🔄 Forcing service reconnection...');
+    this.clearCache();
+    return await this.isServiceAvailable();
   }
 }
 

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { rdServiceClient, DeviceInfo } from '@/services/rdServiceClient';
 
@@ -12,15 +13,15 @@ export function useRDService() {
     message: string;
   }>({
     service: '',
-    message: 'Checking services...'
+    message: 'Initializing...'
   });
   
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
 
-  // Configuration - Reduced frequency to prevent spam
-  const CHECK_INTERVAL = 30000; // Check every 30 seconds instead of 10
-  const INITIAL_DELAY = 2000; // Slightly longer initial delay
+  // Improved configuration for better stability
+  const CHECK_INTERVAL = 20000; // Check every 20 seconds
+  const INITIAL_DELAY = 1000; // Reduced initial delay
 
   // Clean up on unmount
   useEffect(() => {
@@ -53,27 +54,29 @@ export function useRDService() {
         setError(null);
         setRetryCount(0);
         
-        // Try to get device info
+        // Try to get device info only if service is stable
         try {
           const info = await rdServiceClient.getDeviceInfo();
           setDeviceInfo(info);
           
           if (showLogs) {
-            console.log('✅ Fingerprint service connected:', {
+            console.log('✅ Fingerprint service stable and ready:', {
               service: status.service,
               deviceInfo: info
             });
           }
         } catch (err) {
           if (showLogs) {
-            console.warn('Could not get device info:', err);
+            console.warn('Device info not available, but service is connected:', err);
           }
           setDeviceInfo(null);
         }
       } else {
         setError(status.message);
         setDeviceInfo(null);
-        setRetryCount(prev => prev + 1);
+        if (status.message.includes('failures')) {
+          setRetryCount(prev => prev + 1);
+        }
       }
     } catch (err) {
       if (!mountedRef.current) return;
@@ -96,17 +99,17 @@ export function useRDService() {
 
   // Initialize and start periodic checking
   useEffect(() => {
-    // Initial check with delay
+    // Initial check with shorter delay
     const initTimeout = setTimeout(() => {
       if (mountedRef.current) {
         checkAvailability(true);
       }
     }, INITIAL_DELAY);
 
-    // Start periodic checking with reduced frequency
+    // Start periodic checking
     checkIntervalRef.current = setInterval(() => {
       if (mountedRef.current) {
-        checkAvailability(false); // Don't show logs for periodic checks
+        checkAvailability(false);
       }
     }, CHECK_INTERVAL);
 
@@ -118,25 +121,35 @@ export function useRDService() {
     };
   }, []);
 
-  // Capture fingerprint
-  const captureFingerprint = async (timeout: number = 10000) => {
+  // Capture fingerprint with improved timeout
+  const captureFingerprint = async (timeout: number = 20000) => {
     if (!isAvailable) {
       throw new Error(error || 'No fingerprint service is available');
     }
 
     try {
+      console.log(`🔍 Starting fingerprint capture with ${timeout}ms timeout`);
       const result = await rdServiceClient.captureFingerprint(timeout);
       
       if (mountedRef.current && result) {
         setIsAvailable(true);
         setError(null);
         setRetryCount(0);
+        console.log('✅ Fingerprint capture completed successfully');
       }
       
       return result;
     } catch (err) {
       if (mountedRef.current) {
-        setRetryCount(prev => prev + 1);
+        const errorMessage = err instanceof Error ? err.message : 'Capture failed';
+        console.error('❌ Fingerprint capture failed:', errorMessage);
+        
+        // Don't increment retry count for timeout errors
+        if (!errorMessage.includes('timeout')) {
+          setRetryCount(prev => prev + 1);
+        }
+        
+        // Force service recheck after capture failure
         setTimeout(() => {
           if (mountedRef.current) {
             checkAvailability(true);
@@ -159,31 +172,41 @@ export function useRDService() {
     return info;
   };
 
-  // Manual retry
-  const retry = () => {
+  // Manual retry with force reconnect
+  const retry = async () => {
+    console.log('🔄 Manual retry triggered');
     setError(null);
     setRetryCount(0);
-    rdServiceClient.clearCache();
-    checkAvailability(true);
+    setServiceStatus({
+      service: '',
+      message: 'Reconnecting...'
+    });
+    
+    const reconnected = await rdServiceClient.forceReconnect();
+    if (reconnected) {
+      await checkAvailability(true);
+    }
   };
 
-  // Reset connection
-  const resetConnection = () => {
+  // Reset connection with improved logic
+  const resetConnection = async () => {
+    console.log('🔄 Resetting connection...');
     setIsAvailable(false);
     setDeviceInfo(null);
     setError(null);
     setRetryCount(0);
     setServiceStatus({
       service: '',
-      message: 'Resetting...'
+      message: 'Resetting connection...'
     });
-    rdServiceClient.clearCache();
+    
+    await rdServiceClient.forceReconnect();
     
     setTimeout(() => {
       if (mountedRef.current) {
         checkAvailability(true);
       }
-    }, 500);
+    }, 1000);
   };
 
   return {
