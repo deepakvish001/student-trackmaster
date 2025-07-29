@@ -36,8 +36,6 @@ import { Progress } from "@/components/ui/progress";
 import { 
   Shield, 
   Loader2, 
-  AlertTriangle, 
-  Lock, 
   CheckCircle, 
   User,
   Mail,
@@ -46,8 +44,6 @@ import {
   GraduationCap,
   Clock,
   Activity,
-  Zap,
-  Eye,
   TrendingUp,
   Image as ImageIcon
 } from "lucide-react";
@@ -373,7 +369,7 @@ export default function EnhancedAddStudent() {
           <Alert className="max-w-2xl mx-auto border-destructive/30 bg-destructive/5 backdrop-blur-sm">
             <Shield className="h-5 w-5 text-destructive" />
             <AlertDescription className="text-destructive font-medium">
-              🔐 Authentication required. Please log in to access this secure feature.
+              Authentication required. Please log in to access this feature.
             </AlertDescription>
           </Alert>
         </div>
@@ -389,7 +385,7 @@ export default function EnhancedAddStudent() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="space-y-2">
               <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                🏛️ RD Service Registration
+                Student Registration
               </h1>
               <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                 <div className="flex items-center space-x-1">
@@ -408,10 +404,6 @@ export default function EnhancedAddStudent() {
             </div>
             
             <div className="flex flex-wrap items-center gap-3">
-              <Badge variant="outline" className="text-blue-600 bg-blue-50 border-blue-200 font-semibold px-4 py-2">
-                <Shield className="h-4 w-4 mr-2" />
-                UIDAI Compliant
-              </Badge>
               <Badge variant="outline" className={`${getSecurityColor(securityLevel)} border font-semibold px-4 py-2`}>
                 <Shield className="h-4 w-4 mr-2" />
                 Security: {securityLevel.toUpperCase()}
@@ -443,7 +435,7 @@ export default function EnhancedAddStudent() {
                       localhost:11100
                     </p>
                   </div>
-                  <Lock className="h-8 w-8 text-emerald-green" />
+                  <Shield className="h-8 w-8 text-emerald-green" />
                 </div>
               </CardContent>
             </Card>
@@ -452,12 +444,12 @@ export default function EnhancedAddStudent() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <p className="text-xs text-sunset-orange font-semibold uppercase tracking-wide">PidData Quality</p>
+                    <p className="text-xs text-sunset-orange font-semibold uppercase tracking-wide">Fingerprints</p>
                     <p className="text-lg font-bold text-sunset-orange">
                       {biometricSummary ? `${biometricSummary.captured}/5` : "0/5"}
                     </p>
                   </div>
-                  <Eye className="h-8 w-8 text-sunset-orange" />
+                  <CheckCircle className="h-8 w-8 text-sunset-orange" />
                 </div>
               </CardContent>
             </Card>
@@ -477,37 +469,6 @@ export default function EnhancedAddStudent() {
             </Card>
           </div>
 
-          {/* Enhanced Security Alerts */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Alert className="glass border-blue-500/30 bg-blue-500/5">
-              <Shield className="h-5 w-5 text-blue-500" />
-              <AlertDescription className="text-blue-500 font-medium">
-                🏛️ <strong>UIDAI Compliance:</strong> Using official RD Service for PidData capture with image extraction
-              </AlertDescription>
-            </Alert>
-            
-            {biometricSummary && (
-              <Alert className={`glass border-2 ${
-                biometricSummary.securityLevel === 'high' ? 'border-emerald-green/30 bg-emerald-green/5' :
-                biometricSummary.securityLevel === 'medium' ? 'border-sunset-orange/30 bg-sunset-orange/5' :
-                'border-pink-rose/30 bg-pink-rose/5'
-              }`}>
-                <CheckCircle className={`h-5 w-5 ${
-                  biometricSummary.securityLevel === 'high' ? 'text-emerald-green' :
-                  biometricSummary.securityLevel === 'medium' ? 'text-sunset-orange' :
-                  'text-pink-rose'
-                }`} />
-                <AlertDescription className={`font-medium ${
-                  biometricSummary.securityLevel === 'high' ? 'text-emerald-green' :
-                  biometricSummary.securityLevel === 'medium' ? 'text-sunset-orange' :
-                  'text-pink-rose'
-                }`}>
-                  📊 <strong>PidData Status:</strong> {biometricSummary.captured}/5 captured, {biometricSummary.imagesCount}/5 images - {biometricSummary.securityLevel.toUpperCase()} security
-                </AlertDescription>
-              </Alert>
-            )}
-          </div>
-
           {/* Enhanced Registration Form */}
           <Card className="glass-card border-foreground/10 hover-lift">
             <CardHeader className="bg-gradient-to-r from-electric-blue/10 via-emerald-green/10 to-pink-rose/10 rounded-t-xl">
@@ -515,7 +476,7 @@ export default function EnhancedAddStudent() {
                 <div className="p-2 rounded-lg bg-electric-blue/20">
                   <User className="h-6 w-6 text-electric-blue" />
                 </div>
-                <span>RD Service Registration Portal</span>
+                <span>Student Registration Portal</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-8 space-y-8">
@@ -656,16 +617,13 @@ export default function EnhancedAddStudent() {
                     />
                   </div>
 
-                  {/* RD Service Biometric Capture Section */}
+                  {/* Biometric Capture Section */}
                   <div className="space-y-6">
                     <div className="flex items-center space-x-3 pb-4 border-b border-foreground/10">
                       <div className="p-2 rounded-lg bg-blue-500/20">
                         <Shield className="h-5 w-5 text-blue-500" />
                       </div>
-                      <h3 className="text-xl font-bold text-blue-500">UIDAI-Compliant PidData Capture with Images</h3>
-                      <Badge className="bg-blue-500/20 text-blue-500 border-blue-500/30">
-                        RD Service
-                      </Badge>
+                      <h3 className="text-xl font-bold text-blue-500">Biometric Capture</h3>
                       {biometricSummary?.imagesCount > 0 && (
                         <Badge className="bg-emerald-green/20 text-emerald-green border-emerald-green/30">
                           <ImageIcon className="h-3 w-3 mr-1" />
@@ -673,13 +631,6 @@ export default function EnhancedAddStudent() {
                         </Badge>
                       )}
                     </div>
-                    
-                    <Alert className="glass border-blue-500/20 bg-blue-500/5">
-                      <Shield className="h-4 w-4 text-blue-500" />
-                      <AlertDescription className="text-blue-500 font-medium">
-                        🏛️ Using official RD Service at localhost:11100 for UIDAI-compliant PidData capture with fingerprint image extraction. Ensure MFS100 RD Service is running.
-                      </AlertDescription>
-                    </Alert>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
                       {[0, 1, 2, 3, 4].map((index) => (
@@ -720,12 +671,12 @@ export default function EnhancedAddStudent() {
                         {isSubmitting ? (
                           <>
                             <Loader2 className="h-6 w-6 animate-spin" />
-                            <span>🏛️ Processing PidData...</span>
+                            <span>Processing...</span>
                           </>
                         ) : (
                           <>
                             <Shield className="h-6 w-6" />
-                            <span>🚀 Register with RD Service</span>
+                            <span>Register Student</span>
                           </>
                         )}
                       </div>
