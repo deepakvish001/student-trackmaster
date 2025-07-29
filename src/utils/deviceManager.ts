@@ -1,153 +1,154 @@
 
-// Centralized device management to avoid multiple simultaneous connections
-interface DeviceConnection {
+/**
+ * Device Manager - Centralized device connection management
+ */
+
+interface DeviceConfig {
+  id: string;
+  name: string;
+  port: number;
+  protocol: 'http' | 'https';
+  endpoint: string;
+  checkInterval: number;
+}
+
+interface DeviceStatus {
   isConnected: boolean;
-  lastCheck: number;
-  device?: any;
-  retryCount: number;
-  maxRetries: number;
+  lastCheck: Date;
+  error: string | null;
 }
 
 class DeviceManager {
-  private static instance: DeviceManager;
-  private connections: Map<string, DeviceConnection> = new Map();
-  private checkInterval: NodeJS.Timeout | null = null;
-  private readonly CHECK_INTERVAL = 5000; // Reduced from 3000ms
-  private readonly CONNECTION_TIMEOUT = 10000;
+  private devices = new Map<string, DeviceConfig>();
+  private statuses = new Map<string, DeviceStatus>();
+  private intervals = new Map<string, NodeJS.Timeout>();
 
-  static getInstance(): DeviceManager {
-    if (!DeviceManager.instance) {
-      DeviceManager.instance = new DeviceManager();
+  registerDevice(deviceId: string, config?: Partial<DeviceConfig>) {
+    const defaultConfig: DeviceConfig = {
+      id: deviceId,
+      name: deviceId.includes('mfs100') ? 'MFS100' : 'Unknown Device',
+      port: deviceId.includes('mfs100') ? 8003 : 11100,
+      protocol: deviceId.includes('mfs100') ? 'https' : 'http',
+      endpoint: deviceId.includes('mfs100') ? '/mfs100/info' : '/rd/info',
+      checkInterval: 5000
+    };
+
+    const finalConfig = { ...defaultConfig, ...config };
+    this.devices.set(deviceId, finalConfig);
+    
+    // Initialize status
+    this.statuses.set(deviceId, {
+      isConnected: false,
+      lastCheck: new Date(),
+      error: null
+    });
+
+    // Start monitoring
+    this.startMonitoring(deviceId);
+    
+    console.log(`Device registered: ${deviceId}`, finalConfig);
+  }
+
+  private startMonitoring(deviceId: string) {
+    const config = this.devices.get(deviceId);
+    if (!config) return;
+
+    // Clear existing interval
+    if (this.intervals.has(deviceId)) {
+      clearInterval(this.intervals.get(deviceId)!);
     }
-    return DeviceManager.instance;
+
+    // Start new monitoring
+    const interval = setInterval(async () => {
+      await this.checkDeviceStatus(deviceId);
+    }, config.checkInterval);
+
+    this.intervals.set(deviceId, interval);
+    
+    // Initial check
+    this.checkDeviceStatus(deviceId);
   }
 
-  private constructor() {
-    // Start monitoring only when first device is registered
-  }
+  private async checkDeviceStatus(deviceId: string) {
+    const config = this.devices.get(deviceId);
+    if (!config) return;
 
-  registerDevice(deviceId: string): void {
-    if (!this.connections.has(deviceId)) {
-      this.connections.set(deviceId, {
+    try {
+      const url = `${config.protocol}://localhost:${config.port}${config.endpoint}`;
+      
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        signal: controller.signal,
+        cache: 'no-cache'
+      });
+
+      clearTimeout(timeout);
+      
+      const isConnected = response.ok;
+      const currentStatus = this.statuses.get(deviceId);
+      
+      if (!currentStatus || currentStatus.isConnected !== isConnected) {
+        this.updateDeviceStatus(deviceId, {
+          isConnected,
+          lastCheck: new Date(),
+          error: isConnected ? null : `Connection failed: ${response.status}`
+        });
+      }
+    } catch (error) {
+      this.updateDeviceStatus(deviceId, {
         isConnected: false,
-        lastCheck: 0,
-        retryCount: 0,
-        maxRetries: 3
+        lastCheck: new Date(),
+        error: error instanceof Error ? error.message : 'Connection error'
       });
     }
-
-    // Start monitoring if this is the first device
-    if (this.connections.size === 1 && !this.checkInterval) {
-      this.startMonitoring();
-    }
   }
 
-  unregisterDevice(deviceId: string): void {
-    this.connections.delete(deviceId);
+  private updateDeviceStatus(deviceId: string, status: DeviceStatus) {
+    this.statuses.set(deviceId, status);
     
-    // Stop monitoring if no devices registered
-    if (this.connections.size === 0 && this.checkInterval) {
-      this.stopMonitoring();
-    }
-  }
-
-  private startMonitoring(): void {
-    if (this.checkInterval) return;
+    // Emit custom event for React components to listen
+    window.dispatchEvent(new CustomEvent('deviceStatusChange', {
+      detail: { deviceId, ...status }
+    }));
     
-    this.checkInterval = setInterval(() => {
-      this.checkAllConnections();
-    }, this.CHECK_INTERVAL);
-  }
-
-  private stopMonitoring(): void {
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval);
-      this.checkInterval = null;
-    }
-  }
-
-  private async checkAllConnections(): Promise<void> {
-    const now = Date.now();
-    
-    for (const [deviceId, connection] of this.connections.entries()) {
-      // Skip if checked recently (debounce)
-      if (now - connection.lastCheck < this.CHECK_INTERVAL - 1000) {
-        continue;
-      }
-
-      try {
-        await this.checkSingleConnection(deviceId, connection);
-      } catch (error) {
-        console.warn(`Connection check failed for ${deviceId}:`, error);
-        this.updateConnectionStatus(deviceId, false);
-      }
-    }
-  }
-
-  private async checkSingleConnection(deviceId: string, connection: DeviceConnection): Promise<void> {
-    const now = Date.now();
-    connection.lastCheck = now;
-
-    try {
-      // Quick connection test with timeout
-      const checkPromise = this.performConnectionCheck(deviceId);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Connection check timeout')), this.CONNECTION_TIMEOUT)
-      );
-
-      const isConnected = await Promise.race([checkPromise, timeoutPromise]) as boolean;
-      
-      connection.retryCount = isConnected ? 0 : connection.retryCount + 1;
-      this.updateConnectionStatus(deviceId, isConnected && connection.retryCount < connection.maxRetries);
-
-    } catch (error) {
-      connection.retryCount++;
-      this.updateConnectionStatus(deviceId, false);
-      console.error(`Connection check error for ${deviceId}:`, error);
-    }
-  }
-
-  private async performConnectionCheck(deviceId: string): Promise<boolean> {
-    // This will be implemented by specific device types
-    if (deviceId.startsWith('mfs100')) {
-      return this.checkMFS100Connection();
-    }
-    return false;
-  }
-
-  private async checkMFS100Connection(): Promise<boolean> {
-    try {
-      // Quick info check instead of full initialization
-      if (typeof window !== 'undefined' && (window as any).GetMFS100Info) {
-        const result = (window as any).GetMFS100Info();
-        return result && result.httpStaus;
-      }
-      return false;
-    } catch (error) {
-      return false;
-    }
-  }
-
-  private updateConnectionStatus(deviceId: string, isConnected: boolean): void {
-    const connection = this.connections.get(deviceId);
-    if (connection && connection.isConnected !== isConnected) {
-      connection.isConnected = isConnected;
-      // Emit event for components to listen to
-      window.dispatchEvent(new CustomEvent('deviceStatusChange', {
-        detail: { deviceId, isConnected }
-      }));
-    }
+    console.log(`Device ${deviceId} status:`, status);
   }
 
   getConnectionStatus(deviceId: string): boolean {
-    return this.connections.get(deviceId)?.isConnected || false;
+    return this.statuses.get(deviceId)?.isConnected || false;
   }
 
-  // Cleanup method
-  cleanup(): void {
-    this.stopMonitoring();
-    this.connections.clear();
+  getDeviceStatus(deviceId: string): DeviceStatus | null {
+    return this.statuses.get(deviceId) || null;
+  }
+
+  unregisterDevice(deviceId: string) {
+    if (this.intervals.has(deviceId)) {
+      clearInterval(this.intervals.get(deviceId)!);
+      this.intervals.delete(deviceId);
+    }
+    
+    this.devices.delete(deviceId);
+    this.statuses.delete(deviceId);
+    
+    console.log(`Device unregistered: ${deviceId}`);
+  }
+
+  getAllDevices(): Array<{ id: string; config: DeviceConfig; status: DeviceStatus }> {
+    const result: Array<{ id: string; config: DeviceConfig; status: DeviceStatus }> = [];
+    
+    for (const [id, config] of this.devices.entries()) {
+      const status = this.statuses.get(id);
+      if (status) {
+        result.push({ id, config, status });
+      }
+    }
+    
+    return result;
   }
 }
 
-export const deviceManager = DeviceManager.getInstance();
+export const deviceManager = new DeviceManager();

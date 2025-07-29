@@ -1,6 +1,5 @@
 
-var uri = "https://localhost:8003/mfs100/";  //Secure
-//var uri = "http://localhost:8004/mfs100/"; //Non-Secure
+var uri = "https://localhost:8003/mfs100/";  //Secure - Updated to correct port
 
 var KeyFlag = "";
 var isGetSuccess = false;
@@ -22,6 +21,7 @@ function GetMFS100KeyInfo(key) {
     var jsondata = JSON.stringify(MFS100Request);
     return PostMFS100Client("keyinfo", jsondata);
 }
+
 function CaptureFinger(quality, timeout) {
     if (!PrepareScanner()) {
         return getFalseRes();
@@ -33,6 +33,7 @@ function CaptureFinger(quality, timeout) {
     var jsondata = JSON.stringify(MFS100Request);
     return PostMFS100Client("capture", jsondata);
 }
+
 function VerifyFinger(ProbFMR, GalleryFMR) {
     if (!PrepareScanner()) {
         return getFalseRes();
@@ -40,11 +41,12 @@ function VerifyFinger(ProbFMR, GalleryFMR) {
     var MFS100Request = {
         "ProbTemplate": ProbFMR,
         "GalleryTemplate": GalleryFMR,
-        "BioType": "FMR" // you can paas here BioType as "ANSI" if you are using ANSI Template
+        "BioType": "FMR"
     };
     var jsondata = JSON.stringify(MFS100Request);
     return PostMFS100Client("verify", jsondata);
 }
+
 function MatchFinger(quality, timeout, GalleryFMR) {
     if (!PrepareScanner()) {
         return getFalseRes();
@@ -53,11 +55,12 @@ function MatchFinger(quality, timeout, GalleryFMR) {
         "Quality": quality,
         "TimeOut": timeout,
         "GalleryTemplate": GalleryFMR,
-        "BioType": "FMR" // you can paas here BioType as "ANSI" if you are using ANSI Template
+        "BioType": "FMR"
     };
     var jsondata = JSON.stringify(MFS100Request);
     return PostMFS100Client("match", jsondata);
 }
+
 function GetPidData(BiometricArray) {
     if (!PrepareScanner()) {
         return getFalseRes();
@@ -66,6 +69,7 @@ function GetPidData(BiometricArray) {
     var jsondata = JSON.stringify(req);
     return PostMFS100Client("getpiddata", jsondata);
 }
+
 function GetProtoPidData(BiometricArray) {
     if (!PrepareScanner()) {
         return getFalseRes();
@@ -74,6 +78,7 @@ function GetProtoPidData(BiometricArray) {
     var jsondata = JSON.stringify(req);
     return PostMFS100Client("getppiddata", jsondata);
 }
+
 function GetRbdData(BiometricArray) {
     if (!PrepareScanner()) {
         return getFalseRes();
@@ -82,6 +87,7 @@ function GetRbdData(BiometricArray) {
     var jsondata = JSON.stringify(req);
     return PostMFS100Client("getrbddata", jsondata);
 }
+
 function GetProtoRbdData(BiometricArray) {
     if (!PrepareScanner()) {
         return getFalseRes();
@@ -114,6 +120,7 @@ function PostMFS100Client(method, jsonData) {
     });
     return res;
 }
+
 function GetMFS100Client(method) {
     var res;
     $.support.cors = true;
@@ -135,6 +142,7 @@ function GetMFS100Client(method) {
     });
     return res;
 }
+
 function getHttpError(jqXHR) {
     var err = "Unhandled Exception";
     if (jqXHR.status === 0) {
@@ -176,7 +184,6 @@ function PrepareScanner() {
         if (!isGetSuccess) {
             var resInfo = GetMFS100Client("info");
             if (!resInfo.httpStaus) {
-                //alert(resInfo.err);
                 return false;
             }
             else {
@@ -195,6 +202,7 @@ function PrepareScanner() {
     catch(e) {}
     return true;
 }
+
 function getFalseRes()
 {
     var res;
@@ -214,4 +222,4 @@ window.GetRbdData = GetRbdData;
 window.GetProtoRbdData = GetProtoRbdData;
 window.Biometric = Biometric;
 
-console.log("MFS100 SDK loaded successfully");
+console.log("MFS100 SDK loaded successfully - Updated for HTTPS port 8003");
