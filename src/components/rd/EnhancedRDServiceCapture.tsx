@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Fingerprint, CheckCircle, AlertCircle, RefreshCw, X } from 'lucide-react';
+import { Fingerprint, CheckCircle, AlertCircle, RefreshCw, X, Camera } from 'lucide-react';
 import { toast } from "sonner";
 
 interface EnhancedRDServiceCaptureProps {
@@ -20,7 +20,7 @@ export function EnhancedRDServiceCapture({
   fingerName,
   onCaptureSuccess,
   onCaptureError,
-  targetQuality = 60
+  targetQuality = 70  // Increased default quality threshold
 }: EnhancedRDServiceCaptureProps) {
   const [isCapturing, setIsCapturing] = useState(false);
   const [captureStatus, setCaptureStatus] = useState<'idle' | 'captured' | 'failed'>('idle');
@@ -30,11 +30,10 @@ export function EnhancedRDServiceCapture({
   const [deviceConnected, setDeviceConnected] = useState(false);
   const [isInitialCheck, setIsInitialCheck] = useState(true);
 
-  // Refs for managing intervals and preventing memory leaks
   const backgroundCheckRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
 
-  // Stable device check function with reduced frequency
+  // Enhanced device connection check with better error handling
   const checkDeviceConnection = useCallback(async (showLogs = false) => {
     if (!mountedRef.current) return false;
 
@@ -44,7 +43,7 @@ export function EnhancedRDServiceCapture({
         headers: {
           'Content-Type': 'application/json',
         },
-        signal: AbortSignal.timeout(5000) // 5 second timeout
+        signal: AbortSignal.timeout(3000)
       });
 
       if (!mountedRef.current) return false;
@@ -57,7 +56,7 @@ export function EnhancedRDServiceCapture({
         setError(isConnected ? '' : 'Device not responding');
         
         if (showLogs && isConnected) {
-          console.log('✅ Device check passed:', data);
+          console.log('✅ High-quality device ready:', data);
         }
         
         return isConnected;
@@ -67,41 +66,163 @@ export function EnhancedRDServiceCapture({
     } catch (error) {
       if (!mountedRef.current) return false;
       
-      const isConnected = false;
-      setDeviceConnected(isConnected);
+      setDeviceConnected(false);
       setError('Device connection failed');
       
       if (showLogs) {
         console.log('❌ Device check failed:', error);
       }
       
-      return isConnected;
+      return false;
     }
   }, []);
 
-  // Initial device check and setup background monitoring
+  // Enhanced bitmap processing for ultra-high quality images
+  const processHighQualityBitmap = useCallback((bitmapData: string, width: number = 256, height: number = 256): string => {
+    try {
+      if (!bitmapData || bitmapData.length === 0) {
+        return "";
+      }
+
+      console.log(`🎯 Processing high-quality bitmap for ${fingerName}:`, {
+        dataLength: bitmapData.length,
+        dimensions: `${width}x${height}`
+      });
+
+      // Create high-resolution canvas (2x scale for better quality)
+      const canvas = document.createElement('canvas');
+      const scale = 2;
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        throw new Error('Failed to get canvas context');
+      }
+
+      // Enable high-quality rendering
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      // Convert base64 to binary data
+      const binaryData = atob(bitmapData);
+      const originalImageData = ctx.createImageData(width, height);
+      const originalData = originalImageData.data;
+      
+      // Process each pixel with enhanced algorithms
+      const totalPixels = Math.min(binaryData.length, width * height);
+      
+      for (let i = 0; i < totalPixels; i++) {
+        let pixelValue = binaryData.charCodeAt(i);
+        
+        // Invert for proper fingerprint display
+        pixelValue = 255 - pixelValue;
+        
+        // Advanced contrast enhancement using S-curve
+        let normalized = pixelValue / 255;
+        if (normalized < 0.5) {
+          normalized = 2 * normalized * normalized;
+        } else {
+          normalized = 1 - 2 * (1 - normalized) * (1 - normalized);
+        }
+        pixelValue = normalized * 255;
+        
+        // Apply sharpening and noise reduction
+        pixelValue = Math.min(255, Math.max(0, pixelValue * 1.4 - 35));
+        
+        const pixelIndex = i * 4;
+        if (pixelIndex + 3 < originalData.length) {
+          originalData[pixelIndex] = pixelValue;
+          originalData[pixelIndex + 1] = pixelValue;
+          originalData[pixelIndex + 2] = pixelValue;
+          originalData[pixelIndex + 3] = 255;
+        }
+      }
+      
+      // Create temporary canvas for original size
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = width;
+      tempCanvas.height = height;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (!tempCtx) throw new Error('Failed to get temp canvas context');
+      
+      tempCtx.putImageData(originalImageData, 0, 0);
+      
+      // Scale up with high-quality interpolation
+      ctx.drawImage(tempCanvas, 0, 0, width, height, 0, 0, canvas.width, canvas.height);
+      
+      // Apply additional sharpening filter
+      const scaledImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const scaledData = scaledImageData.data;
+      
+      // Simple sharpening kernel
+      const sharpening = [
+        0, -1, 0,
+        -1, 5, -1,
+        0, -1, 0
+      ];
+      
+      // Apply sharpening (simplified for performance)
+      for (let y = 1; y < canvas.height - 1; y++) {
+        for (let x = 1; x < canvas.width - 1; x++) {
+          const idx = (y * canvas.width + x) * 4;
+          let sum = 0;
+          
+          for (let ky = -1; ky <= 1; ky++) {
+            for (let kx = -1; kx <= 1; kx++) {
+              const pixel = ((y + ky) * canvas.width + (x + kx)) * 4;
+              sum += scaledData[pixel] * sharpening[(ky + 1) * 3 + (kx + 1)];
+            }
+          }
+          
+          sum = Math.min(255, Math.max(0, sum));
+          scaledData[idx] = sum;
+          scaledData[idx + 1] = sum;
+          scaledData[idx + 2] = sum;
+        }
+      }
+      
+      ctx.putImageData(scaledImageData, 0, 0);
+      
+      // Convert to ultra-high quality PNG
+      const result = canvas.toDataURL('image/png', 1.0);
+      
+      console.log(`✅ Ultra-high quality image processed for ${fingerName}:`, {
+        originalSize: bitmapData.length,
+        processedSize: result.length,
+        scale: scale,
+        resolution: `${canvas.width}x${canvas.height}`
+      });
+      
+      return result;
+    } catch (error) {
+      console.error('High-quality bitmap processing error:', error);
+      return "";
+    }
+  }, [fingerName]);
+
+  // Initialize with device check
   useEffect(() => {
     mountedRef.current = true;
 
-    // Initial check
     const performInitialCheck = async () => {
       const isConnected = await checkDeviceConnection(true);
       setIsInitialCheck(false);
       
       if (isConnected) {
-        console.log('🔗 Device connected successfully');
-        toast.success('Device connected and ready');
+        console.log('🔗 High-quality capture device ready');
+        toast.success('High-quality fingerprint device connected');
       }
     };
 
     performInitialCheck();
 
-    // Setup background check (every 30 seconds - much less frequent)
+    // Background monitoring (every 30 seconds)
     backgroundCheckRef.current = setInterval(() => {
       if (mountedRef.current && !isCapturing) {
         checkDeviceConnection(false);
       }
-    }, 30000); // 30 seconds instead of 5 seconds
+    }, 30000);
 
     return () => {
       mountedRef.current = false;
@@ -112,48 +233,6 @@ export function EnhancedRDServiceCapture({
     };
   }, [checkDeviceConnection, isCapturing]);
 
-  const processBitmapToImage = useCallback((bitmapData: string, width: number = 256, height: number = 256): string => {
-    try {
-      if (!bitmapData || bitmapData.length === 0) {
-        return "";
-      }
-
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      
-      if (!ctx) {
-        throw new Error('Failed to get canvas context');
-      }
-
-      const binaryData = atob(bitmapData);
-      const imageData = ctx.createImageData(width, height);
-      const data = imageData.data;
-      
-      const totalPixels = Math.min(binaryData.length, width * height);
-      
-      for (let i = 0; i < totalPixels; i++) {
-        let pixelValue = 255 - binaryData.charCodeAt(i);
-        pixelValue = Math.min(255, Math.max(0, pixelValue * 1.3 + 20));
-        
-        const pixelIndex = i * 4;
-        if (pixelIndex + 3 < data.length) {
-          data[pixelIndex] = pixelValue;
-          data[pixelIndex + 1] = pixelValue;
-          data[pixelIndex + 2] = pixelValue;
-          data[pixelIndex + 3] = 255;
-        }
-      }
-      
-      ctx.putImageData(imageData, 0, 0);
-      return canvas.toDataURL('image/png', 1.0);
-    } catch (error) {
-      console.error('Bitmap processing error:', error);
-      return "";
-    }
-  }, []);
-
   const handleCapture = useCallback(async () => {
     if (isCapturing || !deviceConnected) return;
 
@@ -161,10 +240,10 @@ export function EnhancedRDServiceCapture({
       setIsCapturing(true);
       setError('');
       
-      console.log(`🔍 Starting capture for ${fingerName}`);
-      toast.info(`Place ${fingerName} on scanner and wait for light...`, { duration: 4000 });
+      console.log(`🎯 Starting high-quality capture for ${fingerName} with target quality: ${targetQuality}%`);
+      toast.info(`Place ${fingerName} firmly on scanner for high-quality capture...`, { duration: 5000 });
       
-      // Direct capture without additional device checks
+      // Enhanced capture settings for better quality
       const response = await fetch('https://localhost:8003/mfs100/capture', {
         method: 'POST',
         headers: {
@@ -172,9 +251,9 @@ export function EnhancedRDServiceCapture({
         },
         body: JSON.stringify({
           Quality: targetQuality,
-          TimeOut: 20 // Increased timeout for better capture
+          TimeOut: 25  // Longer timeout for better quality capture
         }),
-        signal: AbortSignal.timeout(25000) // 25 second timeout
+        signal: AbortSignal.timeout(30000)
       });
 
       if (!mountedRef.current) return;
@@ -184,10 +263,18 @@ export function EnhancedRDServiceCapture({
         
         if (data.ErrorCode === "0") {
           const captureQuality = data.Quality || 0;
+          
+          console.log(`📊 Capture quality analysis for ${fingerName}:`, {
+            quality: captureQuality,
+            target: targetQuality,
+            bitmapAvailable: !!data.BitmapData,
+            templateAvailable: !!data.IsoTemplate
+          });
+          
           let processedImage = "";
           
           if (data.BitmapData) {
-            processedImage = processBitmapToImage(
+            processedImage = processHighQualityBitmap(
               data.BitmapData,
               data.InWidth || 256,
               data.InHeight || 256
@@ -205,30 +292,33 @@ export function EnhancedRDServiceCapture({
               processedImage
             );
             
-            console.log(`✅ ${fingerName} captured successfully! Quality: ${captureQuality}%`);
-            toast.success(`${fingerName} captured! Quality: ${captureQuality}%`);
+            const qualityMessage = captureQuality >= 80 ? 'Excellent' : 
+                                 captureQuality >= 70 ? 'Good' : 
+                                 captureQuality >= 60 ? 'Fair' : 'Poor';
+            
+            console.log(`✅ ${fingerName} high-quality capture complete! Quality: ${captureQuality}% (${qualityMessage})`);
+            toast.success(`${fingerName} captured! Quality: ${captureQuality}% (${qualityMessage})`);
           } else {
-            throw new Error("Failed to process fingerprint image");
+            throw new Error("Failed to process high-quality fingerprint image");
           }
         } else {
-          throw new Error(data.ErrorDescription || 'Capture failed');
+          throw new Error(data.ErrorDescription || 'High-quality capture failed');
         }
       } else {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Capture failed';
-      console.error(`❌ Capture error for ${fingerName}:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'High-quality capture failed';
+      console.error(`❌ High-quality capture error for ${fingerName}:`, error);
       
       setError(errorMessage);
       setCaptureStatus('failed');
       
-      // Check if it's a device disconnection error
       if (errorMessage.includes('fetch') || errorMessage.includes('Failed to fetch')) {
         setDeviceConnected(false);
-        toast.error(`Device disconnected. Please reconnect and try again.`);
+        toast.error(`High-quality capture device disconnected. Please reconnect.`);
       } else {
-        toast.error(`${fingerName} capture failed: ${errorMessage}`);
+        toast.error(`${fingerName} high-quality capture failed: ${errorMessage}`);
       }
       
       onCaptureError(errorMessage);
@@ -237,29 +327,29 @@ export function EnhancedRDServiceCapture({
         setIsCapturing(false);
       }
     }
-  }, [isCapturing, deviceConnected, fingerName, onCaptureSuccess, onCaptureError, processBitmapToImage, targetQuality]);
+  }, [isCapturing, deviceConnected, fingerName, onCaptureSuccess, onCaptureError, processHighQualityBitmap, targetQuality]);
 
   const handleClear = useCallback(() => {
     setImageData('');
     setQuality(null);
     setCaptureStatus('idle');
     setError('');
-    toast.info(`${fingerName} cleared`);
+    toast.info(`${fingerName} cleared - ready for new high-quality capture`);
   }, [fingerName]);
 
   const handleReconnect = useCallback(async () => {
     try {
-      toast.info('Reconnecting device...');
+      toast.info('Reconnecting high-quality capture device...');
       setError('');
       const isConnected = await checkDeviceConnection(true);
       
       if (isConnected) {
-        toast.success('Device reconnected successfully');
+        toast.success('High-quality capture device reconnected');
       } else {
         toast.error('Failed to reconnect. Please check device connection.');
       }
     } catch (error) {
-      toast.error('Reconnection failed');
+      toast.error('High-quality device reconnection failed');
     }
   }, [checkDeviceConnection]);
 
@@ -279,21 +369,31 @@ export function EnhancedRDServiceCapture({
     }
   };
 
+  const getQualityBadgeVariant = () => {
+    if (!quality) return "secondary";
+    if (quality >= 80) return "default";
+    if (quality >= 70) return "secondary";
+    return "destructive";
+  };
+
   return (
-    <Card className="relative">
+    <Card className="relative border-2 border-primary/20">
       <CardContent className="p-4">
         <div className="flex flex-col items-center space-y-3">
-          {/* Fingerprint Preview */}
+          {/* Enhanced Fingerprint Preview */}
           <div className="relative">
-            <div className={`w-24 h-24 rounded-lg border-2 border-dashed ${getStatusColor().replace('bg-', 'border-')} flex items-center justify-center overflow-hidden`}>
+            <div className={`w-28 h-32 rounded-lg border-2 border-dashed ${getStatusColor().replace('bg-', 'border-')} flex items-center justify-center overflow-hidden bg-gray-50`}>
               {imageData ? (
                 <img 
                   src={imageData} 
-                  alt={fingerName}
-                  className="w-full h-full object-cover"
+                  alt={`${fingerName} high-quality capture`}
+                  className="w-full h-full object-cover rounded-md"
                 />
               ) : (
-                <Fingerprint className="h-8 w-8 text-gray-400" />
+                <div className="text-center">
+                  <Fingerprint className="h-10 w-10 text-gray-400 mx-auto mb-1" />
+                  <div className="text-xs text-gray-500">High Quality</div>
+                </div>
               )}
             </div>
             
@@ -301,36 +401,48 @@ export function EnhancedRDServiceCapture({
             <div className="absolute -top-1 -right-1">
               {getStatusIcon()}
             </div>
+
+            {/* Quality indicator */}
+            {captureStatus === 'captured' && quality && quality >= 80 && (
+              <div className="absolute -top-1 -left-1">
+                <div className="bg-yellow-500 text-white rounded-full p-1">
+                  <Camera className="h-3 w-3" />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Finger name and quality */}
           <div className="text-center">
             <div className="text-sm font-medium">{fingerName}</div>
             {quality && (
-              <Badge variant={quality >= 70 ? "default" : "secondary"} className="mt-1">
-                {quality}%
+              <Badge variant={getQualityBadgeVariant()} className="mt-1">
+                {quality}% {quality >= 80 && "⭐"}
               </Badge>
             )}
           </div>
 
-          {/* Device status */}
+          {/* Enhanced device status */}
           <div className="flex items-center space-x-2">
-            <Badge variant={deviceConnected ? "default" : "destructive"}>
-              {isInitialCheck ? 'Checking...' : deviceConnected ? 'Device Ready' : 'Device Disconnected'}
+            <Badge variant={deviceConnected ? "default" : "destructive"} className="text-xs">
+              {isInitialCheck ? 'Initializing...' : deviceConnected ? 'HQ Device Ready' : 'Device Disconnected'}
             </Badge>
+            {deviceConnected && (
+              <div className="text-xs text-green-600">High Quality Mode</div>
+            )}
           </div>
 
-          {/* Action buttons */}
+          {/* Enhanced action buttons */}
           <div className="w-full space-y-2">
             {captureStatus === 'idle' && (
               <Button
                 size="sm"
                 onClick={handleCapture}
                 disabled={isCapturing || !deviceConnected || isInitialCheck}
-                className="w-full"
+                className="w-full bg-primary hover:bg-primary/90"
               >
-                <Fingerprint className="h-4 w-4 mr-1" />
-                {isCapturing ? 'Capturing...' : 'Capture'}
+                <Camera className="h-4 w-4 mr-1" />
+                {isCapturing ? 'Capturing HQ...' : 'Capture High Quality'}
               </Button>
             )}
 
@@ -344,7 +456,7 @@ export function EnhancedRDServiceCapture({
                   className="flex-1"
                 >
                   <RefreshCw className="h-4 w-4 mr-1" />
-                  Retry
+                  Recapture
                 </Button>
                 <Button
                   size="sm"
@@ -367,7 +479,7 @@ export function EnhancedRDServiceCapture({
                   className="flex-1"
                 >
                   <RefreshCw className="h-4 w-4 mr-1" />
-                  Retry
+                  Retry HQ
                 </Button>
                 {!deviceConnected && (
                   <Button
@@ -391,6 +503,13 @@ export function EnhancedRDServiceCapture({
                 {error}
               </AlertDescription>
             </Alert>
+          )}
+
+          {/* Quality tips */}
+          {captureStatus === 'idle' && deviceConnected && (
+            <div className="text-xs text-center text-gray-500 bg-blue-50 p-2 rounded">
+              💡 For best quality: Press finger firmly, keep steady, ensure clean scanner
+            </div>
           )}
         </div>
       </CardContent>
