@@ -7,6 +7,7 @@ export function useRDService() {
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
+  const [retryCount, setRetryCount] = useState<number>(0);
   const [serviceStatus, setServiceStatus] = useState<{
     service: string;
     message: string;
@@ -51,6 +52,7 @@ export function useRDService() {
 
       if (status.available) {
         setError(null);
+        setRetryCount(0); // Reset retry count on success
         
         // Try to get device info
         try {
@@ -70,6 +72,7 @@ export function useRDService() {
       } else {
         setError(status.message);
         setDeviceInfo(null);
+        setRetryCount(prev => prev + 1); // Increment retry count on failure
         
         if (showLogs) {
           console.warn('❌ No fingerprint service available');
@@ -82,6 +85,7 @@ export function useRDService() {
       setIsAvailable(false);
       setDeviceInfo(null);
       setError(errorMessage);
+      setRetryCount(prev => prev + 1); // Increment retry count on error
       setServiceStatus({
         service: '',
         message: errorMessage
@@ -130,12 +134,14 @@ export function useRDService() {
       if (mountedRef.current && result) {
         setIsAvailable(true);
         setError(null);
+        setRetryCount(0); // Reset retry count on successful capture
       }
       
       return result;
     } catch (err) {
       // If capture fails, recheck availability
       if (mountedRef.current) {
+        setRetryCount(prev => prev + 1);
         setTimeout(() => {
           if (mountedRef.current) {
             checkAvailability(true);
@@ -161,6 +167,7 @@ export function useRDService() {
   // Manual retry
   const retry = () => {
     setError(null);
+    setRetryCount(0);
     rdServiceClient.clearCache();
     checkAvailability(true);
   };
@@ -170,6 +177,7 @@ export function useRDService() {
     setIsAvailable(false);
     setDeviceInfo(null);
     setError(null);
+    setRetryCount(0);
     setServiceStatus({
       service: '',
       message: 'Resetting...'
@@ -190,6 +198,7 @@ export function useRDService() {
     error,
     deviceInfo,
     serviceStatus,
+    retryCount,
     
     // Actions
     captureFingerprint,
