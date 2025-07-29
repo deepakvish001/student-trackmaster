@@ -1,6 +1,42 @@
 
 /// <reference types="vite/client" />
 
+// jQuery type declarations
+interface JQueryStatic {
+  (selector: string): any;
+  (element: Element): any;
+  (callback: () => void): any;
+}
+
+// MFS100 SDK Response Types
+interface MFS100Response {
+  httpStaus: boolean;
+  err?: string;
+  data?: {
+    ErrorCode: string;
+    ErrorDescription: string;
+    DeviceInfo?: {
+      SerialNo: string;
+      Make: string;
+      Model: string;
+      Certificate: string;
+      Width: number;
+      Height: number;
+      LocalMac: string;
+      LocalIP: string;
+      SystemID: string;
+      PublicIP: string;
+    };
+    Quality?: number;
+    Nfiq?: number;
+    InWidth?: number;
+    InHeight?: number;
+    BitmapData?: string;
+    IsoTemplate?: string;
+    AnsiTemplate?: string;
+  };
+}
+
 // WebUSB API TypeScript declarations
 interface Navigator {
   usb: USB;
@@ -109,3 +145,14 @@ interface USBOutTransferResult {
 
 type USBTransferStatus = "ok" | "stall" | "babble";
 
+// Extended Window interface with MFS100 SDK and jQuery
+declare global {
+  interface Window {
+    jQuery?: JQueryStatic;
+    $?: JQueryStatic;
+    GetMFS100Info?: () => MFS100Response;
+    CaptureFinger?: (quality: number, timeout: number) => MFS100Response;
+  }
+}
+
+export {};
