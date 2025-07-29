@@ -28,16 +28,49 @@ export function EnhancedRDServiceCapture({
   const [imageData, setImageData] = useState<string>('');
   const [quality, setQuality] = useState<number | null>(null);
   const [error, setError] = useState<string>('');
-  const [sessionStatus, setSessionStatus] = useState(mfs100SessionManager.getSessionStatus());
+  const [deviceConnected, setDeviceConnected] = useState(false);
+  const [isCheckingDevice, setIsCheckingDevice] = useState(true);
 
-  // Monitor session status
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSessionStatus(mfs100SessionManager.getSessionStatus());
-    }, 1000);
+  // Check device connection independently
+  const checkDeviceConnection = useCallback(async () => {
+    try {
+      setIsCheckingDevice(true);
+      
+      // Try to get device info directly
+      const response = await fetch('https://localhost:8003/mfs100/info', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-    return () => clearInterval(interval);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.ErrorCode === "0") {
+          setDeviceConnected(true);
+          setError('');
+          return true;
+        }
+      }
+      
+      setDeviceConnected(false);
+      return false;
+    } catch (error) {
+      console.log('Device check failed:', error);
+      setDeviceConnected(false);
+      return false;
+    } finally {
+      setIsCheckingDevice(false);
+    }
   }, []);
+
+  // Initial device check and periodic monitoring
+  useEffect(() => {
+    checkDeviceConnection();
+    
+    const interval = setInterval(checkDeviceConnection, 5000);
+    return () => clearInterval(interval);
+  }, [checkDeviceConnection]);
 
   const processBitmapToImage = useCallback((bitmapData: string, width: number = 256, height: number = 256): string => {
     try {
@@ -84,6 +117,13 @@ export function EnhancedRDServiceCapture({
   const handleCapture = useCallback(async () => {
     if (isCapturing) return;
 
+    // Check device connection before capture
+    const isConnected = await checkDeviceConnection();
+    if (!isConnected) {
+      toast.error(`Device not connected. Please check MFS100 connection.`);
+      return;
+    }
+
     try {
       setIsCapturing(true);
       setError('');
@@ -91,7 +131,7 @@ export function EnhancedRDServiceCapture({
       toast.info(`Place ${fingerName} on scanner`, { duration: 4000 });
       
       // Use session manager for capture
-      const result = await mfs100SessionManager.captureWithSession(60, 20);
+      const result = await mfs100SessionManager.captureWithSession(targetQuality, 20);
       
       if (result.httpStaus && result.data?.ErrorCode === "0") {
         const captureQuality = result.data.Quality || 0;
@@ -132,7 +172,7 @@ export function EnhancedRDServiceCapture({
     } finally {
       setIsCapturing(false);
     }
-  }, [isCapturing, fingerName, onCaptureSuccess, onCaptureError, processBitmapToImage]);
+  }, [isCapturing, fingerName, onCaptureSuccess, onCaptureError, processBitmapToImage, targetQuality, checkDeviceConnection]);
 
   const handleClear = useCallback(() => {
     setImageData('');
@@ -146,11 +186,12 @@ export function EnhancedRDServiceCapture({
     try {
       toast.info('Reconnecting device...');
       await mfs100SessionManager.forceReconnect();
+      await checkDeviceConnection();
       toast.success('Device reconnected');
     } catch (error) {
       toast.error('Failed to reconnect device');
     }
-  }, []);
+  }, [checkDeviceConnection]);
 
   const getStatusColor = () => {
     switch (captureStatus) {
@@ -202,13 +243,20 @@ export function EnhancedRDServiceCapture({
             )}
           </div>
 
+          {/* Device status */}
+          <div className="flex items-center space-x-2">
+            <Badge variant={deviceConnected ? "default" : "destructive"}>
+              {isCheckingDevice ? 'Checking...' : deviceConnected ? 'Device Connected' : 'Device Disconnected'}
+            </Badge>
+          </div>
+
           {/* Action buttons */}
           <div className="w-full space-y-2">
             {captureStatus === 'idle' && (
               <Button
                 size="sm"
                 onClick={handleCapture}
-                disabled={isCapturing || !sessionStatus.deviceConnected}
+                disabled={isCapturing || !deviceConnected || isCheckingDevice}
                 className="w-full"
               >
                 <Fingerprint className="h-4 w-4 mr-1" />
@@ -222,7 +270,7 @@ export function EnhancedRDServiceCapture({
                   size="sm"
                   variant="outline"
                   onClick={handleCapture}
-                  disabled={isCapturing || !sessionStatus.deviceConnected}
+                  disabled={isCapturing || !deviceConnected}
                   className="flex-1"
                 >
                   <RefreshCw className="h-4 w-4 mr-1" />
@@ -245,13 +293,13 @@ export function EnhancedRDServiceCapture({
                 <Button
                   size="sm"
                   onClick={handleCapture}
-                  disabled={isCapturing || !sessionStatus.deviceConnected}
+                  disabled={isCapturing || !deviceConnected}
                   className="flex-1"
                 >
                   <RefreshCw className="h-4 w-4 mr-1" />
                   Retry
                 </Button>
-                {!sessionStatus.deviceConnected && (
+                {!deviceConnected && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -273,13 +321,6 @@ export function EnhancedRDServiceCapture({
                 {error}
               </AlertDescription>
             </Alert>
-          )}
-
-          {/* Session status */}
-          {!sessionStatus.deviceConnected && (
-            <div className="text-xs text-red-600 text-center">
-              Device Disconnected
-            </div>
           )}
         </div>
       </CardContent>
