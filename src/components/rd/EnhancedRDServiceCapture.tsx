@@ -1,12 +1,11 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Fingerprint, CheckCircle, AlertCircle, RefreshCw, X } from 'lucide-react';
 import { toast } from "sonner";
-import { mfs100SessionManager } from '@/services/mfs100SessionManager';
 
 interface EnhancedRDServiceCaptureProps {
   index: number;
@@ -29,48 +28,89 @@ export function EnhancedRDServiceCapture({
   const [quality, setQuality] = useState<number | null>(null);
   const [error, setError] = useState<string>('');
   const [deviceConnected, setDeviceConnected] = useState(false);
-  const [isCheckingDevice, setIsCheckingDevice] = useState(true);
+  const [isInitialCheck, setIsInitialCheck] = useState(true);
 
-  // Check device connection independently
-  const checkDeviceConnection = useCallback(async () => {
+  // Refs for managing intervals and preventing memory leaks
+  const backgroundCheckRef = useRef<NodeJS.Timeout | null>(null);
+  const mountedRef = useRef(true);
+
+  // Stable device check function with reduced frequency
+  const checkDeviceConnection = useCallback(async (showLogs = false) => {
+    if (!mountedRef.current) return false;
+
     try {
-      setIsCheckingDevice(true);
-      
-      // Try to get device info directly
       const response = await fetch('https://localhost:8003/mfs100/info', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: AbortSignal.timeout(5000) // 5 second timeout
       });
+
+      if (!mountedRef.current) return false;
 
       if (response.ok) {
         const data = await response.json();
-        if (data.ErrorCode === "0") {
-          setDeviceConnected(true);
-          setError('');
-          return true;
+        const isConnected = data.ErrorCode === "0";
+        
+        setDeviceConnected(isConnected);
+        setError(isConnected ? '' : 'Device not responding');
+        
+        if (showLogs && isConnected) {
+          console.log('✅ Device check passed:', data);
         }
+        
+        return isConnected;
+      } else {
+        throw new Error(`HTTP ${response.status}`);
+      }
+    } catch (error) {
+      if (!mountedRef.current) return false;
+      
+      const isConnected = false;
+      setDeviceConnected(isConnected);
+      setError('Device connection failed');
+      
+      if (showLogs) {
+        console.log('❌ Device check failed:', error);
       }
       
-      setDeviceConnected(false);
-      return false;
-    } catch (error) {
-      console.log('Device check failed:', error);
-      setDeviceConnected(false);
-      return false;
-    } finally {
-      setIsCheckingDevice(false);
+      return isConnected;
     }
   }, []);
 
-  // Initial device check and periodic monitoring
+  // Initial device check and setup background monitoring
   useEffect(() => {
-    checkDeviceConnection();
-    
-    const interval = setInterval(checkDeviceConnection, 5000);
-    return () => clearInterval(interval);
-  }, [checkDeviceConnection]);
+    mountedRef.current = true;
+
+    // Initial check
+    const performInitialCheck = async () => {
+      const isConnected = await checkDeviceConnection(true);
+      setIsInitialCheck(false);
+      
+      if (isConnected) {
+        console.log('🔗 Device connected successfully');
+        toast.success('Device connected and ready');
+      }
+    };
+
+    performInitialCheck();
+
+    // Setup background check (every 30 seconds - much less frequent)
+    backgroundCheckRef.current = setInterval(() => {
+      if (mountedRef.current && !isCapturing) {
+        checkDeviceConnection(false);
+      }
+    }, 30000); // 30 seconds instead of 5 seconds
+
+    return () => {
+      mountedRef.current = false;
+      if (backgroundCheckRef.current) {
+        clearInterval(backgroundCheckRef.current);
+        backgroundCheckRef.current = null;
+      }
+    };
+  }, [checkDeviceConnection, isCapturing]);
 
   const processBitmapToImage = useCallback((bitmapData: string, width: number = 256, height: number = 256): string => {
     try {
@@ -94,8 +134,8 @@ export function EnhancedRDServiceCapture({
       const totalPixels = Math.min(binaryData.length, width * height);
       
       for (let i = 0; i < totalPixels; i++) {
-        let pixelValue = 255 - binaryData.charCodeAt(i); // Invert
-        pixelValue = Math.min(255, Math.max(0, pixelValue * 1.3 + 20)); // Enhance contrast
+        let pixelValue = 255 - binaryData.charCodeAt(i);
+        pixelValue = Math.min(255, Math.max(0, pixelValue * 1.3 + 20));
         
         const pixelIndex = i * 4;
         if (pixelIndex + 3 < data.length) {
@@ -115,64 +155,89 @@ export function EnhancedRDServiceCapture({
   }, []);
 
   const handleCapture = useCallback(async () => {
-    if (isCapturing) return;
-
-    // Check device connection before capture
-    const isConnected = await checkDeviceConnection();
-    if (!isConnected) {
-      toast.error(`Device not connected. Please check MFS100 connection.`);
-      return;
-    }
+    if (isCapturing || !deviceConnected) return;
 
     try {
       setIsCapturing(true);
       setError('');
       
-      toast.info(`Place ${fingerName} on scanner`, { duration: 4000 });
+      console.log(`🔍 Starting capture for ${fingerName}`);
+      toast.info(`Place ${fingerName} on scanner and wait for light...`, { duration: 4000 });
       
-      // Use session manager for capture
-      const result = await mfs100SessionManager.captureWithSession(targetQuality, 20);
-      
-      if (result.httpStaus && result.data?.ErrorCode === "0") {
-        const captureQuality = result.data.Quality || 0;
-        let processedImage = "";
+      // Direct capture without additional device checks
+      const response = await fetch('https://localhost:8003/mfs100/capture', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          Quality: targetQuality,
+          TimeOut: 20 // Increased timeout for better capture
+        }),
+        signal: AbortSignal.timeout(25000) // 25 second timeout
+      });
+
+      if (!mountedRef.current) return;
+
+      if (response.ok) {
+        const data = await response.json();
         
-        if (result.data.BitmapData) {
-          processedImage = processBitmapToImage(
-            result.data.BitmapData,
-            result.data.InWidth || 256,
-            result.data.InHeight || 256
-          );
-        }
-        
-        if (processedImage) {
-          setImageData(processedImage);
-          setQuality(captureQuality);
-          setCaptureStatus('captured');
+        if (data.ErrorCode === "0") {
+          const captureQuality = data.Quality || 0;
+          let processedImage = "";
           
-          onCaptureSuccess(
-            result.data.IsoTemplate || '',
-            captureQuality,
-            processedImage
-          );
+          if (data.BitmapData) {
+            processedImage = processBitmapToImage(
+              data.BitmapData,
+              data.InWidth || 256,
+              data.InHeight || 256
+            );
+          }
           
-          toast.success(`${fingerName} captured! Quality: ${captureQuality}%`);
+          if (processedImage) {
+            setImageData(processedImage);
+            setQuality(captureQuality);
+            setCaptureStatus('captured');
+            
+            onCaptureSuccess(
+              data.IsoTemplate || '',
+              captureQuality,
+              processedImage
+            );
+            
+            console.log(`✅ ${fingerName} captured successfully! Quality: ${captureQuality}%`);
+            toast.success(`${fingerName} captured! Quality: ${captureQuality}%`);
+          } else {
+            throw new Error("Failed to process fingerprint image");
+          }
         } else {
-          throw new Error("Failed to process fingerprint image");
+          throw new Error(data.ErrorDescription || 'Capture failed');
         }
       } else {
-        throw new Error(result.data?.ErrorDescription || 'Capture failed');
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Capture failed';
+      console.error(`❌ Capture error for ${fingerName}:`, error);
+      
       setError(errorMessage);
       setCaptureStatus('failed');
-      toast.error(`${fingerName} capture failed: ${errorMessage}`);
+      
+      // Check if it's a device disconnection error
+      if (errorMessage.includes('fetch') || errorMessage.includes('Failed to fetch')) {
+        setDeviceConnected(false);
+        toast.error(`Device disconnected. Please reconnect and try again.`);
+      } else {
+        toast.error(`${fingerName} capture failed: ${errorMessage}`);
+      }
+      
       onCaptureError(errorMessage);
     } finally {
-      setIsCapturing(false);
+      if (mountedRef.current) {
+        setIsCapturing(false);
+      }
     }
-  }, [isCapturing, fingerName, onCaptureSuccess, onCaptureError, processBitmapToImage, targetQuality, checkDeviceConnection]);
+  }, [isCapturing, deviceConnected, fingerName, onCaptureSuccess, onCaptureError, processBitmapToImage, targetQuality]);
 
   const handleClear = useCallback(() => {
     setImageData('');
@@ -182,14 +247,19 @@ export function EnhancedRDServiceCapture({
     toast.info(`${fingerName} cleared`);
   }, [fingerName]);
 
-  const handleForceReconnect = useCallback(async () => {
+  const handleReconnect = useCallback(async () => {
     try {
       toast.info('Reconnecting device...');
-      await mfs100SessionManager.forceReconnect();
-      await checkDeviceConnection();
-      toast.success('Device reconnected');
+      setError('');
+      const isConnected = await checkDeviceConnection(true);
+      
+      if (isConnected) {
+        toast.success('Device reconnected successfully');
+      } else {
+        toast.error('Failed to reconnect. Please check device connection.');
+      }
     } catch (error) {
-      toast.error('Failed to reconnect device');
+      toast.error('Reconnection failed');
     }
   }, [checkDeviceConnection]);
 
@@ -246,7 +316,7 @@ export function EnhancedRDServiceCapture({
           {/* Device status */}
           <div className="flex items-center space-x-2">
             <Badge variant={deviceConnected ? "default" : "destructive"}>
-              {isCheckingDevice ? 'Checking...' : deviceConnected ? 'Device Connected' : 'Device Disconnected'}
+              {isInitialCheck ? 'Checking...' : deviceConnected ? 'Device Ready' : 'Device Disconnected'}
             </Badge>
           </div>
 
@@ -256,7 +326,7 @@ export function EnhancedRDServiceCapture({
               <Button
                 size="sm"
                 onClick={handleCapture}
-                disabled={isCapturing || !deviceConnected || isCheckingDevice}
+                disabled={isCapturing || !deviceConnected || isInitialCheck}
                 className="w-full"
               >
                 <Fingerprint className="h-4 w-4 mr-1" />
@@ -303,7 +373,7 @@ export function EnhancedRDServiceCapture({
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={handleForceReconnect}
+                    onClick={handleReconnect}
                     className="flex-1"
                   >
                     Reconnect
