@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { rdServiceClient, DeviceInfo } from '@/services/rdServiceClient';
+import { isMFS100Available } from '@/utils/mfs100Native';
 
 export function useRDService() {
   const [isAvailable, setIsAvailable] = useState(false);
@@ -9,6 +10,7 @@ export function useRDService() {
   const [retryCount, setRetryCount] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
+  const [mfs100Available, setMFS100Available] = useState(false);
   
   // Refs to prevent memory leaks
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -18,7 +20,7 @@ export function useRDService() {
   // Configuration
   const CHECK_INTERVAL = 5000; // Check every 5 seconds when available
   const RETRY_INTERVAL = 30000; // Retry every 30 seconds when not available
-  const MAX_RETRIES = 10; // Maximum retry attempts before giving up
+  const MAX_RETRIES = 3; // Reduced retries since we have MFS100 fallback
   const MIN_CHECK_INTERVAL = 1000; // Minimum time between checks
 
   // Clean up on unmount
@@ -62,6 +64,7 @@ export function useRDService() {
         setIsAvailable(true);
         setError(null);
         setRetryCount(0);
+        setMFS100Available(false);
         
         // Try to get device info when service becomes available
         try {
@@ -78,7 +81,11 @@ export function useRDService() {
           startPeriodicCheck(CHECK_INTERVAL);
         }
       } else {
-        handleServiceUnavailable();
+        // Check MFS100 availability as fallback
+        const mfs100Available = await isMFS100Available();
+        setMFS100Available(mfs100Available);
+        
+        handleServiceUnavailable(mfs100Available);
       }
     } catch (err) {
       if (!mountedRef.current) return;
@@ -86,7 +93,11 @@ export function useRDService() {
       const errorMessage = err instanceof Error ? err.message : 'Service check failed';
       console.warn('RD Service check failed:', errorMessage);
       
-      handleServiceUnavailable();
+      // Check MFS100 availability as fallback
+      const mfs100Available = await isMFS100Available();
+      setMFS100Available(mfs100Available);
+      
+      handleServiceUnavailable(mfs100Available);
     } finally {
       if (mountedRef.current) {
         setIsChecking(false);
@@ -95,11 +106,24 @@ export function useRDService() {
   };
 
   // Handle service unavailable state
-  const handleServiceUnavailable = () => {
+  const handleServiceUnavailable = (mfs100Available: boolean) => {
     setIsAvailable(false);
     setDeviceInfo(null);
     
-    if (retryCount < MAX_RETRIES) {
+    if (mfs100Available) {
+      setError('RD Service not available, but MFS100 service is detected. Consider using MFS100 fingerprint capture instead.');
+      setRetryCount(0);
+      
+      // Stop retrying if MFS100 is available
+      if (checkIntervalRef.current) {
+        clearInterval(checkIntervalRef.current);
+        checkIntervalRef.current = null;
+      }
+      if (backoffTimeoutRef.current) {
+        clearTimeout(backoffTimeoutRef.current);
+        backoffTimeoutRef.current = null;
+      }
+    } else if (retryCount < MAX_RETRIES) {
       const nextRetryCount = retryCount + 1;
       setRetryCount(nextRetryCount);
       
@@ -119,7 +143,7 @@ export function useRDService() {
         }
       }, backoffTime);
     } else {
-      setError('RD Service is not available. Please check if the service is running on port 11100.');
+      setError('RD Service is not available. Please install and start the RD Service, or use MFS100 fingerprint capture instead.');
       
       // Stop periodic checking after max retries
       if (checkIntervalRef.current) {
@@ -204,6 +228,7 @@ export function useRDService() {
     setDeviceInfo(null);
     setError(null);
     setRetryCount(0);
+    setMFS100Available(false);
     rdServiceClient.clearCache();
     checkAvailability(true);
   };
@@ -226,6 +251,7 @@ export function useRDService() {
     retryCount,
     maxRetries: MAX_RETRIES,
     deviceInfo,
+    mfs100Available,
     captureFingerprint,
     getDeviceInfo,
     retry,

@@ -1,8 +1,10 @@
-
 /**
  * RD Service Client for Fingerprint Authentication
  * Handles communication with RD Service running on localhost:11100
+ * Falls back to MFS100 service if RD Service is not available
  */
+
+import { isMFS100Available } from '@/utils/mfs100Native';
 
 export interface RDServiceResponse {
   errCode: string;
@@ -44,12 +46,18 @@ export class RDServiceClient {
     try {
       this.deviceInfo = await this.getDeviceInfo();
     } catch (error) {
-      console.warn('Failed to initialize device info:', error);
+      console.warn('Failed to initialize RD Service device info:', error);
+      
+      // Check if MFS100 is available as fallback
+      const mfs100Available = await isMFS100Available();
+      if (mfs100Available) {
+        console.info('RD Service not available, but MFS100 service is available at https://localhost:8003');
+      }
     }
   }
 
   /**
-   * Check if RD Service is available with caching
+   * Check if RD Service is available with caching and MFS100 fallback
    */
   async isServiceAvailable(): Promise<boolean> {
     const now = Date.now();
@@ -81,11 +89,18 @@ export class RDServiceClient {
       
       return isAvailable;
     } catch (error) {
-      // Cache the failed result as well
+      // Check if MFS100 is available as fallback
+      const mfs100Available = await isMFS100Available();
+      
+      // Cache the failed result
       this.availabilityCache = {
         result: false,
         timestamp: now
       };
+      
+      if (mfs100Available) {
+        console.info('RD Service not available, but MFS100 service is available. Consider using MFS100 components instead.');
+      }
       
       return false;
     }
