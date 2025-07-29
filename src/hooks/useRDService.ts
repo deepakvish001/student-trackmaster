@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { rdServiceClient, DeviceInfo } from '@/services/rdServiceClient';
 
@@ -19,9 +18,9 @@ export function useRDService() {
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
 
-  // Configuration
-  const CHECK_INTERVAL = 10000; // Check every 10 seconds
-  const INITIAL_DELAY = 1000; // Initial check delay
+  // Configuration - Reduced frequency to prevent spam
+  const CHECK_INTERVAL = 30000; // Check every 30 seconds instead of 10
+  const INITIAL_DELAY = 2000; // Slightly longer initial delay
 
   // Clean up on unmount
   useEffect(() => {
@@ -33,7 +32,7 @@ export function useRDService() {
     };
   }, []);
 
-  // Check service availability
+  // Check service availability with improved error handling
   const checkAvailability = async (showLogs = false) => {
     if (!mountedRef.current || isChecking) return;
 
@@ -52,7 +51,7 @@ export function useRDService() {
 
       if (status.available) {
         setError(null);
-        setRetryCount(0); // Reset retry count on success
+        setRetryCount(0);
         
         // Try to get device info
         try {
@@ -66,17 +65,15 @@ export function useRDService() {
             });
           }
         } catch (err) {
-          console.warn('Could not get device info:', err);
+          if (showLogs) {
+            console.warn('Could not get device info:', err);
+          }
           setDeviceInfo(null);
         }
       } else {
         setError(status.message);
         setDeviceInfo(null);
-        setRetryCount(prev => prev + 1); // Increment retry count on failure
-        
-        if (showLogs) {
-          console.warn('❌ No fingerprint service available');
-        }
+        setRetryCount(prev => prev + 1);
       }
     } catch (err) {
       if (!mountedRef.current) return;
@@ -85,7 +82,7 @@ export function useRDService() {
       setIsAvailable(false);
       setDeviceInfo(null);
       setError(errorMessage);
-      setRetryCount(prev => prev + 1); // Increment retry count on error
+      setRetryCount(prev => prev + 1);
       setServiceStatus({
         service: '',
         message: errorMessage
@@ -106,10 +103,10 @@ export function useRDService() {
       }
     }, INITIAL_DELAY);
 
-    // Start periodic checking
+    // Start periodic checking with reduced frequency
     checkIntervalRef.current = setInterval(() => {
       if (mountedRef.current) {
-        checkAvailability();
+        checkAvailability(false); // Don't show logs for periodic checks
       }
     }, CHECK_INTERVAL);
 
@@ -130,16 +127,14 @@ export function useRDService() {
     try {
       const result = await rdServiceClient.captureFingerprint(timeout);
       
-      // Verify service is still available after capture
       if (mountedRef.current && result) {
         setIsAvailable(true);
         setError(null);
-        setRetryCount(0); // Reset retry count on successful capture
+        setRetryCount(0);
       }
       
       return result;
     } catch (err) {
-      // If capture fails, recheck availability
       if (mountedRef.current) {
         setRetryCount(prev => prev + 1);
         setTimeout(() => {
