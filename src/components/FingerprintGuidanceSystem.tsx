@@ -1,11 +1,11 @@
-
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, Hand, ArrowRight, RotateCcw, Eye, Wifi, WifiOff, Fingerprint } from "lucide-react";
-import { EnhancedMFS100Capture } from "./EnhancedMFS100Capture";
+import { CheckCircle2, Circle, Hand, RotateCcw, Eye, Wifi, WifiOff, Fingerprint } from "lucide-react";
+import { EnhancedFingerprintPreview } from "./EnhancedFingerprintPreview";
+import { useStableFingerprintPreview } from "@/hooks/useStableFingerprintPreview";
 
 interface FingerprintGuidanceSystemProps {
   fingerprints: string[];
@@ -23,6 +23,17 @@ export function FingerprintGuidanceSystem({
   const [currentFinger, setCurrentFinger] = useState(0);
   const [acceptedFingers, setAcceptedFingers] = useState<boolean[]>([false, false, false, false, false]);
   const [deviceConnected, setDeviceConnected] = useState(false);
+  const [capturedQualities, setCapturedQualities] = useState<(number | null)[]>([null, null, null, null, null]);
+  const [capturedImages, setCapturedImages] = useState<string[]>(['', '', '', '', '']);
+
+  const {
+    previewState,
+    showPreview,
+    hidePreview,
+    acceptPreview,
+    rejectPreview,
+    handleVisibilityChange
+  } = useStableFingerprintPreview();
 
   const fingerNames = [
     "Right Thumb",
@@ -32,41 +43,99 @@ export function FingerprintGuidanceSystem({
     "Left Thumb"
   ];
 
-  const handleFingerprintCaptured = (index: number, value: string) => {
-    console.log(`Fingerprint ${index + 1} captured:`, value ? 'data received' : 'no data');
+  const handleFingerprintCaptured = useCallback((index: number, value: string, quality?: number, imageData?: string) => {
+    console.log(`Fingerprint ${index + 1} captured with enhanced processing:`, {
+      hasValue: !!value,
+      quality,
+      hasImage: !!imageData,
+      imageLength: imageData?.length || 0
+    });
+    
+    // Store the captured data
     onFingerprintChange(index, value);
-  };
-
-  const handleImageCaptured = (index: number, imageData: string) => {
-    console.log(`Fingerprint image ${index + 1} captured:`, imageData ? 'image received' : 'no image');
-    onImageChange?.(index, imageData);
-  };
-
-  const handleFingerAccepted = (index: number) => {
-    console.log(`Finger ${index + 1} accepted, advancing to next...`);
     
-    const newAccepted = [...acceptedFingers];
-    newAccepted[index] = true;
-    setAcceptedFingers(newAccepted);
-    
-    const nextUnacceptedIndex = newAccepted.findIndex((accepted, i) => !accepted);
-    
-    if (nextUnacceptedIndex !== -1) {
-      console.log(`Moving to finger ${nextUnacceptedIndex + 1}`);
-      setCurrentFinger(nextUnacceptedIndex);
-    } else {
-      console.log('All fingerprints captured and accepted!');
+    if (imageData) {
+      setCapturedImages(prev => {
+        const updated = [...prev];
+        updated[index] = imageData;
+        return updated;
+      });
+      onImageChange?.(index, imageData);
     }
-  };
+    
+    if (quality !== undefined) {
+      setCapturedQualities(prev => {
+        const updated = [...prev];
+        updated[index] = quality;
+        return updated;
+      });
+    }
+
+    // Show enhanced preview for review
+    if (imageData && quality !== undefined) {
+      showPreview(index, imageData, quality);
+    }
+  }, [onFingerprintChange, onImageChange, showPreview]);
+
+  const handlePreviewAccept = useCallback(() => {
+    const acceptedPreview = acceptPreview();
+    if (acceptedPreview.fingerIndex !== null) {
+      const index = acceptedPreview.fingerIndex;
+      
+      // Mark finger as accepted
+      const newAccepted = [...acceptedFingers];
+      newAccepted[index] = true;
+      setAcceptedFingers(newAccepted);
+      
+      console.log(`✅ Finger ${index + 1} accepted and finalized`);
+      
+      // Move to next unaccepted finger
+      const nextUnacceptedIndex = newAccepted.findIndex((accepted, i) => !accepted);
+      if (nextUnacceptedIndex !== -1) {
+        setCurrentFinger(nextUnacceptedIndex);
+        console.log(`➡️ Moving to finger ${nextUnacceptedIndex + 1}`);
+      } else {
+        console.log('🎉 All fingerprints captured and accepted!');
+      }
+    }
+  }, [acceptPreview, acceptedFingers]);
+
+  const handlePreviewRecapture = useCallback(() => {
+    const rejectedPreview = rejectPreview();
+    if (rejectedPreview.fingerIndex !== null) {
+      const index = rejectedPreview.fingerIndex;
+      
+      // Clear the captured data for recapture
+      onFingerprintChange(index, "");
+      setCapturedImages(prev => {
+        const updated = [...prev];
+        updated[index] = '';
+        return updated;
+      });
+      setCapturedQualities(prev => {
+        const updated = [...prev];
+        updated[index] = null;
+        return updated;
+      });
+      onImageChange?.(index, "");
+      
+      // Set as current finger for recapture
+      setCurrentFinger(index);
+      console.log(`🔄 Recapturing finger ${index + 1}`);
+    }
+  }, [rejectPreview, onFingerprintChange, onImageChange]);
 
   const getProgressPercentage = () => {
     return (acceptedFingers.filter(Boolean).length / 5) * 100;
   };
 
   const resetCapture = () => {
-    console.log('Resetting capture system...');
+    console.log('🔄 Resetting entire capture system...');
     setCurrentFinger(0);
     setAcceptedFingers([false, false, false, false, false]);
+    setCapturedQualities([null, null, null, null, null]);
+    setCapturedImages(['', '', '', '', '']);
+    hidePreview();
     
     for (let i = 0; i < 5; i++) {
       onFingerprintChange(i, "");
@@ -77,13 +146,13 @@ export function FingerprintGuidanceSystem({
   const getFingerStatus = (index: number) => {
     if (acceptedFingers[index]) return 'accepted';
     if (currentFinger === index) return 'current';
-    if (fingerprints[index]) return 'captured';
+    if (fingerprints[index] || capturedImages[index]) return 'captured';
     return 'pending';
   };
 
   const handleFingerClick = (index: number) => {
     if (!acceptedFingers[index]) {
-      console.log(`Manually switching to finger ${index + 1}`);
+      console.log(`👆 Manually switching to finger ${index + 1}`);
       setCurrentFinger(index);
     }
   };
@@ -103,7 +172,7 @@ export function FingerprintGuidanceSystem({
                 <Hand className="h-8 w-8 text-white" />
               </div>
               <span className="bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-900 bg-clip-text text-transparent font-bold text-3xl">
-                Fingerprint Enrollment Progress
+                Enhanced Fingerprint Enrollment
               </span>
             </span>
             <Button 
@@ -141,6 +210,7 @@ export function FingerprintGuidanceSystem({
           {fingerNames.slice(0, 3).map((name, index) => {
             const status = getFingerStatus(index);
             const isDisconnected = !deviceConnected;
+            const quality = capturedQualities[index];
             
             return (
               <Card 
@@ -156,7 +226,6 @@ export function FingerprintGuidanceSystem({
                 }`}
                 onClick={() => handleFingerClick(index)}
               >
-                {/* Enhanced Status Badge */}
                 <div className="absolute -top-3 -right-3 z-10">
                   <Badge 
                     variant={isDisconnected ? "destructive" : status === 'accepted' ? "default" : "secondary"}
@@ -193,10 +262,16 @@ export function FingerprintGuidanceSystem({
                   <div className="text-sm text-gray-700 font-semibold">
                     {name}
                   </div>
+                  {quality && (
+                    <div className="text-xs text-center mt-2">
+                      <Badge variant={quality >= 70 ? "default" : "secondary"}>
+                        Quality: {quality}%
+                      </Badge>
+                    </div>
+                  )}
                 </CardHeader>
                 
                 <CardContent className="text-center space-y-6 pb-6">
-                  {/* Connection Status */}
                   <div className="flex items-center justify-center space-x-2">
                     {isDisconnected ? (
                       <WifiOff className="h-5 w-5 text-red-500" />
@@ -210,7 +285,6 @@ export function FingerprintGuidanceSystem({
                     </span>
                   </div>
 
-                  {/* Enhanced Fingerprint Display Area */}
                   <div className={`mx-auto w-32 h-40 border-3 rounded-xl flex items-center justify-center transition-all duration-500 ${
                     status === 'current'
                       ? 'border-blue-500 border-dashed animate-pulse bg-gradient-to-br from-blue-100 to-indigo-100 shadow-inner' 
@@ -236,16 +310,20 @@ export function FingerprintGuidanceSystem({
                     </div>
                   </div>
 
-                  {/* Enhanced Action Buttons */}
                   <div className="space-y-3">
                     <Button
                       size="lg"
                       variant={status === 'current' ? "default" : "outline"}
                       disabled={status === 'accepted'}
                       className="w-full py-3 text-sm font-bold transition-all duration-300 shadow-lg"
+                      onClick={() => {
+                        if (status === 'captured') {
+                          showPreview(index, capturedImages[index], capturedQualities[index]);
+                        }
+                      }}
                     >
                       <Fingerprint className="mr-2 h-5 w-5" />
-                      {status === 'accepted' ? 'Captured ✓' : 'Capture'}
+                      {status === 'accepted' ? 'Captured ✓' : status === 'captured' ? 'Review' : 'Capture'}
                     </Button>
                     
                     {isDisconnected && (
@@ -272,6 +350,7 @@ export function FingerprintGuidanceSystem({
               const index = idx + 3;
               const status = getFingerStatus(index);
               const isDisconnected = !deviceConnected;
+              const quality = capturedQualities[index];
               
               return (
                 <Card 
@@ -287,7 +366,6 @@ export function FingerprintGuidanceSystem({
                   }`}
                   onClick={() => handleFingerClick(index)}
                 >
-                  {/* Enhanced Status Badge */}
                   <div className="absolute -top-3 -right-3 z-10">
                     <Badge 
                       variant={isDisconnected ? "destructive" : status === 'accepted' ? "default" : "secondary"}
@@ -324,10 +402,16 @@ export function FingerprintGuidanceSystem({
                     <div className="text-sm text-gray-700 font-semibold">
                       {name}
                     </div>
+                    {quality && (
+                      <div className="text-xs text-center mt-2">
+                        <Badge variant={quality >= 70 ? "default" : "secondary"}>
+                          Quality: {quality}%
+                        </Badge>
+                      </div>
+                    )}
                   </CardHeader>
                   
                   <CardContent className="text-center space-y-6 pb-6">
-                    {/* Connection Status */}
                     <div className="flex items-center justify-center space-x-2">
                       {isDisconnected ? (
                         <WifiOff className="h-5 w-5 text-red-500" />
@@ -341,7 +425,6 @@ export function FingerprintGuidanceSystem({
                       </span>
                     </div>
 
-                    {/* Enhanced Fingerprint Display Area */}
                     <div className={`mx-auto w-32 h-40 border-3 rounded-xl flex items-center justify-center transition-all duration-500 ${
                       status === 'current'
                         ? 'border-blue-500 border-dashed animate-pulse bg-gradient-to-br from-blue-100 to-indigo-100 shadow-inner' 
@@ -367,16 +450,20 @@ export function FingerprintGuidanceSystem({
                       </div>
                     </div>
 
-                    {/* Enhanced Action Buttons */}
                     <div className="space-y-3">
                       <Button
                         size="lg"
                         variant={status === 'current' ? "default" : "outline"}
                         disabled={status === 'accepted'}
                         className="w-full py-3 text-sm font-bold transition-all duration-300 shadow-lg"
+                        onClick={() => {
+                          if (status === 'captured') {
+                            showPreview(index, capturedImages[index], capturedQualities[index]);
+                          }
+                        }}
                       >
                         <Fingerprint className="mr-2 h-5 w-5" />
-                        {status === 'accepted' ? 'Captured ✓' : 'Capture'}
+                        {status === 'accepted' ? 'Captured ✓' : status === 'captured' ? 'Review' : 'Capture'}
                       </Button>
                       
                       {isDisconnected && (
@@ -398,6 +485,20 @@ export function FingerprintGuidanceSystem({
         </div>
       </div>
 
+      {/* Enhanced Preview Modal */}
+      {previewState.isVisible && (
+        <EnhancedFingerprintPreview
+          fingerIndex={previewState.fingerIndex!}
+          imageData={previewState.imageData}
+          quality={previewState.quality}
+          onAccept={handlePreviewAccept}
+          onRecapture={handlePreviewRecapture}
+          fingerName={fingerNames[previewState.fingerIndex!]}
+          isVisible={previewState.isVisible}
+          onVisibilityChange={handleVisibilityChange}
+        />
+      )}
+
       {/* Enhanced Completion Status */}
       {getProgressPercentage() === 100 && (
         <Card className="border-3 border-green-500 bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 shadow-2xl">
@@ -409,18 +510,18 @@ export function FingerprintGuidanceSystem({
                 </div>
               </div>
               <h3 className="text-3xl font-bold bg-gradient-to-r from-green-800 to-emerald-900 bg-clip-text text-transparent">
-                Enrollment Complete!
+                Enhanced Enrollment Complete!
               </h3>
               <p className="text-green-800 text-xl max-w-2xl mx-auto font-semibold">
-                All 5 fingerprints have been successfully captured and verified. 
+                All 5 fingerprints have been captured with enhanced quality processing and verified. 
                 The student registration is now ready to be saved.
               </p>
               <div className="flex justify-center space-x-6 mt-8">
                 <Badge variant="default" className="px-6 py-3 text-base font-bold bg-gradient-to-r from-green-500 to-emerald-600">
-                  ✓ All Fingers Enrolled
+                  ✓ All Fingers Enhanced & Enrolled
                 </Badge>
                 <Badge variant="secondary" className="px-6 py-3 text-base font-bold bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
-                  Ready to Save
+                  🚀 Ready to Save
                 </Badge>
               </div>
             </div>
