@@ -32,16 +32,11 @@ interface StudentFormData {
 }
 
 const fingerNames = [
-  'Right Thumb',
-  'Right Index',
-  'Right Middle', 
-  'Right Ring',
-  'Right Little',
-  'Left Thumb',
-  'Left Index',
-  'Left Middle',
-  'Left Ring',
-  'Left Little'
+  'Finger 1',
+  'Finger 2',
+  'Finger 3',
+  'Finger 4',
+  'Finger 5'
 ];
 
 export default function EnhancedAddStudent() {
@@ -129,8 +124,8 @@ export default function EnhancedAddStudent() {
     }
 
     // Warn if not all fingerprints are captured
-    if (capturedCount < 10 && !forceSave) {
-      toast.warning(`Only ${capturedCount} out of 10 fingerprints captured. Click "Save Anyway" to proceed.`);
+    if (capturedCount < 5 && !forceSave) {
+      toast.warning(`Only ${capturedCount} out of 5 fingerprints captured. Click "Save Anyway" to proceed.`);
       return;
     }
 
@@ -153,7 +148,7 @@ export default function EnhancedAddStudent() {
           fingerprint_templates: templates,
           fingerprint_images: images,
           total_fingerprints_captured: capturedCount,
-          enrollment_status: capturedCount >= 5 ? 'complete' : 'partial'
+          enrollment_status: capturedCount >= 3 ? 'complete' : 'partial'
         }])
         .select()
         .single();
@@ -186,7 +181,7 @@ export default function EnhancedAddStudent() {
   };
 
   const capturedCount = getTotalCaptured();
-  const completionPercentage = (capturedCount / 10) * 100;
+  const completionPercentage = (capturedCount / 5) * 100;
 
   return (
     <div className="container mx-auto p-6 max-w-6xl">
@@ -289,7 +284,7 @@ export default function EnhancedAddStudent() {
               Fingerprint Capture Status
             </CardTitle>
             <CardDescription>
-              {capturedCount}/10 fingerprints captured ({completionPercentage.toFixed(0)}%)
+              {capturedCount}/5 fingerprints captured ({completionPercentage.toFixed(0)}%)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -301,7 +296,7 @@ export default function EnhancedAddStudent() {
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2">
                 {fingerNames.map((name, index) => (
                   <div key={index} className="flex items-center gap-2">
                     <Badge variant={capturedFingerprints[index] ? "default" : "secondary"}>
@@ -312,7 +307,7 @@ export default function EnhancedAddStudent() {
                 ))}
               </div>
 
-              {capturedCount >= 5 && (
+              {capturedCount >= 3 && (
                 <Alert>
                   <CheckCircle className="h-4 w-4" />
                   <AlertDescription>
@@ -321,11 +316,11 @@ export default function EnhancedAddStudent() {
                 </Alert>
               )}
 
-              {capturedCount < 5 && capturedCount > 0 && (
+              {capturedCount < 3 && capturedCount > 0 && (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    {5 - capturedCount} more fingerprints needed for complete enrollment.
+                    {3 - capturedCount} more fingerprints needed for complete enrollment.
                   </AlertDescription>
                 </Alert>
               )}
@@ -351,7 +346,7 @@ export default function EnhancedAddStudent() {
         <CardHeader>
           <CardTitle>Fingerprint Capture</CardTitle>
           <CardDescription>
-            Capture all 10 fingerprints. If device disconnects, you can save with partial data.
+            Capture all 5 fingerprints. If device disconnects, you can save with partial data.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -383,7 +378,7 @@ export default function EnhancedAddStudent() {
               {capturedCount > 0 ? (
                 <span>
                   {capturedCount} fingerprints captured. 
-                  {capturedCount < 10 ? ' You can save with partial data if needed.' : ' All fingerprints captured!'}
+                  {capturedCount < 5 ? ' You can save with partial data if needed.' : ' All fingerprints captured!'}
                 </span>
               ) : (
                 <span>No fingerprints captured yet.</span>
@@ -391,14 +386,14 @@ export default function EnhancedAddStudent() {
             </div>
             
             <div className="flex gap-2">
-              {capturedCount > 0 && capturedCount < 10 && (
+              {capturedCount > 0 && capturedCount < 5 && (
                 <Button
                   variant="outline"
                   onClick={() => handleSaveStudent(true)}
                   disabled={isLoading}
                 >
                   <Save className="h-4 w-4 mr-2" />
-                  Save Anyway ({capturedCount}/10)
+                  Save Anyway ({capturedCount}/5)
                 </Button>
               )}
               
