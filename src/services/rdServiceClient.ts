@@ -31,7 +31,7 @@ export interface DeviceInfo {
 }
 
 export class RDServiceClient {
-  private baseUrl = 'https://localhost:8003/mfs100'; // Updated to use MFS100 service
+  private baseUrl = 'https://localhost:8003/mfs100'; // Ensure HTTPS is used
   private deviceInfo: DeviceInfo | null = null;
   private lastAvailabilityCheck = 0;
   private availabilityCache: { result: boolean; timestamp: number } | null = null;
@@ -45,6 +45,7 @@ export class RDServiceClient {
   private async initializeDeviceInfo() {
     try {
       this.deviceInfo = await this.getDeviceInfo();
+      console.log('MFS100 device info initialized successfully:', this.deviceInfo);
     } catch (error) {
       console.warn('Failed to initialize MFS100 device info:', error);
     }
@@ -63,7 +64,9 @@ export class RDServiceClient {
 
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+      const timeout = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+      console.log('Checking MFS100 service availability at:', `${this.baseUrl}/info`);
 
       const response = await fetch(`${this.baseUrl}/info`, {
         method: 'GET',
@@ -71,12 +74,14 @@ export class RDServiceClient {
         cache: 'no-cache',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         }
       });
 
       clearTimeout(timeout);
       
       if (!response.ok) {
+        console.error(`MFS100 service HTTP error: ${response.status} ${response.statusText}`);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
@@ -89,12 +94,18 @@ export class RDServiceClient {
         timestamp: now
       };
       
-      console.log('MFS100 service availability:', isAvailable);
+      console.log('MFS100 service availability check result:', {
+        available: isAvailable,
+        errorCode: data.ErrorCode,
+        errorDescription: data.ErrorDescription,
+        deviceInfo: data.DeviceInfo
+      });
+      
       return isAvailable;
     } catch (error) {
-      console.warn('MFS100 service check failed:', error);
+      console.error('MFS100 service check failed:', error);
       
-      // Cache the failed result
+      // Cache the failed result for shorter duration
       this.availabilityCache = {
         result: false,
         timestamp: now
@@ -113,11 +124,14 @@ export class RDServiceClient {
     }
 
     try {
+      console.log('Getting MFS100 device info from:', `${this.baseUrl}/info`);
+
       const response = await fetch(`${this.baseUrl}/info`, {
         method: 'GET',
         cache: 'no-cache',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         }
       });
 
@@ -142,6 +156,7 @@ export class RDServiceClient {
       };
 
       this.deviceInfo = deviceInfo;
+      console.log('MFS100 device info retrieved successfully:', deviceInfo);
       return deviceInfo;
     } catch (error) {
       console.error('Failed to get MFS100 device info:', error);
@@ -163,6 +178,8 @@ export class RDServiceClient {
     };
 
     try {
+      console.log('Starting MFS100 fingerprint capture with:', requestBody);
+
       const controller = new AbortController();
       const requestTimeout = setTimeout(() => controller.abort(), timeout + 2000);
 
@@ -170,6 +187,7 @@ export class RDServiceClient {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify(requestBody),
         signal: controller.signal,
@@ -183,6 +201,14 @@ export class RDServiceClient {
       }
 
       const data = await response.json();
+
+      console.log('MFS100 capture response:', {
+        errorCode: data.ErrorCode,
+        errorDescription: data.ErrorDescription,
+        quality: data.Quality,
+        hasTemplate: !!data.IsoTemplate,
+        hasBitmap: !!data.BitmapData
+      });
 
       // Map MFS100 response to RD Service format
       const result: RDServiceResponse = {
@@ -232,6 +258,7 @@ export class RDServiceClient {
    */
   clearCache(): void {
     this.availabilityCache = null;
+    console.log('MFS100 service cache cleared');
   }
 }
 
