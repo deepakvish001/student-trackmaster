@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { rdServiceClient, DeviceInfo } from '@/services/rdServiceClient';
 
@@ -6,21 +7,21 @@ export function useRDService() {
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
-  const [retryCount, setRetryCount] = useState<number>(0);
+  const [sessionActive, setSessionActive] = useState(false);
   const [serviceStatus, setServiceStatus] = useState<{
     service: string;
     message: string;
   }>({
     service: '',
-    message: 'Checking services...'
+    message: 'Initializing MFS100 connection...'
   });
   
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
 
-  // Configuration - Reduced frequency to prevent spam
-  const CHECK_INTERVAL = 30000; // Check every 30 seconds instead of 10
-  const INITIAL_DELAY = 2000; // Slightly longer initial delay
+  // Optimized for MFS100 - faster checks, better session handling
+  const CHECK_INTERVAL = 15000; // Check every 15 seconds
+  const INITIAL_DELAY = 1000; // Quick initial check
 
   // Clean up on unmount
   useEffect(() => {
@@ -32,7 +33,7 @@ export function useRDService() {
     };
   }, []);
 
-  // Check service availability with improved error handling
+  // Check MFS100 availability with session management
   const checkAvailability = async (showLogs = false) => {
     if (!mountedRef.current || isChecking) return;
 
@@ -44,6 +45,7 @@ export function useRDService() {
       if (!mountedRef.current) return;
 
       setIsAvailable(status.available);
+      setSessionActive(status.sessionActive);
       setServiceStatus({
         service: status.service,
         message: status.message
@@ -51,7 +53,6 @@ export function useRDService() {
 
       if (status.available) {
         setError(null);
-        setRetryCount(0);
         
         // Try to get device info
         try {
@@ -59,30 +60,25 @@ export function useRDService() {
           setDeviceInfo(info);
           
           if (showLogs) {
-            console.log('✅ Fingerprint service connected:', {
-              service: status.service,
-              deviceInfo: info
-            });
+            console.log('✅ MFS100 device connected:', info);
           }
         } catch (err) {
           if (showLogs) {
-            console.warn('Could not get device info:', err);
+            console.warn('Could not get MFS100 device info:', err);
           }
           setDeviceInfo(null);
         }
       } else {
         setError(status.message);
         setDeviceInfo(null);
-        setRetryCount(prev => prev + 1);
       }
     } catch (err) {
       if (!mountedRef.current) return;
       
-      const errorMessage = err instanceof Error ? err.message : 'Service check failed';
+      const errorMessage = err instanceof Error ? err.message : 'MFS100 connection failed';
       setIsAvailable(false);
       setDeviceInfo(null);
       setError(errorMessage);
-      setRetryCount(prev => prev + 1);
       setServiceStatus({
         service: '',
         message: errorMessage
@@ -94,19 +90,19 @@ export function useRDService() {
     }
   };
 
-  // Initialize and start periodic checking
+  // Initialize MFS100 connection
   useEffect(() => {
-    // Initial check with delay
+    // Quick initial check
     const initTimeout = setTimeout(() => {
       if (mountedRef.current) {
         checkAvailability(true);
       }
     }, INITIAL_DELAY);
 
-    // Start periodic checking with reduced frequency
+    // Regular availability checks
     checkIntervalRef.current = setInterval(() => {
       if (mountedRef.current) {
-        checkAvailability(false); // Don't show logs for periodic checks
+        checkAvailability(false);
       }
     }, CHECK_INTERVAL);
 
@@ -118,10 +114,10 @@ export function useRDService() {
     };
   }, []);
 
-  // Capture fingerprint
-  const captureFingerprint = async (timeout: number = 10000) => {
+  // Capture fingerprint with session management
+  const captureFingerprint = async (timeout: number = 15000) => {
     if (!isAvailable) {
-      throw new Error(error || 'No fingerprint service is available');
+      throw new Error(error || 'MFS100 device is not available');
     }
 
     try {
@@ -130,13 +126,14 @@ export function useRDService() {
       if (mountedRef.current && result) {
         setIsAvailable(true);
         setError(null);
-        setRetryCount(0);
+        // Update session status
+        setTimeout(() => checkAvailability(false), 1000);
       }
       
       return result;
     } catch (err) {
       if (mountedRef.current) {
-        setRetryCount(prev => prev + 1);
+        // Check availability after capture error
         setTimeout(() => {
           if (mountedRef.current) {
             checkAvailability(true);
@@ -151,7 +148,7 @@ export function useRDService() {
   // Get device info
   const getDeviceInfo = async () => {
     if (!isAvailable) {
-      throw new Error('No fingerprint service is available');
+      throw new Error('MFS100 device is not available');
     }
     
     const info = await rdServiceClient.getDeviceInfo();
@@ -159,31 +156,32 @@ export function useRDService() {
     return info;
   };
 
-  // Manual retry
-  const retry = () => {
+  // Manual retry with session reset
+  const retry = async () => {
     setError(null);
-    setRetryCount(0);
     rdServiceClient.clearCache();
+    await rdServiceClient.forceSessionReset();
     checkAvailability(true);
   };
 
-  // Reset connection
-  const resetConnection = () => {
+  // Reset connection and session
+  const resetConnection = async () => {
     setIsAvailable(false);
     setDeviceInfo(null);
     setError(null);
-    setRetryCount(0);
+    setSessionActive(false);
     setServiceStatus({
       service: '',
-      message: 'Resetting...'
+      message: 'Resetting MFS100 connection...'
     });
-    rdServiceClient.clearCache();
+    
+    await rdServiceClient.forceSessionReset();
     
     setTimeout(() => {
       if (mountedRef.current) {
         checkAvailability(true);
       }
-    }, 500);
+    }, 1000);
   };
 
   return {
@@ -193,13 +191,14 @@ export function useRDService() {
     error,
     deviceInfo,
     serviceStatus,
-    retryCount,
+    sessionActive,
     
     // Actions
     captureFingerprint,
     getDeviceInfo,
     retry,
     resetConnection,
-    checkAvailability: () => checkAvailability(true)
+    checkAvailability: () => checkAvailability(true),
+    forceSessionReset: () => rdServiceClient.forceSessionReset()
   };
 }

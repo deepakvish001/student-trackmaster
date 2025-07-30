@@ -1,6 +1,7 @@
+
 /**
  * RD Service Client for Fingerprint Authentication
- * Optimized for better error handling and reduced connection attempts
+ * Optimized for MFS100 devices with session management to prevent restart requirements
  */
 
 import { isMFS100Available } from '@/utils/mfs100Native';
@@ -31,91 +32,65 @@ export interface DeviceInfo {
 
 export class RDServiceClient {
   private baseUrl = 'https://localhost:8003/mfs100';
-  private fallbackUrl = 'http://127.0.0.1:11100/rd';
   private deviceInfo: DeviceInfo | null = null;
   private lastAvailabilityCheck = 0;
-  private availabilityCache: { result: boolean; timestamp: number; service?: string } | null = null;
-  private readonly CACHE_DURATION = 30000; // Increased to 30 seconds to reduce frequent checks
-  private activeServiceUrl = '';
+  private availabilityCache: { result: boolean; timestamp: number } | null = null;
+  private readonly CACHE_DURATION = 10000; // 10 seconds cache
   private consecutiveFailures = 0;
-  private readonly MAX_CONSECUTIVE_FAILURES = 5;
-  private backoffDelay = 1000; // Start with 1 second backoff
+  private readonly MAX_CONSECUTIVE_FAILURES = 3;
+  private sessionActive = false;
+  private lastCaptureTime = 0;
+  private readonly SESSION_TIMEOUT = 30000; // 30 seconds session timeout
 
   constructor() {
-    console.log('RDServiceClient initialized. Services will be checked on demand.');
+    console.log('RDServiceClient initialized for MFS100 device at https://localhost:8003');
   }
 
   /**
-   * Check if MFS100 service or RD Service is available with exponential backoff
+   * Check if MFS100 service is available with optimized session management
    */
   async isServiceAvailable(): Promise<boolean> {
     const now = Date.now();
     
-    // Return cached result if still valid
+    // Return cached result if still valid and no session issues
     if (this.availabilityCache && (now - this.availabilityCache.timestamp < this.CACHE_DURATION)) {
-      this.activeServiceUrl = this.availabilityCache.service || '';
       return this.availabilityCache.result;
-    }
-
-    // If we've had too many consecutive failures, increase backoff
-    if (this.consecutiveFailures >= this.MAX_CONSECUTIVE_FAILURES) {
-      this.backoffDelay = Math.min(this.backoffDelay * 2, 60000); // Max 1 minute backoff
-      console.log(`⏳ Service check backoff: ${this.backoffDelay}ms after ${this.consecutiveFailures} failures`);
-      
-      // Check if enough time has passed since last check
-      if (now - this.lastAvailabilityCheck < this.backoffDelay) {
-        return false;
-      }
     }
 
     this.lastAvailabilityCheck = now;
 
     try {
-      // Try MFS100 service first
+      // Check MFS100 service with session awareness
       const mfs100Available = await this.checkMFS100Service();
+      
       if (mfs100Available) {
-        this.activeServiceUrl = this.baseUrl;
         this.availabilityCache = {
           result: true,
-          timestamp: now,
-          service: this.baseUrl
+          timestamp: now
         };
         this.consecutiveFailures = 0;
-        this.backoffDelay = 1000; // Reset backoff
-        console.log('✅ MFS100 service is available');
+        
+        // Reset session after timeout to prevent device lock
+        if (this.sessionActive && (now - this.lastCaptureTime > this.SESSION_TIMEOUT)) {
+          await this.resetDeviceSession();
+        }
+        
         return true;
-      }
-
-      // Try standard RD Service as fallback
-      const rdServiceAvailable = await this.checkRDService();
-      if (rdServiceAvailable) {
-        this.activeServiceUrl = this.fallbackUrl;
+      } else {
+        this.consecutiveFailures++;
         this.availabilityCache = {
-          result: true,
-          timestamp: now,
-          service: this.fallbackUrl
+          result: false,
+          timestamp: now
         };
-        this.consecutiveFailures = 0;
-        this.backoffDelay = 1000; // Reset backoff
-        console.log('✅ RD Service is available');
-        return true;
+        
+        // Only log errors for first few failures to reduce console noise
+        if (this.consecutiveFailures <= 3) {
+          console.warn(`❌ MFS100 service not available (attempt ${this.consecutiveFailures})`);
+          console.warn('   Please ensure MFS100 service is running at https://localhost:8003');
+        }
+        
+        return false;
       }
-
-      // Both services failed
-      this.consecutiveFailures++;
-      this.availabilityCache = {
-        result: false,
-        timestamp: now
-      };
-      
-      // Only log detailed error message occasionally to reduce console noise
-      if (this.consecutiveFailures <= 3 || this.consecutiveFailures % 10 === 0) {
-        console.warn('❌ No fingerprint service available. Please ensure one of the following is running:');
-        console.warn('   1. MFS100 service at https://localhost:8003');
-        console.warn('   2. Standard RD Service at http://127.0.0.1:11100');
-      }
-      
-      return false;
 
     } catch (error) {
       this.consecutiveFailures++;
@@ -125,17 +100,20 @@ export class RDServiceClient {
       };
       
       if (this.consecutiveFailures <= 3) {
-        console.error('Service availability check failed:', error);
+        console.error('MFS100 service check failed:', error);
       }
       
       return false;
     }
   }
 
+  /**
+   * Check MFS100 service with enhanced session handling
+   */
   private async checkMFS100Service(): Promise<boolean> {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 2000); // Reduced timeout
+      const timeout = setTimeout(() => controller.abort(), 3000);
 
       const response = await fetch(`${this.baseUrl}/info`, {
         method: 'GET',
@@ -143,7 +121,8 @@ export class RDServiceClient {
         cache: 'no-cache',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'Connection': 'close' // Prevent connection reuse that can cause session issues
         }
       });
 
@@ -154,9 +133,26 @@ export class RDServiceClient {
       }
 
       const data = await response.json();
-      return data.ErrorCode === "0";
+      const isAvailable = data.ErrorCode === "0";
+      
+      if (isAvailable) {
+        console.log('✅ MFS100 service is available and ready');
+        
+        // Store device info if available
+        if (data.DeviceInfo) {
+          this.deviceInfo = {
+            dpId: data.DeviceInfo.SerialNo || 'MFS100',
+            rdsId: data.DeviceInfo.Make || 'MANTRA',
+            rdsVer: data.DeviceInfo.Model || 'MFS100',
+            dc: data.DeviceInfo.Certificate || '',
+            mi: data.DeviceInfo.Make || 'MANTRA',
+            mc: data.DeviceInfo.Model || 'MFS100'
+          };
+        }
+      }
+      
+      return isAvailable;
     } catch (error) {
-      // Reduce console noise - only log first few failures
       if (this.consecutiveFailures <= 2) {
         console.debug('MFS100 service check failed:', error instanceof Error ? error.message : 'Unknown error');
       }
@@ -164,55 +160,58 @@ export class RDServiceClient {
     }
   }
 
-  private async checkRDService(): Promise<boolean> {
+  /**
+   * Reset device session to prevent lock-up between captures
+   */
+  private async resetDeviceSession(): Promise<void> {
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 2000); // Reduced timeout
-
-      const response = await fetch(`${this.fallbackUrl}/info`, {
-        method: 'RDSERVICE',
-        signal: controller.signal,
+      console.log('🔄 Resetting MFS100 device session...');
+      
+      // Clear any existing session
+      this.sessionActive = false;
+      this.lastCaptureTime = 0;
+      
+      // Force a fresh info check to reset device state
+      await fetch(`${this.baseUrl}/info`, {
+        method: 'GET',
         cache: 'no-cache',
         headers: {
-          'Content-Type': 'text/xml',
-          'Accept': 'text/xml'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Connection': 'close'
         }
       });
-
-      clearTimeout(timeout);
-      return response.ok;
+      
+      // Small delay to let device reset
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log('✅ Device session reset completed');
+      
     } catch (error) {
-      // Reduce console noise - only log first few failures
-      if (this.consecutiveFailures <= 2) {
-        console.debug('RD Service check failed:', error instanceof Error ? error.message : 'Unknown error');
-      }
-      return false;
+      console.warn('Device session reset failed:', error);
     }
   }
 
   /**
-   * Get device information from the active service
+   * Get device information from MFS100 service
    */
   async getDeviceInfo(): Promise<DeviceInfo> {
     if (!await this.isServiceAvailable()) {
-      throw new Error('No fingerprint service is available. Please start MFS100 service or RD Service.');
+      throw new Error('MFS100 service is not available. Please ensure the service is running at https://localhost:8003');
     }
 
-    if (this.activeServiceUrl === this.baseUrl) {
-      return this.getMFS100DeviceInfo();
-    } else {
-      return this.getRDServiceDeviceInfo();
+    if (this.deviceInfo) {
+      return this.deviceInfo;
     }
-  }
 
-  private async getMFS100DeviceInfo(): Promise<DeviceInfo> {
     try {
       const response = await fetch(`${this.baseUrl}/info`, {
         method: 'GET',
         cache: 'no-cache',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'Connection': 'close'
         }
       });
 
@@ -227,7 +226,7 @@ export class RDServiceClient {
       }
 
       const deviceInfo: DeviceInfo = {
-        dpId: data.DeviceInfo?.SerialNo || '',
+        dpId: data.DeviceInfo?.SerialNo || 'MFS100',
         rdsId: data.DeviceInfo?.Make || 'MANTRA',
         rdsVer: data.DeviceInfo?.Model || 'MFS100',
         dc: data.DeviceInfo?.Certificate || '',
@@ -243,61 +242,31 @@ export class RDServiceClient {
     }
   }
 
-  private async getRDServiceDeviceInfo(): Promise<DeviceInfo> {
-    try {
-      const response = await fetch(`${this.fallbackUrl}/info`, {
-        method: 'RDSERVICE',
-        cache: 'no-cache',
-        headers: {
-          'Content-Type': 'text/xml',
-          'Accept': 'text/xml'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const xmlText = await response.text();
-      const deviceInfo: DeviceInfo = {
-        dpId: 'RD_DEVICE',
-        rdsId: 'RD_SERVICE',
-        rdsVer: '1.0.0',
-        dc: '',
-        mi: 'Generic',
-        mc: 'RD_Device'
-      };
-
-      this.deviceInfo = deviceInfo;
-      return deviceInfo;
-    } catch (error) {
-      console.error('Failed to get RD Service device info:', error);
-      throw new Error('Failed to get device information from RD Service');
-    }
-  }
-
   /**
-   * Capture fingerprint using the available service
+   * Capture fingerprint with session management to prevent restart requirement
    */
-  async captureFingerprint(timeout: number = 10000): Promise<RDServiceResponse> {
+  async captureFingerprint(timeout: number = 15000): Promise<RDServiceResponse> {
     if (!await this.isServiceAvailable()) {
-      throw new Error('No fingerprint service is available');
+      throw new Error('MFS100 service is not available');
     }
 
-    if (this.activeServiceUrl === this.baseUrl) {
-      return this.captureMFS100Fingerprint(timeout);
-    } else {
-      return this.captureRDServiceFingerprint(timeout);
+    // Reset session before capture if needed
+    const now = Date.now();
+    if (this.sessionActive && (now - this.lastCaptureTime > this.SESSION_TIMEOUT)) {
+      await this.resetDeviceSession();
     }
-  }
 
-  private async captureMFS100Fingerprint(timeout: number): Promise<RDServiceResponse> {
     const requestBody = {
       Quality: 60,
       TimeOut: Math.round(timeout / 1000)
     };
 
     try {
+      console.log('🔵 Starting fingerprint capture with session management...');
+      
+      // Mark session as active
+      this.sessionActive = true;
+      
       const controller = new AbortController();
       const requestTimeout = setTimeout(() => controller.abort(), timeout + 2000);
 
@@ -305,7 +274,8 @@ export class RDServiceClient {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'Connection': 'close' // Important: Close connection after capture
         },
         body: JSON.stringify(requestBody),
         signal: controller.signal,
@@ -336,17 +306,29 @@ export class RDServiceClient {
         throw new Error(result.errInfo);
       }
 
+      // Update capture time and prepare for next capture
+      this.lastCaptureTime = now;
+      
+      console.log('✅ Fingerprint captured successfully with quality:', result.quality);
+      
+      // Schedule session cleanup for next capture
+      setTimeout(() => {
+        if (Date.now() - this.lastCaptureTime > 5000) { // 5 seconds after capture
+          this.resetDeviceSession();
+        }
+      }, 5000);
+
       return result;
     } catch (error) {
+      // Reset session on error to prevent device lock
+      this.sessionActive = false;
+      await this.resetDeviceSession();
+      
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Fingerprint capture timed out');
+        throw new Error('Fingerprint capture timed out - device may need restart');
       }
       throw error;
     }
-  }
-
-  private async captureRDServiceFingerprint(timeout: number): Promise<RDServiceResponse> {
-    throw new Error('RD Service capture not yet implemented');
   }
 
   /**
@@ -357,46 +339,67 @@ export class RDServiceClient {
   }
 
   /**
-   * Get the currently active service URL
+   * Get the active service URL
    */
   getActiveService(): string {
-    return this.activeServiceUrl;
+    return this.baseUrl;
   }
 
   /**
-   * Clear availability cache and reset failure tracking
+   * Clear cache and reset session to prevent restart requirement
    */
   clearCache(): void {
     this.availabilityCache = null;
-    this.activeServiceUrl = '';
     this.consecutiveFailures = 0;
-    this.backoffDelay = 1000;
-    console.log('Service cache cleared and failure tracking reset');
+    this.sessionActive = false;
+    this.lastCaptureTime = 0;
+    console.log('✅ Service cache and session cleared - ready for fresh captures');
   }
 
   /**
-   * Check service availability and return status info
+   * Force session reset - call this if device seems locked
+   */
+  async forceSessionReset(): Promise<void> {
+    console.log('🔄 Force resetting MFS100 session...');
+    this.clearCache();
+    await this.resetDeviceSession();
+    
+    // Wait and check if device is responsive
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const available = await this.isServiceAvailable();
+    
+    if (available) {
+      console.log('✅ Device session reset successful');
+    } else {
+      console.warn('⚠️ Device may still need manual restart');
+    }
+  }
+
+  /**
+   * Get service status with session information
    */
   async getServiceStatus(): Promise<{
     available: boolean;
     service: string;
     message: string;
+    sessionActive: boolean;
   }> {
     const available = await this.isServiceAvailable();
     
     let message: string;
     if (available) {
-      message = `Connected to ${this.activeServiceUrl.includes('8003') ? 'MFS100' : 'RD Service'}`;
+      message = `Connected to MFS100 service${this.sessionActive ? ' (session active)' : ''}`;
     } else if (this.consecutiveFailures >= this.MAX_CONSECUTIVE_FAILURES) {
-      message = `Service unavailable (${this.consecutiveFailures} failures). Next check in ${Math.round(this.backoffDelay / 1000)}s`;
+      message = `MFS100 service unavailable (${this.consecutiveFailures} failures)`;
     } else {
-      message = 'No fingerprint service found. Please start MFS100 service or RD Service';
+      message = 'MFS100 service not found. Please ensure it\'s running at https://localhost:8003';
     }
     
     return {
       available,
-      service: this.activeServiceUrl,
-      message
+      service: this.baseUrl,
+      message,
+      sessionActive: this.sessionActive
     };
   }
 }
