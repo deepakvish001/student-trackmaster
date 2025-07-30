@@ -8,6 +8,7 @@ export function useRDService() {
   const [error, setError] = useState<string | null>(null);
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
   const [sessionActive, setSessionActive] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [serviceStatus, setServiceStatus] = useState<{
     service: string;
     message: string;
@@ -53,6 +54,7 @@ export function useRDService() {
 
       if (status.available) {
         setError(null);
+        setRetryCount(0); // Reset retry count on success
         
         // Try to get device info
         try {
@@ -71,6 +73,7 @@ export function useRDService() {
       } else {
         setError(status.message);
         setDeviceInfo(null);
+        setRetryCount(prev => prev + 1); // Increment retry count on failure
       }
     } catch (err) {
       if (!mountedRef.current) return;
@@ -79,6 +82,7 @@ export function useRDService() {
       setIsAvailable(false);
       setDeviceInfo(null);
       setError(errorMessage);
+      setRetryCount(prev => prev + 1); // Increment retry count on error
       setServiceStatus({
         service: '',
         message: errorMessage
@@ -126,6 +130,7 @@ export function useRDService() {
       if (mountedRef.current && result) {
         setIsAvailable(true);
         setError(null);
+        setRetryCount(0); // Reset retry count on successful capture
         // Update session status
         setTimeout(() => checkAvailability(false), 1000);
       }
@@ -133,6 +138,7 @@ export function useRDService() {
       return result;
     } catch (err) {
       if (mountedRef.current) {
+        setRetryCount(prev => prev + 1); // Increment retry count on capture error
         // Check availability after capture error
         setTimeout(() => {
           if (mountedRef.current) {
@@ -159,6 +165,7 @@ export function useRDService() {
   // Manual retry with session reset
   const retry = async () => {
     setError(null);
+    setRetryCount(0); // Reset retry count on manual retry
     rdServiceClient.clearCache();
     await rdServiceClient.forceSessionReset();
     checkAvailability(true);
@@ -170,6 +177,7 @@ export function useRDService() {
     setDeviceInfo(null);
     setError(null);
     setSessionActive(false);
+    setRetryCount(0); // Reset retry count on connection reset
     setServiceStatus({
       service: '',
       message: 'Resetting MFS100 connection...'
@@ -192,6 +200,7 @@ export function useRDService() {
     deviceInfo,
     serviceStatus,
     sessionActive,
+    retryCount, // Added retryCount to the return object
     
     // Actions
     captureFingerprint,
