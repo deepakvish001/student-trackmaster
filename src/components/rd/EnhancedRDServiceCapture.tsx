@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Fingerprint, CheckCircle, AlertCircle, RefreshCw, X, Camera } from 'lucide-react';
 import { toast } from "sonner";
-import { processHighQualityFingerprint } from "@/utils/highQualityImageProcessor";
+import { HighQualityImageProcessor } from "@/utils/highQualityImageProcessor";
 
 interface EnhancedRDServiceCaptureProps {
   index: number;
@@ -162,7 +161,7 @@ export function EnhancedRDServiceCapture({
           let processedImage = "";
           
           if (data.BitmapData) {
-            processedImage = processHighQualityFingerprint(
+            processedImage = HighQualityImageProcessor.processFingerprint(
               data.BitmapData,
               data.InWidth || 256,
               data.InHeight || 256
