@@ -27,25 +27,70 @@ export function EnhancedRDServiceCapture({
   const [imageData, setImageData] = useState<string>('');
   const [quality, setQuality] = useState<number | null>(null);
   const [error, setError] = useState<string>('');
-  const [deviceConnected, setDeviceConnected] = useState(true); // Start with true since parent shows connected
-  const [isInitialCheck, setIsInitialCheck] = useState(false);
+  const [deviceConnected, setDeviceConnected] = useState(true);
+  const [captureCount, setCaptureCount] = useState(0);
 
   const backgroundCheckRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
   const lastSuccessfulCheck = useRef<number>(Date.now());
+  const sessionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Simplified device connection check - only check if capture fails
+  // Reset device session after successful capture to prevent blocking
+  const resetDeviceSession = useCallback(async () => {
+    try {
+      console.log(`🔄 Resetting device session after capture ${captureCount + 1}`);
+      
+      // Clear any existing session timeout
+      if (sessionTimeoutRef.current) {
+        clearTimeout(sessionTimeoutRef.current);
+        sessionTimeoutRef.current = null;
+      }
+      
+      // Give device a brief rest period
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Force a fresh connection check
+      const response = await fetch('https://localhost:8003/mfs100/info', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.ErrorCode === "0") {
+          console.log('✅ Device session reset successful');
+          setDeviceConnected(true);
+          setError('');
+          lastSuccessfulCheck.current = Date.now();
+          return true;
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      console.warn('Device session reset failed, but continuing:', error);
+      return false;
+    }
+  }, [captureCount]);
+
+  // Enhanced device connection check with session management
   const checkDeviceConnection = useCallback(async (showLogs = false) => {
     if (!mountedRef.current) return false;
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
 
       const response = await fetch('https://localhost:8003/mfs100/info', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
         },
         signal: controller.signal
       });
@@ -64,7 +109,10 @@ export function EnhancedRDServiceCapture({
           lastSuccessfulCheck.current = Date.now();
           
           if (showLogs) {
-            console.log('✅ Device connection verified:', data);
+            console.log('✅ Device connection verified:', {
+              ...data,
+              captureCount
+            });
           }
         } else {
           setDeviceConnected(false);
@@ -78,10 +126,9 @@ export function EnhancedRDServiceCapture({
     } catch (error) {
       if (!mountedRef.current) return false;
       
-      // Don't immediately mark as disconnected on single failure
       const timeSinceLastSuccess = Date.now() - lastSuccessfulCheck.current;
       
-      if (timeSinceLastSuccess > 10000) { // Only mark disconnected after 10 seconds of failures
+      if (timeSinceLastSuccess > 15000) {
         setDeviceConnected(false);
         setError('Device connection lost');
         
@@ -92,27 +139,31 @@ export function EnhancedRDServiceCapture({
       
       return false;
     }
-  }, []);
+  }, [captureCount]);
 
-  // Initialize - assume device is connected since parent shows it as connected
+  // Initialize with optimistic connection state
   useEffect(() => {
     mountedRef.current = true;
     setDeviceConnected(true);
     setError('');
     lastSuccessfulCheck.current = Date.now();
 
-    // Only check periodically in background (every 30 seconds)
+    // Check periodically but less frequently to avoid interference
     backgroundCheckRef.current = setInterval(() => {
       if (mountedRef.current && !isCapturing) {
         checkDeviceConnection(false);
       }
-    }, 30000);
+    }, 45000); // Check every 45 seconds
 
     return () => {
       mountedRef.current = false;
       if (backgroundCheckRef.current) {
         clearInterval(backgroundCheckRef.current);
         backgroundCheckRef.current = null;
+      }
+      if (sessionTimeoutRef.current) {
+        clearTimeout(sessionTimeoutRef.current);
+        sessionTimeoutRef.current = null;
       }
     };
   }, [checkDeviceConnection, isCapturing]);
@@ -124,20 +175,23 @@ export function EnhancedRDServiceCapture({
       setIsCapturing(true);
       setError('');
       
-      console.log(`🎯 Starting capture for ${fingerName} with target quality: ${targetQuality}%`);
+      console.log(`🎯 Starting capture ${captureCount + 1} for ${fingerName} with target quality: ${targetQuality}%`);
       toast.info(`Place ${fingerName} firmly on scanner...`, { duration: 4000 });
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000);
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // Increased timeout
 
+      // Clear any caching headers to ensure fresh request
       const response = await fetch('https://localhost:8003/mfs100/capture', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
         },
         body: JSON.stringify({
           Quality: targetQuality,
-          TimeOut: 20
+          TimeOut: 25 // Longer device timeout
         }),
         signal: controller.signal
       });
@@ -152,7 +206,7 @@ export function EnhancedRDServiceCapture({
         if (data.ErrorCode === "0") {
           const captureQuality = data.Quality || 0;
           
-          console.log(`📊 Capture success for ${fingerName}:`, {
+          console.log(`📊 Capture ${captureCount + 1} success for ${fingerName}:`, {
             quality: captureQuality,
             target: targetQuality,
             bitmapAvailable: !!data.BitmapData
@@ -172,8 +226,11 @@ export function EnhancedRDServiceCapture({
             setImageData(processedImage);
             setQuality(captureQuality);
             setCaptureStatus('captured');
-            setDeviceConnected(true); // Capture succeeded, so device is connected
+            setDeviceConnected(true);
             lastSuccessfulCheck.current = Date.now();
+            
+            // Increment capture count
+            setCaptureCount(prev => prev + 1);
             
             onCaptureSuccess(
               data.IsoTemplate || '',
@@ -185,8 +242,16 @@ export function EnhancedRDServiceCapture({
                                  captureQuality >= 70 ? 'Good' : 
                                  captureQuality >= 60 ? 'Fair' : 'Poor';
             
-            console.log(`✅ ${fingerName} capture complete! Quality: ${captureQuality}% (${qualityMessage})`);
+            console.log(`✅ ${fingerName} capture ${captureCount + 1} complete! Quality: ${captureQuality}% (${qualityMessage})`);
             toast.success(`${fingerName} captured! Quality: ${captureQuality}% (${qualityMessage})`);
+            
+            // Reset device session in background to prepare for next capture
+            sessionTimeoutRef.current = setTimeout(() => {
+              if (mountedRef.current) {
+                resetDeviceSession();
+              }
+            }, 2000);
+            
           } else {
             throw new Error("Failed to process fingerprint image");
           }
@@ -203,17 +268,20 @@ export function EnhancedRDServiceCapture({
       setError(errorMessage);
       setCaptureStatus('failed');
       
-      // Only mark as disconnected if it's a connection-related error
+      // Handle connection-related errors
       if (errorMessage.includes('fetch') || errorMessage.includes('Failed to fetch') || 
           errorMessage.includes('aborted') || errorMessage.includes('timeout')) {
         setDeviceConnected(false);
-        toast.error(`Device connection lost during capture. Please check device.`);
-        // Try to reconnect after a brief delay
+        toast.error(`Device connection issue. Attempting to reset...`);
+        
+        // Try to reset device session after connection error
         setTimeout(() => {
           if (mountedRef.current) {
-            checkDeviceConnection(true);
+            resetDeviceSession().then(() => {
+              checkDeviceConnection(true);
+            });
           }
-        }, 2000);
+        }, 3000);
       } else {
         toast.error(`${fingerName} capture failed: ${errorMessage}`);
       }
@@ -224,25 +292,36 @@ export function EnhancedRDServiceCapture({
         setIsCapturing(false);
       }
     }
-  }, [isCapturing, fingerName, onCaptureSuccess, onCaptureError, targetQuality, checkDeviceConnection]);
+  }, [isCapturing, fingerName, onCaptureSuccess, onCaptureError, targetQuality, checkDeviceConnection, resetDeviceSession, captureCount]);
 
   const handleClear = useCallback(() => {
     setImageData('');
     setQuality(null);
     setCaptureStatus('idle');
     setError('');
+    
+    // Clear any pending session reset
+    if (sessionTimeoutRef.current) {
+      clearTimeout(sessionTimeoutRef.current);
+      sessionTimeoutRef.current = null;
+    }
+    
     toast.info(`${fingerName} cleared - ready for new capture`);
   }, [fingerName]);
 
   const handleReconnect = useCallback(async () => {
     try {
-      toast.info('Reconnecting device...');
+      toast.info('Reconnecting and resetting device session...');
       setError('');
-      setDeviceConnected(true); // Optimistically set as connected
+      setDeviceConnected(true);
+      
+      // Reset device session first
+      await resetDeviceSession();
+      
       const isConnected = await checkDeviceConnection(true);
       
       if (isConnected) {
-        toast.success('Device reconnected successfully');
+        toast.success('Device reconnected and session reset successfully');
       } else {
         setDeviceConnected(false);
         toast.error('Failed to reconnect. Please check device connection.');
@@ -251,7 +330,7 @@ export function EnhancedRDServiceCapture({
       setDeviceConnected(false);
       toast.error('Device reconnection failed');
     }
-  }, [checkDeviceConnection]);
+  }, [checkDeviceConnection, resetDeviceSession]);
 
   const getStatusColor = () => {
     switch (captureStatus) {
@@ -320,15 +399,20 @@ export function EnhancedRDServiceCapture({
                 {quality}% {quality >= 80 && "⭐"}
               </Badge>
             )}
+            {captureCount > 0 && (
+              <div className="text-xs text-gray-500 mt-1">
+                Captures: {captureCount}
+              </div>
+            )}
           </div>
 
           {/* Device status */}
           <div className="flex items-center space-x-2">
             <Badge variant={deviceConnected ? "default" : "destructive"} className="text-xs">
-              {isInitialCheck ? 'Checking...' : deviceConnected ? 'Device Ready' : 'Device Error'}
+              {deviceConnected ? 'Device Ready' : 'Device Error'}
             </Badge>
             {deviceConnected && (
-              <div className="text-xs text-green-600">Connected</div>
+              <div className="text-xs text-green-600">Session Active</div>
             )}
           </div>
 
@@ -338,7 +422,7 @@ export function EnhancedRDServiceCapture({
               <Button
                 size="sm"
                 onClick={handleCapture}
-                disabled={isCapturing || isInitialCheck}
+                disabled={isCapturing}
                 className="w-full bg-primary hover:bg-primary/90"
               >
                 <Camera className="h-4 w-4 mr-1" />
