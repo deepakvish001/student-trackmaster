@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { unifiedMFS100Manager, MFS100ConnectionState, MFS100CaptureResult } from '@/services/unifiedMFS100Manager';
+import { unifiedMFS100Manager, MFS100ConnectionState } from '@/services/unifiedMFS100Manager';
 
 export function useUnifiedMFS100() {
   const [connectionState, setConnectionState] = useState<MFS100ConnectionState>({
@@ -11,7 +11,6 @@ export function useUnifiedMFS100() {
     consecutiveFailures: 0
   });
   
-  const [isCapturing, setIsCapturing] = useState(false);
   const mountedRef = useRef(true);
 
   // Subscribe to connection state changes
@@ -32,33 +31,6 @@ export function useUnifiedMFS100() {
   const checkDevice = useCallback(async (force = false) => {
     return await unifiedMFS100Manager.checkConnection(force);
   }, []);
-
-  // Capture fingerprint
-  const captureFingerprint = useCallback(async (
-    quality: number = 60,
-    timeout: number = 15
-  ): Promise<MFS100CaptureResult> => {
-    if (isCapturing) {
-      return {
-        success: false,
-        template: '',
-        imageData: '',
-        quality: 0,
-        message: 'Capture already in progress'
-      };
-    }
-
-    setIsCapturing(true);
-
-    try {
-      const result = await unifiedMFS100Manager.captureFingerprint(quality, timeout);
-      return result;
-    } finally {
-      if (mountedRef.current) {
-        setIsCapturing(false);
-      }
-    }
-  }, [isCapturing]);
 
   // Reset connection
   const resetConnection = useCallback(() => {
@@ -86,18 +58,13 @@ export function useUnifiedMFS100() {
   return {
     // Connection state
     isConnected: connectionState.isConnected,
-    isChecking: false, // Managed internally by the manager
     error: connectionState.error,
     deviceInfo: connectionState.deviceInfo,
     consecutiveFailures: connectionState.consecutiveFailures,
     lastCheckTime: connectionState.lastCheckTime,
     
-    // Capture state
-    isCapturing,
-    
     // Actions
     checkDevice: () => checkDevice(true),
-    captureFingerprint,
     resetConnection,
     
     // Utilities

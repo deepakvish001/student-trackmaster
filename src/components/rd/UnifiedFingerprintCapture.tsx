@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Fingerprint, Wifi, WifiOff, CheckCircle, AlertCircle, RefreshCw, Info } from "lucide-react";
+import { Fingerprint, Wifi, WifiOff, CheckCircle, AlertCircle, RefreshCw, Info, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { FingerprintDisplay } from "@/components/FingerprintDisplay";
 import { useUnifiedMFS100 } from "@/hooks/useUnifiedMFS100";
+import { fingerprintCaptureQueue } from "@/services/fingerprintCaptureQueue";
 
 interface UnifiedFingerprintCaptureProps {
   index: number;
@@ -29,6 +30,7 @@ export function UnifiedFingerprintCapture({
   const [capturedImage, setCapturedImage] = useState<string>("");
   const [captureQuality, setCaptureQuality] = useState<number | null>(null);
   const [lastError, setLastError] = useState<string>("");
+  const [isInQueue, setIsInQueue] = useState(false);
   
   const { 
     isConnected, 
@@ -36,9 +38,7 @@ export function UnifiedFingerprintCapture({
     deviceInfo, 
     consecutiveFailures,
     lastCheckTime,
-    isCapturing,
     checkDevice,
-    captureFingerprint,
     resetConnection
   } = useUnifiedMFS100();
 
@@ -79,23 +79,34 @@ export function UnifiedFingerprintCapture({
   }, []);
 
   const handleCapture = useCallback(async () => {
-    if (!isConnected || isCapturing) {
-      if (!isConnected) {
-        toast.error("Device not available. Please check connection.");
-        onCaptureError("Device not available");
-      }
+    if (!isConnected) {
+      toast.error("Device not available. Please check connection.");
+      onCaptureError("Device not available");
+      return;
+    }
+
+    // Check if already in queue or capturing
+    if (fingerprintCaptureQueue.isFingerInQueue(index)) {
+      toast.warning("This finger is already in the capture queue");
       return;
     }
 
     try {
       setLastError("");
+      setIsInQueue(true);
       
-      toast.info(`Place ${fingerName} on scanner`, { 
-        duration: 8000,
-        description: "Keep finger steady until capture completes"
-      });
+      const queueInfo = fingerprintCaptureQueue.getCurrentCaptureInfo();
+      if (queueInfo.fingerIndex !== null && queueInfo.fingerIndex !== index) {
+        toast.info(`${fingerName} added to queue`, { 
+          description: `Currently capturing Finger ${queueInfo.fingerIndex + 1}. Queue position: ${queueInfo.queueLength + 1}`
+        });
+      } else {
+        toast.info(`Starting capture for ${fingerName}`, { 
+          description: "Keep finger steady on scanner"
+        });
+      }
 
-      const result = await captureFingerprint(targetQuality, 15);
+      const result = await fingerprintCaptureQueue.captureFingerprint(index, targetQuality, 15);
       
       if (result.success) {
         setCaptureQuality(result.quality);
@@ -125,13 +136,20 @@ export function UnifiedFingerprintCapture({
       });
       
       onCaptureError(errorMessage);
+    } finally {
+      setIsInQueue(false);
     }
-  }, [isConnected, isCapturing, fingerName, targetQuality, captureFingerprint, onCaptureSuccess, onCaptureError, processBitmapImage]);
+  }, [isConnected, fingerName, targetQuality, index, onCaptureSuccess, onCaptureError, processBitmapImage]);
 
   const getStatusBadge = () => {
+    if (isInQueue) return <Badge className="bg-blue-500 text-white animate-pulse">In Queue</Badge>;
     if (isConnected) return <Badge className="bg-green-500 text-white">Connected</Badge>;
     return <Badge variant="destructive">Disconnected</Badge>;
   };
+
+  const queueInfo = fingerprintCaptureQueue.getCurrentCaptureInfo();
+  const isCurrentlyCapturing = queueInfo.fingerIndex === index;
+  const isOtherCapturing = queueInfo.fingerIndex !== null && queueInfo.fingerIndex !== index;
 
   return (
     <Card className="w-full max-w-md mx-auto">
@@ -146,13 +164,21 @@ export function UnifiedFingerprintCapture({
       </CardHeader>
       
       <CardContent className="space-y-4">
+        {/* Queue Status */}
+        {isOtherCapturing && (
+          <div className="flex items-center space-x-2 text-sm text-blue-600 bg-blue-50 p-2 rounded">
+            <Clock className="h-4 w-4" />
+            <span>Waiting... Finger {queueInfo.fingerIndex! + 1} is capturing</span>
+          </div>
+        )}
+
         {/* Fingerprint Display */}
         <FingerprintDisplay 
           value={capturedImage}
           imageData={capturedImage}
           index={index}
           quality={captureQuality}
-          isCapturing={isCapturing}
+          isCapturing={isCurrentlyCapturing}
           showQuality={true}
         />
 
@@ -246,10 +272,12 @@ export function UnifiedFingerprintCapture({
         {/* Capture Button */}
         <Button
           onClick={handleCapture}
-          disabled={isCapturing || !isConnected || disabled}
+          disabled={isInQueue || isOtherCapturing || !isConnected || disabled}
           className={`w-full transition-all duration-300 ${
-            isCapturing 
+            isCurrentlyCapturing 
               ? 'bg-blue-500 hover:bg-blue-600 animate-pulse' 
+              : isOtherCapturing
+                ? 'bg-gray-400 cursor-not-allowed'
               : isConnected 
                 ? 'bg-primary hover:bg-primary/90' 
                 : 'bg-gray-400 cursor-not-allowed'
@@ -257,11 +285,15 @@ export function UnifiedFingerprintCapture({
           size="lg"
         >
           <Fingerprint className="mr-2 h-5 w-5" />
-          {isCapturing 
+          {isCurrentlyCapturing
             ? `Capturing ${fingerName}...` 
-            : isConnected
-              ? `Capture ${fingerName}` 
-              : 'Device Not Available'
+            : isOtherCapturing
+              ? `Wait for Finger ${queueInfo.fingerIndex! + 1}`
+              : isInQueue
+                ? `${fingerName} in Queue`
+              : isConnected
+                ? `Capture ${fingerName}` 
+                : 'Device Not Available'
           }
         </Button>
 
