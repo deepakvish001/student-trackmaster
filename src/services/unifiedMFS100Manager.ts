@@ -1,7 +1,5 @@
-
 /**
- * Unified MFS100 Manager - Enhanced with service recovery
- * Prevents system restart requirements through intelligent recovery
+ * Unified MFS100 Manager - Enhanced with improved service recovery
  */
 
 import { mfs100ServiceRecovery } from './mfs100ServiceRecovery';
@@ -51,7 +49,8 @@ class UnifiedMFS100Manager {
   private captureInProgress = false;
   private lastSuccessfulConnection = 0;
   private captureController: AbortController | null = null;
-  private maxConsecutiveFailures = 5; // Trigger recovery after 5 failures
+  private maxConsecutiveFailures = 3; // Reduced for quicker recovery
+  private recoveryInProgress = false;
 
   private constructor() {}
 
@@ -76,13 +75,15 @@ class UnifiedMFS100Manager {
     this.subscribers.forEach(callback => callback(state));
   }
 
-  // Enhanced service recovery
+  // Improved service recovery with better error handling
   private async performServiceRecovery(): Promise<void> {
-    if (this.connectionState.isRecovering) {
+    if (this.recoveryInProgress) {
+      console.log('Recovery already in progress, skipping...');
       return;
     }
 
-    console.log('🚨 Triggering service recovery due to consecutive failures...');
+    this.recoveryInProgress = true;
+    console.log('🚨 Starting enhanced service recovery...');
     
     this.connectionState.isRecovering = true;
     this.notifySubscribers();
@@ -91,24 +92,24 @@ class UnifiedMFS100Manager {
       const result = await mfs100ServiceRecovery.recoverService();
       
       if (result.success) {
-        console.log('✅ Service recovery successful:', result.message);
+        console.log('✅ Enhanced recovery successful:', result.message);
         
         // Update base URL if it changed
         if (result.newBaseUrl) {
           this.baseUrl = result.newBaseUrl;
         }
 
-        // Reset failure count
+        // Reset failure count and update state
         this.connectionState.consecutiveFailures = 0;
         this.connectionState.error = null;
 
-        // Attempt connection check
+        // Wait a moment then verify connection
         setTimeout(() => {
           this.checkConnection(true);
-        }, 1000);
+        }, 1500);
 
       } else {
-        console.error('❌ Service recovery failed:', result.message);
+        console.error('❌ Enhanced recovery failed:', result.message);
         this.connectionState.error = result.message;
       }
 
@@ -117,19 +118,20 @@ class UnifiedMFS100Manager {
       this.connectionState.error = 'Recovery process failed';
     } finally {
       this.connectionState.isRecovering = false;
+      this.recoveryInProgress = false;
       this.notifySubscribers();
     }
   }
 
-  // Enhanced connection check with recovery
+  // Enhanced connection check with better error handling
   async checkConnection(force = false): Promise<MFS100ConnectionState> {
     if (this.checkInProgress || this.connectionState.isRecovering) {
       return { ...this.connectionState };
     }
 
-    // Rate limiting
+    // Rate limiting - don't check too frequently
     const timeSinceLastCheck = Date.now() - (this.connectionState.lastCheckTime?.getTime() || 0);
-    if (!force && timeSinceLastCheck < 3000) {
+    if (!force && timeSinceLastCheck < 2000) {
       return { ...this.connectionState };
     }
 
@@ -139,7 +141,7 @@ class UnifiedMFS100Manager {
       console.log('🔍 Checking MFS100 device connection...');
 
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
+      const timeout = setTimeout(() => controller.abort(), 3000);
 
       const response = await fetch(`${this.baseUrl}/info`, {
         method: 'GET',
@@ -147,8 +149,7 @@ class UnifiedMFS100Manager {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
+          'Cache-Control': 'no-cache'
         }
       });
 
@@ -182,6 +183,10 @@ class UnifiedMFS100Manager {
         };
         
         this.lastSuccessfulConnection = Date.now();
+        
+        // Reset recovery attempts on successful connection
+        mfs100ServiceRecovery.resetRecoveryAttempts();
+        
         console.log('✅ MFS100 device connected and ready');
         
       } else {
@@ -191,10 +196,10 @@ class UnifiedMFS100Manager {
     } catch (error) {
       this.connectionState.consecutiveFailures++;
       
-      let errorMessage = 'Device not available';
+      let errorMessage = 'Service unavailable';
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          errorMessage = 'Connection timeout - service may be stuck';
+          errorMessage = 'Connection timeout';
         } else if (error.message.includes('ERR_CONNECTION_REFUSED')) {
           errorMessage = 'MFS100 service not responding';
         } else {
@@ -208,11 +213,11 @@ class UnifiedMFS100Manager {
 
       console.warn(`⚠️ Connection failed (${this.connectionState.consecutiveFailures}/${this.maxConsecutiveFailures}):`, errorMessage);
       
-      // Trigger recovery if too many consecutive failures
-      if (this.connectionState.consecutiveFailures >= this.maxConsecutiveFailures) {
+      // Trigger recovery if consecutive failures reached
+      if (this.connectionState.consecutiveFailures >= this.maxConsecutiveFailures && !this.recoveryInProgress) {
         setTimeout(() => {
           this.performServiceRecovery();
-        }, 1000);
+        }, 2000);
       }
       
     } finally {
@@ -396,7 +401,7 @@ class UnifiedMFS100Manager {
 
   // Enhanced reset with recovery
   reset(): void {
-    console.log('🔄 Resetting MFS100 connection with recovery...');
+    console.log('🔄 Resetting MFS100 with enhanced recovery...');
     
     this.cancelCapture();
     
@@ -411,8 +416,12 @@ class UnifiedMFS100Manager {
     this.lastSuccessfulConnection = 0;
     this.checkInProgress = false;
     this.captureInProgress = false;
+    this.recoveryInProgress = false;
     
     this.notifySubscribers();
+    
+    // Reset recovery attempts and start fresh
+    mfs100ServiceRecovery.resetRecoveryAttempts();
     
     // Start recovery process
     setTimeout(async () => {
