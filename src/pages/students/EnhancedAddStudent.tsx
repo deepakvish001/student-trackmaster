@@ -191,13 +191,13 @@ function EnhancedAddStudentContent() {
             
             <div>
               <Label htmlFor="batch_id">Batch *</Label>
-              <Select value={formData.batch_id} onValueChange={(value) => handleInputChange('batch_id', value)}>
+              <Select value={formData.batch_id} onValueChange={(value) => handleInputChange('batch_id', value)} disabled={batchesLoading}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select batch" />
+                  <SelectValue placeholder={batchesLoading ? "Loading batches..." : "Select batch"} />
                 </SelectTrigger>
                 <SelectContent>
                   {batchesLoading ? (
-                    <SelectItem value="" disabled>Loading...</SelectItem>
+                    <SelectItem value="loading" disabled>Loading...</SelectItem>
                   ) : (
                     batches?.map(batch => (
                       <SelectItem key={batch.id} value={batch.id}>
