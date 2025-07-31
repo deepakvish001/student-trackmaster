@@ -12,7 +12,8 @@ import { Save, User, Fingerprint, CheckCircle, AlertCircle, Info } from "lucide-
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { UnifiedFingerprintCapture } from "@/components/rd/UnifiedFingerprintCapture";
+import { UnifiedFingerprintCapture, MFS100StatusIndicator } from "@/components/rd";
+import { useUnifiedMFS100Service } from "@/hooks/useUnifiedMFS100Service";
 
 interface FingerprintData {
   template: string;
@@ -34,6 +35,9 @@ export default function EnhancedAddStudent() {
   );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Use the unified MFS100 service
+  const mfs100Service = useUnifiedMFS100Service();
 
   // Fetch batches
   const { data: batches, isLoading: batchesLoading } = useQuery({
@@ -92,26 +96,29 @@ export default function EnhancedAddStudent() {
     setIsSubmitting(true);
 
     try {
-      // Prepare fingerprint data
+      // Prepare fingerprint data - map to the correct database columns
       const fingerprintData: Record<string, any> = {};
       fingerprints.forEach((fp, index) => {
         if (fp) {
-          fingerprintData[`finger_${index + 1}_template`] = fp.template;
-          fingerprintData[`finger_${index + 1}_quality`] = fp.quality;
+          // Map to database columns: finger_1, finger_2, etc. (templates)
+          fingerprintData[`finger_${index + 1}`] = fp.template;
+          // Map to database columns: finger_1_image, finger_2_image, etc.
           if (fp.imageData) {
             fingerprintData[`finger_${index + 1}_image`] = fp.imageData;
           }
         }
       });
 
-      // Insert student data
+      // Insert student data - map form fields to database columns
+      const studentData = {
+        student_name: formData.full_name, // Map full_name to student_name
+        batch_id: formData.batch_id,
+        ...fingerprintData
+      };
+
       const { data, error } = await supabase
         .from('students')
-        .insert({
-          ...formData,
-          ...fingerprintData,
-          created_at: new Date().toISOString()
-        })
+        .insert(studentData)
         .select()
         .single();
 
@@ -148,6 +155,9 @@ export default function EnhancedAddStudent() {
 
   return (
     <div className="container mx-auto p-6 space-y-6 max-w-7xl">
+      {/* MFS100 Status Indicator */}
+      <MFS100StatusIndicator />
+
       {/* Header */}
       <Card>
         <CardHeader>
@@ -274,7 +284,7 @@ export default function EnhancedAddStudent() {
 
       <Separator />
 
-      {/* Fingerprint Capture Grid - Only using UnifiedFingerprintCapture */}
+      {/* Fingerprint Capture Grid - Using UnifiedFingerprintCapture */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
         {[...Array(10)].map((_, index) => (
           <UnifiedFingerprintCapture
