@@ -54,6 +54,7 @@ class UnifiedMFS100Manager {
   private lastSuccessfulConnection = 0;
   private captureController: AbortController | null = null;
   private autoRecoveryEnabled = true;
+  private captureDelayBetweenOperations = 2000; // 2 seconds between captures
 
   private constructor() {}
 
@@ -153,7 +154,7 @@ class UnifiedMFS100Manager {
       console.log('🔍 Checking MFS100 device connection...');
 
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000); // Increased timeout
+      const timeout = setTimeout(() => controller.abort(), 8000);
 
       const response = await fetch(`${this.baseUrl}/info`, {
         method: 'GET',
@@ -234,7 +235,7 @@ class UnifiedMFS100Manager {
     return { ...this.connectionState };
   }
 
-  // Capture fingerprint with improved timeout handling
+  // Capture fingerprint with proper session management and delays
   async captureFingerprint(quality: number = 60, timeout: number = 15): Promise<MFS100CaptureResult> {
     if (this.captureInProgress) {
       return {
@@ -244,6 +245,14 @@ class UnifiedMFS100Manager {
         quality: 0,
         message: 'Another capture is already in progress'
       };
+    }
+
+    // Add delay between consecutive captures to prevent service lockup
+    const timeSinceLastCapture = Date.now() - this.lastSuccessfulConnection;
+    if (timeSinceLastCapture < this.captureDelayBetweenOperations) {
+      const waitTime = this.captureDelayBetweenOperations - timeSinceLastCapture;
+      console.log(`⏱️ Waiting ${waitTime}ms before next capture to prevent service lockup...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
     }
 
     // Check connection first
@@ -334,13 +343,15 @@ class UnifiedMFS100Manager {
           this.connectionState.consecutiveFailures++;
         } else {
           message = error.message;
+          // Consider any capture error as potential service issue
+          this.connectionState.consecutiveFailures++;
         }
       }
 
       console.error('❌ Fingerprint capture failed:', message);
       
       // Trigger auto-recovery for connection issues
-      if (shouldTriggerRecovery) {
+      if (shouldTriggerRecovery || this.connectionState.consecutiveFailures >= 2) {
         setTimeout(() => {
           this.triggerAutoRecovery();
         }, 2000);
@@ -461,6 +472,12 @@ class UnifiedMFS100Manager {
   setAutoRecovery(enabled: boolean): void {
     this.autoRecoveryEnabled = enabled;
     console.log(`🔧 Auto-recovery ${enabled ? 'enabled' : 'disabled'}`);
+  }
+
+  // Set delay between capture operations
+  setCaptureDelay(delayMs: number): void {
+    this.captureDelayBetweenOperations = Math.max(1000, delayMs); // Minimum 1 second
+    console.log(`⏱️ Capture delay set to ${this.captureDelayBetweenOperations}ms`);
   }
 }
 
