@@ -8,7 +8,8 @@ export function useUnifiedMFS100() {
     lastCheckTime: null,
     deviceInfo: null,
     error: null,
-    consecutiveFailures: 0
+    consecutiveFailures: 0,
+    isRecovering: false
   });
   
   const [isCapturing, setIsCapturing] = useState(false);
@@ -67,17 +68,11 @@ export function useUnifiedMFS100() {
     setIsCapturing(false);
   }, []);
 
-  // Reset connection
+  // Reset connection with recovery
   const resetConnection = useCallback(() => {
-    console.log('🔄 Resetting MFS100 connection...');
+    console.log('🔄 Resetting MFS100 connection with recovery...');
     unifiedMFS100Manager.reset();
-    // Check connection after reset
-    setTimeout(() => {
-      if (mountedRef.current) {
-        checkDevice(true);
-      }
-    }, 2000);
-  }, [checkDevice]);
+  }, []);
 
   // Initial connection check
   useEffect(() => {
@@ -98,6 +93,7 @@ export function useUnifiedMFS100() {
     deviceInfo: connectionState.deviceInfo,
     consecutiveFailures: connectionState.consecutiveFailures,
     lastCheckTime: connectionState.lastCheckTime,
+    isRecovering: connectionState.isRecovering || false,
     
     // Capture state
     isCapturing,

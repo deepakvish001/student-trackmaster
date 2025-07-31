@@ -1,8 +1,10 @@
 
 /**
- * Unified MFS100 Manager - Single source of truth for MFS100 device communication
- * Prevents conflicts between multiple components trying to access the same device
+ * Unified MFS100 Manager - Enhanced with service recovery
+ * Prevents system restart requirements through intelligent recovery
  */
+
+import { mfs100ServiceRecovery } from './mfs100ServiceRecovery';
 
 export interface MFS100DeviceInfo {
   dpId: string;
@@ -30,6 +32,7 @@ export interface MFS100ConnectionState {
   deviceInfo: MFS100DeviceInfo | null;
   error: string | null;
   consecutiveFailures: number;
+  isRecovering?: boolean;
 }
 
 class UnifiedMFS100Manager {
@@ -40,14 +43,15 @@ class UnifiedMFS100Manager {
     lastCheckTime: null,
     deviceInfo: null,
     error: null,
-    consecutiveFailures: 0
+    consecutiveFailures: 0,
+    isRecovering: false
   };
   private subscribers: Set<(state: MFS100ConnectionState) => void> = new Set();
   private checkInProgress = false;
   private captureInProgress = false;
   private lastSuccessfulConnection = 0;
   private captureController: AbortController | null = null;
-  private serviceRecoveryInProgress = false;
+  private maxConsecutiveFailures = 5; // Trigger recovery after 5 failures
 
   private constructor() {}
 
@@ -61,9 +65,7 @@ class UnifiedMFS100Manager {
   // Subscribe to connection state changes
   subscribe(callback: (state: MFS100ConnectionState) => void): () => void {
     this.subscribers.add(callback);
-    // Immediately call with current state
     callback({ ...this.connectionState });
-    
     return () => {
       this.subscribers.delete(callback);
     };
@@ -74,47 +76,58 @@ class UnifiedMFS100Manager {
     this.subscribers.forEach(callback => callback(state));
   }
 
-  // Service recovery after timeout or failure
-  private async recoverService(): Promise<void> {
-    if (this.serviceRecoveryInProgress) {
+  // Enhanced service recovery
+  private async performServiceRecovery(): Promise<void> {
+    if (this.connectionState.isRecovering) {
       return;
     }
 
-    this.serviceRecoveryInProgress = true;
-    console.log('🔄 Starting MFS100 service recovery...');
+    console.log('🚨 Triggering service recovery due to consecutive failures...');
+    
+    this.connectionState.isRecovering = true;
+    this.notifySubscribers();
 
     try {
-      // Cancel any ongoing capture
-      if (this.captureController) {
-        this.captureController.abort();
-        this.captureController = null;
+      const result = await mfs100ServiceRecovery.recoverService();
+      
+      if (result.success) {
+        console.log('✅ Service recovery successful:', result.message);
+        
+        // Update base URL if it changed
+        if (result.newBaseUrl) {
+          this.baseUrl = result.newBaseUrl;
+        }
+
+        // Reset failure count
+        this.connectionState.consecutiveFailures = 0;
+        this.connectionState.error = null;
+
+        // Attempt connection check
+        setTimeout(() => {
+          this.checkConnection(true);
+        }, 1000);
+
+      } else {
+        console.error('❌ Service recovery failed:', result.message);
+        this.connectionState.error = result.message;
       }
 
-      this.captureInProgress = false;
-
-      // Wait for service to settle
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Try to reconnect
-      await this.checkConnection(true);
-
-      console.log('✅ MFS100 service recovery completed');
-
     } catch (error) {
-      console.error('❌ Service recovery failed:', error);
+      console.error('Recovery process error:', error);
+      this.connectionState.error = 'Recovery process failed';
     } finally {
-      this.serviceRecoveryInProgress = false;
+      this.connectionState.isRecovering = false;
+      this.notifySubscribers();
     }
   }
 
-  // Check device connection (rate limited)
+  // Enhanced connection check with recovery
   async checkConnection(force = false): Promise<MFS100ConnectionState> {
-    // Prevent concurrent checks
-    if (this.checkInProgress) {
+    if (this.checkInProgress || this.connectionState.isRecovering) {
       return { ...this.connectionState };
     }
 
-    // Rate limiting - don't check too frequently unless forced
+    // Rate limiting
     const timeSinceLastCheck = Date.now() - (this.connectionState.lastCheckTime?.getTime() || 0);
     if (!force && timeSinceLastCheck < 3000) {
       return { ...this.connectionState };
@@ -134,7 +147,8 @@ class UnifiedMFS100Manager {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Cache-Control': 'no-cache'
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         }
       });
 
@@ -147,7 +161,7 @@ class UnifiedMFS100Manager {
       const data = await response.json();
       
       if (data.ErrorCode === "0" && data.DeviceInfo) {
-        // Success - update state
+        // Success - reset everything
         this.connectionState = {
           isConnected: true,
           lastCheckTime: new Date(),
@@ -163,7 +177,8 @@ class UnifiedMFS100Manager {
             model: data.DeviceInfo.Model || 'MFS100'
           },
           error: null,
-          consecutiveFailures: 0
+          consecutiveFailures: 0,
+          isRecovering: false
         };
         
         this.lastSuccessfulConnection = Date.now();
@@ -179,9 +194,9 @@ class UnifiedMFS100Manager {
       let errorMessage = 'Device not available';
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          errorMessage = 'Connection timeout';
+          errorMessage = 'Connection timeout - service may be stuck';
         } else if (error.message.includes('ERR_CONNECTION_REFUSED')) {
-          errorMessage = 'MFS100 service not running';
+          errorMessage = 'MFS100 service not responding';
         } else {
           errorMessage = error.message;
         }
@@ -191,7 +206,14 @@ class UnifiedMFS100Manager {
       this.connectionState.error = errorMessage;
       this.connectionState.lastCheckTime = new Date();
 
-      console.warn(`⚠️ MFS100 connection check failed (${this.connectionState.consecutiveFailures}):`, errorMessage);
+      console.warn(`⚠️ Connection failed (${this.connectionState.consecutiveFailures}/${this.maxConsecutiveFailures}):`, errorMessage);
+      
+      // Trigger recovery if too many consecutive failures
+      if (this.connectionState.consecutiveFailures >= this.maxConsecutiveFailures) {
+        setTimeout(() => {
+          this.performServiceRecovery();
+        }, 1000);
+      }
       
     } finally {
       this.checkInProgress = false;
@@ -201,7 +223,7 @@ class UnifiedMFS100Manager {
     return { ...this.connectionState };
   }
 
-  // Capture fingerprint with improved timeout handling
+  // Enhanced capture with recovery
   async captureFingerprint(quality: number = 60, timeout: number = 15): Promise<MFS100CaptureResult> {
     if (this.captureInProgress) {
       return {
@@ -213,9 +235,27 @@ class UnifiedMFS100Manager {
       };
     }
 
-    // Check connection first
-    if (!this.connectionState.isConnected || this.connectionState.consecutiveFailures > 0) {
-      console.log('🔄 Checking connection before capture...');
+    if (this.connectionState.isRecovering) {
+      return {
+        success: false,
+        template: '',
+        imageData: '',
+        quality: 0,
+        message: 'Service recovery in progress, please wait...'
+      };
+    }
+
+    // Auto-recovery check
+    if (!this.connectionState.isConnected && this.connectionState.consecutiveFailures >= 3) {
+      console.log('🔄 Auto-triggering recovery before capture...');
+      await this.performServiceRecovery();
+      
+      // Wait for recovery to complete
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    // Check connection before capture
+    if (!this.connectionState.isConnected) {
       await this.checkConnection(true);
     }
 
@@ -246,7 +286,8 @@ class UnifiedMFS100Manager {
         signal: this.captureController.signal,
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache'
         },
         body: JSON.stringify({
           Quality: quality,
@@ -265,7 +306,7 @@ class UnifiedMFS100Manager {
       if (data.ErrorCode === "0") {
         console.log(`✅ Fingerprint captured successfully, Quality: ${data.Quality}`);
         
-        // Update connection state to show device is working
+        // Reset failure count on successful capture
         this.connectionState.isConnected = true;
         this.connectionState.error = null;
         this.connectionState.consecutiveFailures = 0;
@@ -286,33 +327,30 @@ class UnifiedMFS100Manager {
 
     } catch (error) {
       let message = 'Capture failed';
-      let shouldRecover = false;
       
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          message = 'Capture timed out';
-          shouldRecover = true;
+          message = 'Capture timed out - service may be stuck';
+          // Increment failure count for timeouts
+          this.connectionState.consecutiveFailures++;
         } else if (error.message.includes('ERR_CONNECTION_REFUSED')) {
           message = 'Lost connection to device';
-          shouldRecover = true;
-          // Mark as disconnected
           this.connectionState.isConnected = false;
           this.connectionState.error = message;
           this.connectionState.consecutiveFailures++;
         } else {
           message = error.message;
-          shouldRecover = true;
+          this.connectionState.consecutiveFailures++;
         }
       }
 
       console.error('❌ Fingerprint capture failed:', message);
       
-      // Attempt service recovery after timeout or connection issues
-      if (shouldRecover) {
-        console.log('🔄 Initiating service recovery after capture failure...');
+      // Trigger recovery if failures are mounting
+      if (this.connectionState.consecutiveFailures >= this.maxConsecutiveFailures) {
         setTimeout(() => {
-          this.recoverService();
-        }, 1000);
+          this.performServiceRecovery();
+        }, 2000);
       }
       
       this.notifySubscribers();
@@ -347,19 +385,19 @@ class UnifiedMFS100Manager {
     return { ...this.connectionState };
   }
 
-  // Check if device is probably available based on recent success
+  // Check if device is probably available
   isProbablyAvailable(): boolean {
     const timeSinceSuccess = Date.now() - this.lastSuccessfulConnection;
     return this.connectionState.isConnected && 
            this.connectionState.consecutiveFailures === 0 && 
-           timeSinceSuccess < 30000; // 30 seconds
+           timeSinceSuccess < 30000 &&
+           !this.connectionState.isRecovering;
   }
 
-  // Reset connection state with recovery
+  // Enhanced reset with recovery
   reset(): void {
-    console.log('🔄 Resetting MFS100 connection state...');
+    console.log('🔄 Resetting MFS100 connection with recovery...');
     
-    // Cancel any ongoing operations
     this.cancelCapture();
     
     this.connectionState = {
@@ -367,18 +405,18 @@ class UnifiedMFS100Manager {
       lastCheckTime: null,
       deviceInfo: null,
       error: null,
-      consecutiveFailures: 0
+      consecutiveFailures: 0,
+      isRecovering: false
     };
     this.lastSuccessfulConnection = 0;
     this.checkInProgress = false;
     this.captureInProgress = false;
-    this.serviceRecoveryInProgress = false;
     
     this.notifySubscribers();
     
     // Start recovery process
-    setTimeout(() => {
-      this.recoverService();
+    setTimeout(async () => {
+      await this.performServiceRecovery();
     }, 1000);
   }
 }
