@@ -46,6 +46,8 @@ class UnifiedMFS100Manager {
   private checkInProgress = false;
   private captureInProgress = false;
   private lastSuccessfulConnection = 0;
+  private captureController: AbortController | null = null;
+  private serviceRecoveryInProgress = false;
 
   private constructor() {}
 
@@ -72,6 +74,39 @@ class UnifiedMFS100Manager {
     this.subscribers.forEach(callback => callback(state));
   }
 
+  // Service recovery after timeout or failure
+  private async recoverService(): Promise<void> {
+    if (this.serviceRecoveryInProgress) {
+      return;
+    }
+
+    this.serviceRecoveryInProgress = true;
+    console.log('🔄 Starting MFS100 service recovery...');
+
+    try {
+      // Cancel any ongoing capture
+      if (this.captureController) {
+        this.captureController.abort();
+        this.captureController = null;
+      }
+
+      this.captureInProgress = false;
+
+      // Wait for service to settle
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Try to reconnect
+      await this.checkConnection(true);
+
+      console.log('✅ MFS100 service recovery completed');
+
+    } catch (error) {
+      console.error('❌ Service recovery failed:', error);
+    } finally {
+      this.serviceRecoveryInProgress = false;
+    }
+  }
+
   // Check device connection (rate limited)
   async checkConnection(force = false): Promise<MFS100ConnectionState> {
     // Prevent concurrent checks
@@ -81,7 +116,7 @@ class UnifiedMFS100Manager {
 
     // Rate limiting - don't check too frequently unless forced
     const timeSinceLastCheck = Date.now() - (this.connectionState.lastCheckTime?.getTime() || 0);
-    if (!force && timeSinceLastCheck < 2000) {
+    if (!force && timeSinceLastCheck < 3000) {
       return { ...this.connectionState };
     }
 
@@ -91,7 +126,7 @@ class UnifiedMFS100Manager {
       console.log('🔍 Checking MFS100 device connection...');
 
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
+      const timeout = setTimeout(() => controller.abort(), 5000);
 
       const response = await fetch(`${this.baseUrl}/info`, {
         method: 'GET',
@@ -166,7 +201,7 @@ class UnifiedMFS100Manager {
     return { ...this.connectionState };
   }
 
-  // Capture fingerprint
+  // Capture fingerprint with improved timeout handling
   async captureFingerprint(quality: number = 60, timeout: number = 15): Promise<MFS100CaptureResult> {
     if (this.captureInProgress) {
       return {
@@ -195,16 +230,20 @@ class UnifiedMFS100Manager {
     }
 
     this.captureInProgress = true;
+    this.captureController = new AbortController();
 
     try {
       console.log('🔵 Starting fingerprint capture...');
 
-      const controller = new AbortController();
-      const requestTimeout = setTimeout(() => controller.abort(), (timeout * 1000) + 5000);
+      const requestTimeout = setTimeout(() => {
+        if (this.captureController) {
+          this.captureController.abort();
+        }
+      }, (timeout * 1000) + 5000);
 
       const response = await fetch(`${this.baseUrl}/capture`, {
         method: 'POST',
-        signal: controller.signal,
+        signal: this.captureController.signal,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
@@ -247,22 +286,35 @@ class UnifiedMFS100Manager {
 
     } catch (error) {
       let message = 'Capture failed';
+      let shouldRecover = false;
       
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
           message = 'Capture timed out';
+          shouldRecover = true;
         } else if (error.message.includes('ERR_CONNECTION_REFUSED')) {
           message = 'Lost connection to device';
+          shouldRecover = true;
           // Mark as disconnected
           this.connectionState.isConnected = false;
           this.connectionState.error = message;
           this.connectionState.consecutiveFailures++;
         } else {
           message = error.message;
+          shouldRecover = true;
         }
       }
 
       console.error('❌ Fingerprint capture failed:', message);
+      
+      // Attempt service recovery after timeout or connection issues
+      if (shouldRecover) {
+        console.log('🔄 Initiating service recovery after capture failure...');
+        setTimeout(() => {
+          this.recoverService();
+        }, 1000);
+      }
+      
       this.notifySubscribers();
       
       return {
@@ -275,7 +327,19 @@ class UnifiedMFS100Manager {
 
     } finally {
       this.captureInProgress = false;
+      this.captureController = null;
     }
+  }
+
+  // Cancel ongoing capture
+  cancelCapture(): void {
+    if (this.captureController) {
+      console.log('🛑 Cancelling ongoing fingerprint capture...');
+      this.captureController.abort();
+      this.captureController = null;
+    }
+    this.captureInProgress = false;
+    this.notifySubscribers();
   }
 
   // Get current state
@@ -291,8 +355,13 @@ class UnifiedMFS100Manager {
            timeSinceSuccess < 30000; // 30 seconds
   }
 
-  // Reset connection state
+  // Reset connection state with recovery
   reset(): void {
+    console.log('🔄 Resetting MFS100 connection state...');
+    
+    // Cancel any ongoing operations
+    this.cancelCapture();
+    
     this.connectionState = {
       isConnected: false,
       lastCheckTime: null,
@@ -303,8 +372,14 @@ class UnifiedMFS100Manager {
     this.lastSuccessfulConnection = 0;
     this.checkInProgress = false;
     this.captureInProgress = false;
-    console.log('🔄 MFS100 connection state reset');
+    this.serviceRecoveryInProgress = false;
+    
     this.notifySubscribers();
+    
+    // Start recovery process
+    setTimeout(() => {
+      this.recoverService();
+    }, 1000);
   }
 }
 

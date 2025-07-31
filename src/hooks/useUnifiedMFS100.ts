@@ -60,6 +60,13 @@ export function useUnifiedMFS100() {
     }
   }, [isCapturing]);
 
+  // Cancel ongoing capture
+  const cancelCapture = useCallback(() => {
+    console.log('🛑 Cancelling fingerprint capture...');
+    unifiedMFS100Manager.cancelCapture();
+    setIsCapturing(false);
+  }, []);
+
   // Reset connection
   const resetConnection = useCallback(() => {
     console.log('🔄 Resetting MFS100 connection...');
@@ -69,7 +76,7 @@ export function useUnifiedMFS100() {
       if (mountedRef.current) {
         checkDevice(true);
       }
-    }, 1000);
+    }, 2000);
   }, [checkDevice]);
 
   // Initial connection check
@@ -98,6 +105,7 @@ export function useUnifiedMFS100() {
     // Actions
     checkDevice: () => checkDevice(true),
     captureFingerprint,
+    cancelCapture,
     resetConnection,
     
     // Utilities
