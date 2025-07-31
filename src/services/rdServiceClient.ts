@@ -1,7 +1,6 @@
-
 /**
  * RD Service Client for Fingerprint Authentication
- * Optimized for MFS100 devices with session management to prevent restart requirements
+ * Optimized for MFS100 devices with improved session management
  */
 
 import { isMFS100Available } from '@/utils/mfs100Native';
@@ -35,24 +34,25 @@ export class RDServiceClient {
   private deviceInfo: DeviceInfo | null = null;
   private lastAvailabilityCheck = 0;
   private availabilityCache: { result: boolean; timestamp: number } | null = null;
-  private readonly CACHE_DURATION = 10000; // 10 seconds cache
+  private readonly CACHE_DURATION = 5000; // Reduced cache duration to 5 seconds
   private consecutiveFailures = 0;
   private readonly MAX_CONSECUTIVE_FAILURES = 3;
   private sessionActive = false;
   private lastCaptureTime = 0;
-  private readonly SESSION_TIMEOUT = 30000; // 30 seconds session timeout
+  private readonly SESSION_TIMEOUT = 60000; // Increased session timeout to 60 seconds
+  private isResetting = false; // Prevent concurrent resets
 
   constructor() {
     console.log('RDServiceClient initialized for MFS100 device at https://localhost:8003');
   }
 
   /**
-   * Check if MFS100 service is available with optimized session management
+   * Check if MFS100 service is available with simplified session management
    */
   async isServiceAvailable(): Promise<boolean> {
     const now = Date.now();
     
-    // Return cached result if still valid and no session issues
+    // Return cached result if still valid
     if (this.availabilityCache && (now - this.availabilityCache.timestamp < this.CACHE_DURATION)) {
       return this.availabilityCache.result;
     }
@@ -60,7 +60,7 @@ export class RDServiceClient {
     this.lastAvailabilityCheck = now;
 
     try {
-      // Check MFS100 service with session awareness
+      // Simple service check without aggressive session management
       const mfs100Available = await this.checkMFS100Service();
       
       if (mfs100Available) {
@@ -69,12 +69,6 @@ export class RDServiceClient {
           timestamp: now
         };
         this.consecutiveFailures = 0;
-        
-        // Reset session after timeout to prevent device lock
-        if (this.sessionActive && (now - this.lastCaptureTime > this.SESSION_TIMEOUT)) {
-          await this.resetDeviceSession();
-        }
-        
         return true;
       } else {
         this.consecutiveFailures++;
@@ -83,7 +77,7 @@ export class RDServiceClient {
           timestamp: now
         };
         
-        // Only log errors for first few failures to reduce console noise
+        // Only log errors for first few failures
         if (this.consecutiveFailures <= 3) {
           console.warn(`❌ MFS100 service not available (attempt ${this.consecutiveFailures})`);
           console.warn('   Please ensure MFS100 service is running at https://localhost:8003');
@@ -108,12 +102,12 @@ export class RDServiceClient {
   }
 
   /**
-   * Check MFS100 service with enhanced session handling
+   * Simple MFS100 service check
    */
   private async checkMFS100Service(): Promise<boolean> {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
+      const timeout = setTimeout(() => controller.abort(), 2000);
 
       const response = await fetch(`${this.baseUrl}/info`, {
         method: 'GET',
@@ -121,8 +115,7 @@ export class RDServiceClient {
         cache: 'no-cache',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Connection': 'close' // Prevent connection reuse that can cause session issues
+          'Accept': 'application/json'
         }
       });
 
@@ -161,34 +154,33 @@ export class RDServiceClient {
   }
 
   /**
-   * Reset device session to prevent lock-up between captures
+   * Gentle device preparation - only when absolutely necessary
    */
-  private async resetDeviceSession(): Promise<void> {
-    try {
-      console.log('🔄 Resetting MFS100 device session...');
-      
-      // Clear any existing session
-      this.sessionActive = false;
-      this.lastCaptureTime = 0;
-      
-      // Force a fresh info check to reset device state
-      await fetch(`${this.baseUrl}/info`, {
-        method: 'GET',
-        cache: 'no-cache',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Connection': 'close'
-        }
-      });
-      
-      // Small delay to let device reset
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      console.log('✅ Device session reset completed');
-      
-    } catch (error) {
-      console.warn('Device session reset failed:', error);
+  private async prepareDeviceIfNeeded(): Promise<void> {
+    const now = Date.now();
+    
+    // Only prepare device if session has been inactive for a long time
+    if (this.sessionActive && (now - this.lastCaptureTime > this.SESSION_TIMEOUT)) {
+      try {
+        console.log('🔄 Preparing device for new session...');
+        this.sessionActive = false;
+        this.lastCaptureTime = 0;
+        
+        // Just a simple info check to wake up the device
+        await fetch(`${this.baseUrl}/info`, {
+          method: 'GET',
+          cache: 'no-cache',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+        
+        console.log('✅ Device prepared for new session');
+        
+      } catch (error) {
+        console.warn('Device preparation failed:', error);
+      }
     }
   }
 
@@ -210,8 +202,7 @@ export class RDServiceClient {
         cache: 'no-cache',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Connection': 'close'
+          'Accept': 'application/json'
         }
       });
 
@@ -243,18 +234,15 @@ export class RDServiceClient {
   }
 
   /**
-   * Capture fingerprint with session management to prevent restart requirement
+   * Capture fingerprint with minimal session interference
    */
   async captureFingerprint(timeout: number = 15000): Promise<RDServiceResponse> {
     if (!await this.isServiceAvailable()) {
       throw new Error('MFS100 service is not available');
     }
 
-    // Reset session before capture if needed
-    const now = Date.now();
-    if (this.sessionActive && (now - this.lastCaptureTime > this.SESSION_TIMEOUT)) {
-      await this.resetDeviceSession();
-    }
+    // Gentle device preparation if needed
+    await this.prepareDeviceIfNeeded();
 
     const requestBody = {
       Quality: 60,
@@ -262,10 +250,11 @@ export class RDServiceClient {
     };
 
     try {
-      console.log('🔵 Starting fingerprint capture with session management...');
+      console.log('🔵 Starting fingerprint capture...');
       
       // Mark session as active
       this.sessionActive = true;
+      const now = Date.now();
       
       const controller = new AbortController();
       const requestTimeout = setTimeout(() => controller.abort(), timeout + 2000);
@@ -274,8 +263,7 @@ export class RDServiceClient {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Connection': 'close' // Important: Close connection after capture
+          'Accept': 'application/json'
         },
         body: JSON.stringify(requestBody),
         signal: controller.signal,
@@ -306,26 +294,17 @@ export class RDServiceClient {
         throw new Error(result.errInfo);
       }
 
-      // Update capture time and prepare for next capture
+      // Update capture time but don't reset session immediately
       this.lastCaptureTime = now;
       
       console.log('✅ Fingerprint captured successfully with quality:', result.quality);
-      
-      // Schedule session cleanup for next capture
-      setTimeout(() => {
-        if (Date.now() - this.lastCaptureTime > 5000) { // 5 seconds after capture
-          this.resetDeviceSession();
-        }
-      }, 5000);
 
       return result;
     } catch (error) {
-      // Reset session on error to prevent device lock
-      this.sessionActive = false;
-      await this.resetDeviceSession();
-      
+      // Only reset session on critical errors
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Fingerprint capture timed out - device may need restart');
+        this.sessionActive = false;
+        throw new Error('Fingerprint capture timed out');
       }
       throw error;
     }
@@ -346,32 +325,45 @@ export class RDServiceClient {
   }
 
   /**
-   * Clear cache and reset session to prevent restart requirement
+   * Clear cache with minimal session disruption
    */
   clearCache(): void {
     this.availabilityCache = null;
     this.consecutiveFailures = 0;
-    this.sessionActive = false;
-    this.lastCaptureTime = 0;
-    console.log('✅ Service cache and session cleared - ready for fresh captures');
+    console.log('✅ Service cache cleared');
   }
 
   /**
-   * Force session reset - call this if device seems locked
+   * Gentle session reset - only when really needed
    */
   async forceSessionReset(): Promise<void> {
-    console.log('🔄 Force resetting MFS100 session...');
-    this.clearCache();
-    await this.resetDeviceSession();
+    if (this.isResetting) {
+      console.log('⏳ Session reset already in progress...');
+      return;
+    }
+
+    this.isResetting = true;
     
-    // Wait and check if device is responsive
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const available = await this.isServiceAvailable();
-    
-    if (available) {
-      console.log('✅ Device session reset successful');
-    } else {
-      console.warn('⚠️ Device may still need manual restart');
+    try {
+      console.log('🔄 Gently resetting MFS100 session...');
+      this.clearCache();
+      this.sessionActive = false;
+      this.lastCaptureTime = 0;
+      
+      // Wait a moment for device to settle
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Simple availability check to confirm device is responsive
+      const available = await this.isServiceAvailable();
+      
+      if (available) {
+        console.log('✅ Session reset successful');
+      } else {
+        console.warn('⚠️ Device may need manual restart');
+      }
+      
+    } finally {
+      this.isResetting = false;
     }
   }
 
@@ -390,7 +382,7 @@ export class RDServiceClient {
     if (available) {
       message = `Connected to MFS100 service${this.sessionActive ? ' (session active)' : ''}`;
     } else if (this.consecutiveFailures >= this.MAX_CONSECUTIVE_FAILURES) {
-      message = `MFS100 service unavailable (${this.consecutiveFailures} failures)`;
+      message = `MFS100 service unavailable after ${this.consecutiveFailures} attempts`;
     } else {
       message = 'MFS100 service not found. Please ensure it\'s running at https://localhost:8003';
     }
