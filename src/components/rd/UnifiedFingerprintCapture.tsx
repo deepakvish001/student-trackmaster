@@ -1,14 +1,14 @@
-
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Fingerprint, Wifi, WifiOff, CheckCircle, AlertCircle, RefreshCw, Info, Clock } from "lucide-react";
+import { Fingerprint, Wifi, WifiOff, CheckCircle, AlertCircle, RefreshCw, Info, Clock, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { FingerprintDisplay } from "@/components/FingerprintDisplay";
 import { useUnifiedMFS100 } from "@/hooks/useUnifiedMFS100";
 import { fingerprintCaptureQueue } from "@/services/fingerprintCaptureQueue";
+import { MFS100ServiceHelper } from "@/components/MFS100ServiceHelper";
 
 interface UnifiedFingerprintCaptureProps {
   index: number;
@@ -31,6 +31,7 @@ export function UnifiedFingerprintCapture({
   const [captureQuality, setCaptureQuality] = useState<number | null>(null);
   const [lastError, setLastError] = useState<string>("");
   const [isInQueue, setIsInQueue] = useState(false);
+  const [showServiceHelper, setShowServiceHelper] = useState(false);
   
   const { 
     isConnected, 
@@ -41,6 +42,13 @@ export function UnifiedFingerprintCapture({
     checkDevice,
     resetConnection
   } = useUnifiedMFS100();
+
+  // Show service helper when there are connection issues
+  useEffect(() => {
+    if (consecutiveFailures >= 3 && error?.includes('ERR_CONNECTION_REFUSED')) {
+      setShowServiceHelper(true);
+    }
+  }, [consecutiveFailures, error]);
 
   // Process bitmap data to displayable image
   const processBitmapImage = useCallback((bitmapData: string): string => {
@@ -151,6 +159,12 @@ export function UnifiedFingerprintCapture({
   const isCurrentlyCapturing = queueInfo.fingerIndex === index;
   const isOtherCapturing = queueInfo.fingerIndex !== null && queueInfo.fingerIndex !== index;
 
+  const handleServiceReady = () => {
+    setShowServiceHelper(false);
+    setLastError("");
+    checkDevice();
+  };
+
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
@@ -164,6 +178,13 @@ export function UnifiedFingerprintCapture({
       </CardHeader>
       
       <CardContent className="space-y-4">
+        {/* Service Helper - Show when service is down */}
+        {showServiceHelper && (
+          <div className="mb-4">
+            <MFS100ServiceHelper onServiceReady={handleServiceReady} />
+          </div>
+        )}
+
         {/* Queue Status */}
         {isOtherCapturing && (
           <div className="flex items-center space-x-2 text-sm text-blue-600 bg-blue-50 p-2 rounded">
@@ -217,7 +238,7 @@ export function UnifiedFingerprintCapture({
           </div>
         )}
 
-        {/* Error Display */}
+        {/* Enhanced Error Display with Service Helper */}
         {(error || lastError) && !isConnected && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -245,6 +266,16 @@ export function UnifiedFingerprintCapture({
                   >
                     Reset Connection
                   </Button>
+                  {error?.includes('ERR_CONNECTION_REFUSED') && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setShowServiceHelper(true)}
+                    >
+                      <Settings className="h-4 w-4 mr-1" />
+                      Service Help
+                    </Button>
+                  )}
                 </div>
               </div>
             </AlertDescription>
