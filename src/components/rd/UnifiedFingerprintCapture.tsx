@@ -1,13 +1,13 @@
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Fingerprint, Wifi, WifiOff, CheckCircle, AlertCircle, RefreshCw, Info, X } from "lucide-react";
+import { Fingerprint, Wifi, WifiOff, CheckCircle, AlertCircle, RefreshCw, Info, X, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { FingerprintDisplay } from "@/components/FingerprintDisplay";
-import { useUnifiedMFS100 } from "@/hooks/useUnifiedMFS100";
+import { useUnifiedMFS100Service } from "@/hooks/useUnifiedMFS100Service";
 
 interface UnifiedFingerprintCaptureProps {
   index: number;
@@ -29,20 +29,22 @@ export function UnifiedFingerprintCapture({
   const [capturedImage, setCapturedImage] = useState<string>("");
   const [captureQuality, setCaptureQuality] = useState<number | null>(null);
   const [lastError, setLastError] = useState<string>("");
-  const [retryAttempts, setRetryAttempts] = useState<number>(0);
+  const [captureProgress, setCaptureProgress] = useState<string>("");
+  const [isMyCapture, setIsMyCapture] = useState(false);
+  const captureIdRef = useRef<string>("");
   
   const { 
-    isConnected, 
-    error, 
-    deviceInfo, 
-    consecutiveFailures,
-    lastCheckTime,
+    isConnected,
     isCapturing,
-    checkDevice,
-    captureFingerprint,
-    resetConnection,
-    cancelCapture
-  } = useUnifiedMFS100();
+    error,
+    deviceInfo,
+    queueLength,
+    currentCapture,
+    lastCheckTime,
+    queueCapture,
+    cancelCapture,
+    softReset
+  } = useUnifiedMFS100Service();
 
   // Process bitmap data to displayable image
   const processBitmapImage = useCallback((bitmapData: string): string => {
@@ -81,28 +83,37 @@ export function UnifiedFingerprintCapture({
   }, []);
 
   const handleCapture = useCallback(async () => {
-    if (!isConnected || isCapturing) {
-      if (!isConnected) {
-        toast.error("Device not available. Please check connection.");
-        onCaptureError("Device not available");
-      }
+    if (isCapturing && !isMyCapture) {
+      toast.info(`${currentCapture} is being captured. Please wait...`);
+      return;
+    }
+
+    if (!isConnected) {
+      toast.error("Device not available. Attempting soft reset...");
+      await softReset();
       return;
     }
 
     try {
       setLastError("");
-      setRetryAttempts(prev => prev + 1);
-      
-      toast.info(`Place ${fingerName} on scanner`, { 
-        duration: 10000,
-        description: "Keep finger steady until capture completes"
+      setCaptureProgress("Queued for capture...");
+      setIsMyCapture(true);
+      captureIdRef.current = `${fingerName}_${Date.now()}`;
+
+      toast.info(`${fingerName} added to capture queue`, { 
+        duration: 3000,
+        description: queueLength > 0 ? `Position in queue: ${queueLength + 1}` : "Starting capture..."
       });
 
-      const result = await captureFingerprint(targetQuality, 15);
-      
+      const result = await queueCapture(
+        fingerName, 
+        targetQuality, 
+        15,
+        (status) => setCaptureProgress(status)
+      );
+
       if (result.success) {
         setCaptureQuality(result.quality);
-        setRetryAttempts(0);
 
         let processedImage = "";
         if (result.imageData) {
@@ -115,6 +126,7 @@ export function UnifiedFingerprintCapture({
         });
 
         onCaptureSuccess(result.template, result.quality, processedImage);
+        setCaptureProgress("Capture completed!");
 
       } else {
         throw new Error(result.message);
@@ -126,37 +138,42 @@ export function UnifiedFingerprintCapture({
       
       toast.error(`Failed to capture ${fingerName}`, {
         description: errorMessage,
-        action: retryAttempts < 3 ? {
-          label: "Retry",
-          onClick: () => setTimeout(() => handleCapture(), 1000)
-        } : undefined
+        duration: 5000
       });
       
       onCaptureError(errorMessage);
+      setCaptureProgress("");
+      
+    } finally {
+      setIsMyCapture(false);
+      setTimeout(() => setCaptureProgress(""), 3000);
     }
-  }, [isConnected, isCapturing, fingerName, targetQuality, captureFingerprint, onCaptureSuccess, onCaptureError, processBitmapImage, retryAttempts]);
+  }, [isConnected, isCapturing, isMyCapture, currentCapture, fingerName, targetQuality, queueLength, queueCapture, onCaptureSuccess, onCaptureError, processBitmapImage, softReset]);
 
-  const handleCancelCapture = useCallback(() => {
-    if (isCapturing) {
+  const handleCancel = useCallback(() => {
+    if (isMyCapture) {
       cancelCapture();
+      setIsMyCapture(false);
+      setCaptureProgress("");
       toast.info(`${fingerName} capture cancelled`);
     }
-  }, [isCapturing, cancelCapture, fingerName]);
+  }, [isMyCapture, cancelCapture, fingerName]);
 
-  const handleRecovery = useCallback(async () => {
+  const handleSoftReset = useCallback(async () => {
     setLastError("");
-    setRetryAttempts(0);
-    await resetConnection();
-    toast.info("Service recovery initiated...");
-  }, [resetConnection]);
+    setCaptureProgress("Resetting service...");
+    await softReset();
+    setCaptureProgress("");
+    toast.info("Service reset completed");
+  }, [softReset]);
 
   const getStatusBadge = () => {
     if (isConnected) return <Badge className="bg-green-500 text-white">Connected</Badge>;
-    if (consecutiveFailures >= 3) return <Badge variant="destructive">Service Error</Badge>;
     return <Badge variant="destructive">Disconnected</Badge>;
   };
 
-  const isServiceDown = consecutiveFailures >= 3 || (error && error.includes('service not running'));
+  const isInQueue = isCapturing && currentCapture !== fingerName;
+  const isCurrentlyCapturing = isCapturing && currentCapture === fingerName;
 
   return (
     <Card className="w-full max-w-md mx-auto">
@@ -177,9 +194,24 @@ export function UnifiedFingerprintCapture({
           imageData={capturedImage}
           index={index}
           quality={captureQuality}
-          isCapturing={isCapturing}
+          isCapturing={isCurrentlyCapturing}
           showQuality={true}
         />
+
+        {/* Queue Status */}
+        {isInQueue && (
+          <div className="flex items-center space-x-2 text-sm bg-blue-50 p-2 rounded">
+            <Clock className="h-4 w-4 text-blue-500" />
+            <span>Waiting in queue... Current: {currentCapture}</span>
+          </div>
+        )}
+
+        {/* Capture Progress */}
+        {captureProgress && (
+          <div className="text-sm text-center text-blue-600 bg-blue-50 p-2 rounded">
+            {captureProgress}
+          </div>
+        )}
 
         {/* Status Information */}
         <div className="flex items-center justify-between text-sm">
@@ -206,68 +238,36 @@ export function UnifiedFingerprintCapture({
           <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
             <div className="flex items-center space-x-1">
               <Info className="h-3 w-3" />
-              <span>Device: {deviceInfo.dpId}</span>
+              <span>Device: {deviceInfo.SerialNo || 'MFS100'}</span>
             </div>
             {lastCheckTime && (
               <div className="mt-1">
                 Last check: {lastCheckTime.toLocaleTimeString()}
               </div>
             )}
-            {retryAttempts > 0 && (
-              <div className="mt-1 text-orange-600">
-                Retry attempts: {retryAttempts}
+            {queueLength > 0 && (
+              <div className="mt-1 text-blue-600">
+                Queue: {queueLength} waiting
               </div>
             )}
           </div>
         )}
 
-        {/* Error Display with Recovery */}
+        {/* Error Display */}
         {(error || lastError) && !isConnected && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               <div className="space-y-2">
                 <div>{error || lastError}</div>
-                {consecutiveFailures > 0 && (
-                  <div className="text-xs">
-                    Failed attempts: {consecutiveFailures}
-                  </div>
-                )}
-                <div className="flex space-x-2 mt-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={checkDevice}
-                  >
-                    <RefreshCw className="h-4 w-4 mr-1" />
-                    Check Device
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleRecovery}
-                  >
-                    Recover Service
-                  </Button>
-                </div>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Service Setup Instructions */}
-        {isServiceDown && (
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertDescription>
-              <div className="space-y-2">
-                <p className="font-medium">Service Recovery Required:</p>
-                <ol className="text-sm space-y-1 list-decimal list-inside">
-                  <li>Ensure MFS100 device is connected via USB</li>
-                  <li>Start the MFS100 service application</li>
-                  <li>Verify service runs on https://localhost:8003</li>
-                  <li>Click "Recover Service" above</li>
-                </ol>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleSoftReset}
+                >
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Soft Reset
+                </Button>
               </div>
             </AlertDescription>
           </Alert>
@@ -277,10 +277,10 @@ export function UnifiedFingerprintCapture({
         <div className="flex space-x-2">
           <Button
             onClick={handleCapture}
-            disabled={isCapturing || !isConnected || disabled}
+            disabled={disabled || !isConnected || (isCapturing && !isMyCapture)}
             className={`flex-1 transition-all duration-300 ${
-              isCapturing 
-                ? 'bg-blue-500 hover:bg-blue-600 animate-pulse' 
+              isCurrentlyCapturing || isInQueue
+                ? 'bg-blue-500 hover:bg-blue-600' 
                 : isConnected 
                   ? 'bg-primary hover:bg-primary/90' 
                   : 'bg-gray-400 cursor-not-allowed'
@@ -288,17 +288,19 @@ export function UnifiedFingerprintCapture({
             size="lg"
           >
             <Fingerprint className="mr-2 h-5 w-5" />
-            {isCapturing 
-              ? `Capturing...` 
-              : isConnected
-                ? `Capture ${fingerName}` 
-                : 'Device Not Available'
+            {isCurrentlyCapturing
+              ? 'Capturing...' 
+              : isInQueue
+                ? 'In Queue...'
+                : isConnected
+                  ? `Capture ${fingerName}` 
+                  : 'Device Not Available'
             }
           </Button>
 
-          {isCapturing && (
+          {(isCurrentlyCapturing || isInQueue) && isMyCapture && (
             <Button
-              onClick={handleCancelCapture}
+              onClick={handleCancel}
               variant="outline"
               size="lg"
               className="px-3"
