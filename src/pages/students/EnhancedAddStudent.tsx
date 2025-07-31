@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { UnifiedFingerprintCapture, MFS100StatusIndicator } from "@/components/rd";
 import { useUnifiedMFS100Service } from "@/hooks/useUnifiedMFS100Service";
+import DashboardLayout from "@/components/DashboardLayout";
 
 interface FingerprintData {
   template: string;
@@ -21,7 +22,7 @@ interface FingerprintData {
   imageData?: string;
 }
 
-export default function EnhancedAddStudent() {
+function EnhancedAddStudentContent() {
   const [formData, setFormData] = useState({
     student_id: "",
     full_name: "",
@@ -31,7 +32,7 @@ export default function EnhancedAddStudent() {
   });
 
   const [fingerprints, setFingerprints] = useState<(FingerprintData | null)[]>(
-    Array(10).fill(null)
+    Array(5).fill(null) // Changed from 10 to 5 fingers
   );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -136,7 +137,7 @@ export default function EnhancedAddStudent() {
         mobile: "",
         email: ""
       });
-      setFingerprints(Array(10).fill(null));
+      setFingerprints(Array(5).fill(null)); // Reset to 5 fingers
 
     } catch (error) {
       console.error('Submission error:', error);
@@ -242,7 +243,7 @@ export default function EnhancedAddStudent() {
             </div>
             <div className="flex items-center space-x-4">
               <Badge variant={capturedCount > 0 ? "default" : "secondary"}>
-                {capturedCount}/10 Captured
+                {capturedCount}/5 Captured
               </Badge>
               {capturedCount > 0 && (
                 <Badge variant={averageQuality >= 70 ? "default" : averageQuality >= 60 ? "secondary" : "destructive"}>
@@ -262,16 +263,16 @@ export default function EnhancedAddStudent() {
             </Alert>
           )}
           
-          {capturedCount > 0 && capturedCount < 5 && (
+          {capturedCount > 0 && capturedCount < 3 && (
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                For better security, consider capturing more fingerprints. You have {capturedCount} out of 10 captured.
+                For better security, consider capturing more fingerprints. You have {capturedCount} out of 5 captured.
               </AlertDescription>
             </Alert>
           )}
           
-          {capturedCount >= 5 && (
+          {capturedCount >= 3 && (
             <Alert className="border-green-200 bg-green-50">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800">
@@ -284,9 +285,9 @@ export default function EnhancedAddStudent() {
 
       <Separator />
 
-      {/* Fingerprint Capture Grid - Using UnifiedFingerprintCapture */}
+      {/* Fingerprint Capture Grid - Using UnifiedFingerprintCapture for 5 fingers */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-        {[...Array(10)].map((_, index) => (
+        {[...Array(5)].map((_, index) => (
           <UnifiedFingerprintCapture
             key={index}
             index={index}
@@ -315,5 +316,13 @@ export default function EnhancedAddStudent() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function EnhancedAddStudent() {
+  return (
+    <DashboardLayout>
+      <EnhancedAddStudentContent />
+    </DashboardLayout>
   );
 }
