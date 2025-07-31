@@ -8,7 +8,9 @@ export function useUnifiedMFS100() {
     lastCheckTime: null,
     deviceInfo: null,
     error: null,
-    consecutiveFailures: 0
+    consecutiveFailures: 0,
+    isRecovering: false,
+    recoveryMessage: null
   });
   
   const [isCapturing, setIsCapturing] = useState(false);
@@ -71,13 +73,13 @@ export function useUnifiedMFS100() {
   const resetConnection = useCallback(() => {
     console.log('🔄 Resetting MFS100 connection...');
     unifiedMFS100Manager.reset();
-    // Check connection after reset
-    setTimeout(() => {
-      if (mountedRef.current) {
-        checkDevice(true);
-      }
-    }, 2000);
-  }, [checkDevice]);
+  }, []);
+
+  // Trigger manual recovery
+  const triggerRecovery = useCallback(async () => {
+    console.log('🔧 Triggering manual MFS100 recovery...');
+    return await unifiedMFS100Manager.triggerRecovery();
+  }, []);
 
   // Initial connection check
   useEffect(() => {
@@ -98,6 +100,8 @@ export function useUnifiedMFS100() {
     deviceInfo: connectionState.deviceInfo,
     consecutiveFailures: connectionState.consecutiveFailures,
     lastCheckTime: connectionState.lastCheckTime,
+    isRecovering: connectionState.isRecovering,
+    recoveryMessage: connectionState.recoveryMessage,
     
     // Capture state
     isCapturing,
@@ -107,6 +111,7 @@ export function useUnifiedMFS100() {
     captureFingerprint,
     cancelCapture,
     resetConnection,
+    triggerRecovery,
     
     // Utilities
     isProbablyAvailable: unifiedMFS100Manager.isProbablyAvailable()
