@@ -4,7 +4,7 @@ import { unifiedMFS100Manager, MFS100ConnectionState, MFS100CaptureResult } from
 
 export function useUnifiedMFS100() {
   const [connectionState, setConnectionState] = useState<MFS100ConnectionState>({
-    isConnected: true, // Start optimistic
+    isConnected: false,
     lastCheckTime: null,
     deviceInfo: null,
     error: null,
@@ -30,12 +30,12 @@ export function useUnifiedMFS100() {
     };
   }, []);
 
-  // Manual device check only
+  // Check device connection
   const checkDevice = useCallback(async (force = false) => {
     return await unifiedMFS100Manager.checkConnection(force);
   }, []);
 
-  // Direct capture fingerprint - no pre-checks
+  // Capture fingerprint
   const captureFingerprint = useCallback(async (
     quality: number = 60,
     timeout: number = 15
@@ -81,12 +81,21 @@ export function useUnifiedMFS100() {
     return await unifiedMFS100Manager.triggerRecovery();
   }, []);
 
-  // NO INITIAL CONNECTION CHECK - just be optimistic
+  // Initial connection check
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (mountedRef.current) {
+        checkDevice(true);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [checkDevice]);
 
   return {
-    // Connection state - start optimistic
+    // Connection state
     isConnected: connectionState.isConnected,
-    isChecking: false,
+    isChecking: false, // Managed internally by the manager
     error: connectionState.error,
     deviceInfo: connectionState.deviceInfo,
     consecutiveFailures: connectionState.consecutiveFailures,
@@ -98,8 +107,8 @@ export function useUnifiedMFS100() {
     isCapturing,
     
     // Actions
-    checkDevice: () => checkDevice(true), // Only manual checks
-    captureFingerprint, // Direct capture
+    checkDevice: () => checkDevice(true),
+    captureFingerprint,
     cancelCapture,
     resetConnection,
     triggerRecovery,
