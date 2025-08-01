@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Wifi, WifiOff, RefreshCw, AlertTriangle, Wrench, CheckCircle } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, AlertTriangle, Wrench, CheckCircle, Zap } from 'lucide-react';
 import { useUnifiedMFS100 } from '@/hooks/useUnifiedMFS100';
 import { toast } from 'sonner';
 
@@ -27,53 +27,61 @@ export function MFS100StatusIndicator() {
     setLastStatusChange(new Date());
   }, [isConnected]);
 
-  const handleManualRecovery = async () => {
-    toast.info('Starting MFS100 service recovery...', {
-      description: 'This may take a few moments'
+  const handleEnhancedRecovery = async () => {
+    toast.info('Starting enhanced MFS100 service recovery...', {
+      description: 'This may take up to 30 seconds',
+      duration: 5000
     });
 
     try {
       const result = await triggerRecovery();
       if (result.success) {
-        toast.success('Service recovery successful!', {
-          description: result.message
+        toast.success('Enhanced recovery successful!', {
+          description: result.message,
+          duration: 8000
         });
       } else {
-        toast.error('Recovery failed', {
-          description: result.message
+        toast.error('Enhanced recovery failed', {
+          description: result.message,
+          duration: 10000
         });
       }
     } catch (error) {
       toast.error('Recovery error', {
-        description: error instanceof Error ? error.message : 'Unknown error'
+        description: error instanceof Error ? error.message : 'Unknown error',
+        duration: 10000
       });
     }
   };
 
   const getStatusIcon = () => {
     if (isRecovering) return <RefreshCw className="h-5 w-5 text-blue-500 animate-spin" />;
-    if (consecutiveFailures >= 5) return <AlertTriangle className="h-5 w-5 text-red-500" />;
-    return <Wifi className="h-5 w-5 text-green-500" />; // Default to ready
+    if (consecutiveFailures >= 3) return <AlertTriangle className="h-5 w-5 text-red-500" />;
+    if (!isConnected && error?.includes('CONNECTION_REFUSED')) return <WifiOff className="h-5 w-5 text-red-500" />;
+    return <Wifi className="h-5 w-5 text-green-500" />;
   };
 
   const getStatusBadge = () => {
-    if (isRecovering) return <Badge variant="secondary" className="bg-blue-50 text-blue-700">Recovering...</Badge>;
-    if (consecutiveFailures >= 5) return <Badge variant="destructive">Service Issue</Badge>;
-    return <Badge className="bg-green-500 text-white">Ready to Capture</Badge>; // Default optimistic
+    if (isRecovering) return <Badge variant="secondary" className="bg-blue-50 text-blue-700">Enhanced Recovery...</Badge>;
+    if (!isConnected && error?.includes('CONNECTION_REFUSED')) return <Badge variant="destructive">Service Stopped</Badge>;
+    if (consecutiveFailures >= 3) return <Badge variant="destructive">Service Issue</Badge>;
+    return <Badge className="bg-green-500 text-white">Ready to Capture</Badge>;
   };
 
   const getSeverityLevel = () => {
     if (isRecovering) return 'info';
-    if (consecutiveFailures >= 5) return 'error';
-    return 'success'; // Default optimistic
+    if (!isConnected && error?.includes('CONNECTION_REFUSED')) return 'critical';
+    if (consecutiveFailures >= 3) return 'error';
+    return 'success';
   };
 
   const severity = getSeverityLevel();
-  const showRecoveryOption = consecutiveFailures >= 5 && !isRecovering;
+  const showEnhancedRecovery = severity === 'critical' || consecutiveFailures >= 3;
 
   return (
     <Card className={`border-2 transition-colors duration-300 ${
       severity === 'success' ? 'border-green-200 bg-green-50' :
+      severity === 'critical' ? 'border-red-300 bg-red-50' :
       severity === 'error' ? 'border-red-200 bg-red-50' :
       'border-blue-200 bg-blue-50'
     }`}>
@@ -95,32 +103,37 @@ export function MFS100StatusIndicator() {
                 </div>
               )}
               
-              {consecutiveFailures >= 5 && !isRecovering && (
+              {severity === 'critical' && !isRecovering && (
                 <span className="text-xs text-red-600 mt-1">
-                  Multiple connection failures detected
+                  Service has stopped - enhanced recovery available
+                </span>
+              )}
+              
+              {consecutiveFailures >= 3 && !isRecovering && severity !== 'critical' && (
+                <span className="text-xs text-red-600 mt-1">
+                  Multiple failures detected - enhanced recovery recommended
                 </span>
               )}
               
               <span className="text-xs text-gray-500 mt-1">
-                Last check: {lastCheckTime ? lastCheckTime.toLocaleTimeString() : 'Click to check'}
+                Last check: {lastCheckTime ? lastCheckTime.toLocaleTimeString() : 'Not checked'}
               </span>
             </div>
           </div>
           
           <div className="flex items-center space-x-2">
-            {/* Ready Indicator */}
-            {!showRecoveryOption && (
+            {/* Status Indicators */}
+            {severity === 'success' && (
               <div className="flex items-center space-x-1 text-xs text-green-600">
                 <CheckCircle className="h-3 w-3" />
-                <span>All fingers ready</span>
+                <span>Service Running</span>
               </div>
             )}
             
-            {/* Recovery Available Indicator */}
-            {showRecoveryOption && (
+            {showEnhancedRecovery && (
               <div className="flex items-center space-x-1 text-xs text-red-600">
-                <Wrench className="h-3 w-3" />
-                <span>Recovery needed</span>
+                <Zap className="h-3 w-3" />
+                <span>Recovery Needed</span>
               </div>
             )}
             
@@ -135,16 +148,17 @@ export function MFS100StatusIndicator() {
                 <RefreshCw className={`h-4 w-4 ${isRecovering ? 'animate-spin' : ''}`} />
               </Button>
               
-              {/* Manual Recovery Button - only show when really needed */}
-              {showRecoveryOption && (
+              {/* Enhanced Recovery Button */}
+              {showEnhancedRecovery && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleManualRecovery}
-                  className="text-red-600 hover:text-red-700 border-red-200"
-                  title="Trigger service recovery"
+                  onClick={handleEnhancedRecovery}
+                  className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+                  disabled={isRecovering}
+                  title="Enhanced service recovery - restarts service automatically"
                 >
-                  <Wrench className="h-4 w-4" />
+                  <Zap className="h-4 w-4" />
                 </Button>
               )}
               
@@ -153,7 +167,7 @@ export function MFS100StatusIndicator() {
                 size="sm"
                 onClick={resetConnection}
                 disabled={isRecovering}
-                title="Reset connection"
+                title="Reset connection state"
               >
                 <AlertTriangle className="h-4 w-4" />
               </Button>
@@ -161,7 +175,7 @@ export function MFS100StatusIndicator() {
           </div>
         </div>
 
-        {/* Recovery Progress Bar */}
+        {/* Enhanced Recovery Progress */}
         {isRecovering && (
           <div className="mt-3">
             <div className="w-full bg-blue-100 rounded-full h-2">
@@ -170,15 +184,33 @@ export function MFS100StatusIndicator() {
           </div>
         )}
 
-        {/* Service Issue Alert */}
-        {showRecoveryOption && (
-          <div className="mt-3 p-2 bg-red-100 border border-red-200 rounded text-xs">
-            <div className="flex items-center space-x-2">
-              <AlertTriangle className="h-4 w-4 text-red-500" />
+        {/* Critical Service Alert */}
+        {severity === 'critical' && !isRecovering && (
+          <div className="mt-3 p-3 bg-red-100 border border-red-200 rounded text-xs">
+            <div className="flex items-start space-x-2">
+              <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
               <div>
-                <div className="font-medium text-red-700">Service Needs Recovery</div>
-                <div className="text-red-600">
-                  Multiple capture failures detected. Use the recovery button to fix the service.
+                <div className="font-medium text-red-700">MFS100 Service Stopped</div>
+                <div className="text-red-600 mt-1">
+                  The service has crashed or been stopped. Use the enhanced recovery button to automatically restart it.
+                </div>
+                <div className="text-red-500 text-xs mt-1 font-medium">
+                  Enhanced recovery will attempt to restart the service without requiring a computer restart.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Multiple Failures Alert */}
+        {consecutiveFailures >= 3 && severity !== 'critical' && !isRecovering && (
+          <div className="mt-3 p-2 bg-orange-100 border border-orange-200 rounded text-xs">
+            <div className="flex items-center space-x-2">
+              <Wrench className="h-4 w-4 text-orange-500" />
+              <div>
+                <div className="font-medium text-orange-700">Service Instability Detected</div>
+                <div className="text-orange-600">
+                  Enhanced recovery recommended to stabilize the service.
                 </div>
               </div>
             </div>
