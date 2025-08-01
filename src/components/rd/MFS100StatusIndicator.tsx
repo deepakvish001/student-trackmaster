@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Wifi, WifiOff, RefreshCw, AlertTriangle, Wrench, CheckCircle, Clock } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, AlertTriangle, Wrench, CheckCircle } from 'lucide-react';
 import { useUnifiedMFS100 } from '@/hooks/useUnifiedMFS100';
 import { toast } from 'sonner';
 
@@ -52,29 +52,20 @@ export function MFS100StatusIndicator() {
 
   const getStatusIcon = () => {
     if (isRecovering) return <RefreshCw className="h-5 w-5 text-blue-500 animate-spin" />;
-    if (isProbablyAvailable) return <Wifi className="h-5 w-5 text-green-500" />;
-    if (isConnected) return <Wifi className="h-5 w-5 text-green-400" />;
-    if (consecutiveFailures > 3) return <AlertTriangle className="h-5 w-5 text-orange-500" />;
-    return <WifiOff className="h-5 w-5 text-red-500" />;
+    if (consecutiveFailures >= 5) return <AlertTriangle className="h-5 w-5 text-red-500" />;
+    return <Wifi className="h-5 w-5 text-green-500" />; // Default to ready
   };
 
   const getStatusBadge = () => {
     if (isRecovering) return <Badge variant="secondary" className="bg-blue-50 text-blue-700">Recovering...</Badge>;
-    if (isProbablyAvailable) return <Badge className="bg-green-500 text-white">Ready</Badge>;
-    if (isConnected) return <Badge className="bg-green-400 text-white">Connected</Badge>;
     if (consecutiveFailures >= 5) return <Badge variant="destructive">Service Issue</Badge>;
-    if (consecutiveFailures >= 3) return <Badge variant="secondary" className="bg-orange-50 text-orange-700">Checking...</Badge>;
-    if (consecutiveFailures > 0) return <Badge variant="secondary" className="bg-yellow-50 text-yellow-700">Retrying</Badge>;
-    return <Badge variant="secondary">Standby</Badge>;
+    return <Badge className="bg-green-500 text-white">Ready to Capture</Badge>; // Default optimistic
   };
 
   const getSeverityLevel = () => {
     if (isRecovering) return 'info';
-    if (isProbablyAvailable) return 'success';
-    if (isConnected) return 'success';
     if (consecutiveFailures >= 5) return 'error';
-    if (consecutiveFailures >= 3) return 'warning';
-    return 'info';
+    return 'success'; // Default optimistic
   };
 
   const severity = getSeverityLevel();
@@ -83,7 +74,6 @@ export function MFS100StatusIndicator() {
   return (
     <Card className={`border-2 transition-colors duration-300 ${
       severity === 'success' ? 'border-green-200 bg-green-50' :
-      severity === 'warning' ? 'border-orange-200 bg-orange-50' :
       severity === 'error' ? 'border-red-200 bg-red-50' :
       'border-blue-200 bg-blue-50'
     }`}>
@@ -105,33 +95,24 @@ export function MFS100StatusIndicator() {
                 </div>
               )}
               
-              {!isProbablyAvailable && error && !isRecovering && consecutiveFailures >= 3 && (
+              {consecutiveFailures >= 5 && !isRecovering && (
                 <span className="text-xs text-red-600 mt-1">
-                  Connection issues detected
+                  Multiple connection failures detected
                 </span>
               )}
               
-              {consecutiveFailures > 0 && consecutiveFailures < 3 && !isRecovering && (
-                <div className="flex items-center space-x-1 mt-1">
-                  <Clock className="h-3 w-3 text-yellow-500" />
-                  <span className="text-xs text-yellow-600">
-                    Checking connection...
-                  </span>
-                </div>
-              )}
-              
               <span className="text-xs text-gray-500 mt-1">
-                Last check: {lastCheckTime ? lastCheckTime.toLocaleTimeString() : 'Never'}
+                Last check: {lastCheckTime ? lastCheckTime.toLocaleTimeString() : 'Click to check'}
               </span>
             </div>
           </div>
           
           <div className="flex items-center space-x-2">
             {/* Ready Indicator */}
-            {isProbablyAvailable && (
+            {!showRecoveryOption && (
               <div className="flex items-center space-x-1 text-xs text-green-600">
                 <CheckCircle className="h-3 w-3" />
-                <span>Ready to capture</span>
+                <span>All fingers ready</span>
               </div>
             )}
             
@@ -149,7 +130,7 @@ export function MFS100StatusIndicator() {
                 size="sm"
                 onClick={() => checkDevice()}
                 disabled={isRecovering}
-                title="Check connection"
+                title="Check connection manually"
               >
                 <RefreshCw className={`h-4 w-4 ${isRecovering ? 'animate-spin' : ''}`} />
               </Button>
@@ -197,7 +178,7 @@ export function MFS100StatusIndicator() {
               <div>
                 <div className="font-medium text-red-700">Service Needs Recovery</div>
                 <div className="text-red-600">
-                  Multiple connection failures detected. Use the recovery button to fix the service.
+                  Multiple capture failures detected. Use the recovery button to fix the service.
                 </div>
               </div>
             </div>
