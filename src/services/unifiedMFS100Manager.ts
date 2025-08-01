@@ -54,7 +54,9 @@ class UnifiedMFS100Manager {
   private lastSuccessfulConnection = 0;
   private captureController: AbortController | null = null;
   private autoRecoveryEnabled = true;
-  private captureDelayBetweenOperations = 2000; // 2 seconds between captures
+  private captureDelayBetweenOperations = 1500; // Reduced to 1.5 seconds
+  private connectionCheckCooldown = 5000; // 5 seconds between connection checks
+  private lastConnectionCheck = 0;
 
   private constructor() {}
 
@@ -87,9 +89,9 @@ class UnifiedMFS100Manager {
       return;
     }
 
-    // Trigger recovery after 3 consecutive failures
-    if (this.connectionState.consecutiveFailures >= 3 && mfs100ServiceRecovery.canAttemptRecovery()) {
-      console.log('🔄 Triggering automatic MFS100 service recovery...');
+    // Only trigger recovery after 5 consecutive failures to avoid false positives
+    if (this.connectionState.consecutiveFailures >= 5 && mfs100ServiceRecovery.canAttemptRecovery()) {
+      console.log('🔄 Triggering automatic MFS100 service recovery after 5 failures...');
       
       this.connectionState.isRecovering = true;
       this.connectionState.recoveryMessage = 'Initiating service recovery...';
@@ -116,7 +118,7 @@ class UnifiedMFS100Manager {
           // Re-check connection with new URL
           setTimeout(() => {
             this.checkConnection(true);
-          }, 1000);
+          }, 2000);
         }
 
         this.connectionState.recoveryMessage = recoveryResult.message;
@@ -131,30 +133,38 @@ class UnifiedMFS100Manager {
         this.connectionState.isRecovering = false;
         this.connectionState.recoveryMessage = null;
         this.notifySubscribers();
-      }, 5000);
+      }, 3000);
     }
   }
 
-  // Check device connection (rate limited)
+  // Smart connection check with proper rate limiting
   async checkConnection(force = false): Promise<MFS100ConnectionState> {
-    // Prevent concurrent checks
+    const now = Date.now();
+    
+    // Prevent concurrent checks and implement cooldown
     if (this.checkInProgress) {
       return { ...this.connectionState };
     }
 
     // Rate limiting - don't check too frequently unless forced
-    const timeSinceLastCheck = Date.now() - (this.connectionState.lastCheckTime?.getTime() || 0);
-    if (!force && timeSinceLastCheck < 3000) {
+    if (!force && (now - this.lastConnectionCheck) < this.connectionCheckCooldown) {
+      return { ...this.connectionState };
+    }
+
+    // If we had a successful capture recently, assume still connected
+    if (!force && this.connectionState.isConnected && 
+        (now - this.lastSuccessfulConnection) < 30000) { // 30 seconds
       return { ...this.connectionState };
     }
 
     this.checkInProgress = true;
+    this.lastConnectionCheck = now;
 
     try {
       console.log('🔍 Checking MFS100 device connection...');
 
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
+      const timeout = setTimeout(() => controller.abort(), 5000); // Reduced timeout
 
       const response = await fetch(`${this.baseUrl}/info`, {
         method: 'GET',
@@ -203,7 +213,10 @@ class UnifiedMFS100Manager {
       }
 
     } catch (error) {
-      this.connectionState.consecutiveFailures++;
+      // Only increment failures if we haven't had a recent successful connection
+      if ((now - this.lastSuccessfulConnection) > 60000) { // 1 minute
+        this.connectionState.consecutiveFailures++;
+      }
       
       let errorMessage = 'Device not available';
       if (error instanceof Error) {
@@ -216,16 +229,22 @@ class UnifiedMFS100Manager {
         }
       }
 
-      this.connectionState.isConnected = false;
-      this.connectionState.error = errorMessage;
+      // Only mark as disconnected if we haven't had recent success
+      if ((now - this.lastSuccessfulConnection) > 60000) {
+        this.connectionState.isConnected = false;
+        this.connectionState.error = errorMessage;
+      }
+      
       this.connectionState.lastCheckTime = new Date();
 
       console.warn(`⚠️ MFS100 connection check failed (${this.connectionState.consecutiveFailures}):`, errorMessage);
       
-      // Trigger auto-recovery if needed
-      setTimeout(() => {
-        this.triggerAutoRecovery();
-      }, 1000);
+      // Only trigger auto-recovery for genuine failures
+      if (this.connectionState.consecutiveFailures >= 5) {
+        setTimeout(() => {
+          this.triggerAutoRecovery();
+        }, 2000);
+      }
       
     } finally {
       this.checkInProgress = false;
@@ -235,7 +254,7 @@ class UnifiedMFS100Manager {
     return { ...this.connectionState };
   }
 
-  // Capture fingerprint with proper session management and delays
+  // Optimized fingerprint capture with reduced timeouts and better error handling
   async captureFingerprint(quality: number = 60, timeout: number = 15): Promise<MFS100CaptureResult> {
     if (this.captureInProgress) {
       return {
@@ -247,28 +266,19 @@ class UnifiedMFS100Manager {
       };
     }
 
-    // Add delay between consecutive captures to prevent service lockup
+    // Smaller delay between captures
     const timeSinceLastCapture = Date.now() - this.lastSuccessfulConnection;
     if (timeSinceLastCapture < this.captureDelayBetweenOperations) {
       const waitTime = this.captureDelayBetweenOperations - timeSinceLastCapture;
-      console.log(`⏱️ Waiting ${waitTime}ms before next capture to prevent service lockup...`);
+      console.log(`⏱️ Brief delay ${waitTime}ms to prevent service conflicts...`);
       await new Promise(resolve => setTimeout(resolve, waitTime));
     }
 
-    // Check connection first
-    if (!this.connectionState.isConnected || this.connectionState.consecutiveFailures > 0) {
-      console.log('🔄 Checking connection before capture...');
+    // Quick connection check only if we haven't had recent success
+    const timeSinceLastSuccess = Date.now() - this.lastSuccessfulConnection;
+    if (timeSinceLastSuccess > 30000) { // Only check if more than 30 seconds
+      console.log('🔄 Quick connection verification...');
       await this.checkConnection(true);
-    }
-
-    if (!this.connectionState.isConnected) {
-      return {
-        success: false,
-        template: '',
-        imageData: '',
-        quality: 0,
-        message: this.connectionState.error || 'Device not connected'
-      };
     }
 
     this.captureInProgress = true;
@@ -277,11 +287,12 @@ class UnifiedMFS100Manager {
     try {
       console.log('🔵 Starting fingerprint capture...');
 
+      // Shorter timeout for capture
       const requestTimeout = setTimeout(() => {
         if (this.captureController) {
           this.captureController.abort();
         }
-      }, (timeout * 1000) + 5000);
+      }, (timeout * 1000) + 3000); // Only 3 extra seconds
 
       const response = await fetch(`${this.baseUrl}/capture`, {
         method: 'POST',
@@ -307,7 +318,7 @@ class UnifiedMFS100Manager {
       if (data.ErrorCode === "0") {
         console.log(`✅ Fingerprint captured successfully, Quality: ${data.Quality}`);
         
-        // Update connection state to show device is working
+        // Mark as successful - device is working fine
         this.connectionState.isConnected = true;
         this.connectionState.error = null;
         this.connectionState.consecutiveFailures = 0;
@@ -332,29 +343,30 @@ class UnifiedMFS100Manager {
       
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          message = 'Capture timed out';
-          shouldTriggerRecovery = true;
+          message = 'Capture was cancelled or timed out';
         } else if (error.message.includes('ERR_CONNECTION_REFUSED')) {
           message = 'Lost connection to device';
           shouldTriggerRecovery = true;
-          // Mark as disconnected
+          // Only mark as disconnected on genuine connection errors
           this.connectionState.isConnected = false;
           this.connectionState.error = message;
           this.connectionState.consecutiveFailures++;
         } else {
           message = error.message;
-          // Consider any capture error as potential service issue
-          this.connectionState.consecutiveFailures++;
+          // Don't increment failures for user-initiated cancellations
+          if (!error.message.includes('cancelled')) {
+            this.connectionState.consecutiveFailures++;
+          }
         }
       }
 
       console.error('❌ Fingerprint capture failed:', message);
       
-      // Trigger auto-recovery for connection issues
-      if (shouldTriggerRecovery || this.connectionState.consecutiveFailures >= 2) {
+      // Only trigger recovery for real connection issues
+      if (shouldTriggerRecovery && this.connectionState.consecutiveFailures >= 3) {
         setTimeout(() => {
           this.triggerAutoRecovery();
-        }, 2000);
+        }, 3000);
       }
       
       this.notifySubscribers();
@@ -423,7 +435,7 @@ class UnifiedMFS100Manager {
         this.connectionState.isRecovering = false;
         this.connectionState.recoveryMessage = null;
         this.notifySubscribers();
-      }, 3000);
+      }, 2000);
     }
   }
 
@@ -436,8 +448,8 @@ class UnifiedMFS100Manager {
   isProbablyAvailable(): boolean {
     const timeSinceSuccess = Date.now() - this.lastSuccessfulConnection;
     return this.connectionState.isConnected && 
-           this.connectionState.consecutiveFailures === 0 && 
-           timeSinceSuccess < 30000; // 30 seconds
+           this.connectionState.consecutiveFailures <= 2 && 
+           timeSinceSuccess < 60000; // 60 seconds
   }
 
   // Reset connection state
@@ -459,6 +471,7 @@ class UnifiedMFS100Manager {
     this.lastSuccessfulConnection = 0;
     this.checkInProgress = false;
     this.captureInProgress = false;
+    this.lastConnectionCheck = 0;
     
     this.notifySubscribers();
     
@@ -476,8 +489,14 @@ class UnifiedMFS100Manager {
 
   // Set delay between capture operations
   setCaptureDelay(delayMs: number): void {
-    this.captureDelayBetweenOperations = Math.max(1000, delayMs); // Minimum 1 second
+    this.captureDelayBetweenOperations = Math.max(500, delayMs); // Minimum 0.5 seconds
     console.log(`⏱️ Capture delay set to ${this.captureDelayBetweenOperations}ms`);
+  }
+
+  // Set connection check cooldown
+  setConnectionCheckCooldown(cooldownMs: number): void {
+    this.connectionCheckCooldown = Math.max(2000, cooldownMs); // Minimum 2 seconds
+    console.log(`🕐 Connection check cooldown set to ${this.connectionCheckCooldown}ms`);
   }
 }
 
