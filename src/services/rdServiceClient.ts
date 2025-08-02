@@ -33,66 +33,19 @@ export interface DeviceInfo {
 export class RDServiceClient {
   private baseUrl = 'https://localhost:8003/mfs100';
   private deviceInfo: DeviceInfo | null = null;
-  private lastAvailabilityCheck = 0;
-  private availabilityCache: { result: boolean; timestamp: number } | null = null;
-  private readonly CACHE_DURATION = 30000; // Increased to 30 seconds
-  private consecutiveFailures = 0;
-  private readonly MAX_CONSECUTIVE_FAILURES = 5; // Increased tolerance
-  private sessionActive = false;
-  private lastCaptureTime = 0;
-  private readonly SESSION_TIMEOUT = 120000; // Increased to 2 minutes
   private isResetting = false;
 
   constructor() {
-    console.log('🔵 RDServiceClient initialized in ZERO-POLLING mode - NO background checks');
+    console.log('🔵 RDServiceClient initialized - COMPLETELY PASSIVE MODE');
   }
 
   /**
-   * ZERO-POLLING: Only check when explicitly requested
+   * PASSIVE: Only check when explicitly requested - NO retries, NO caching
    */
   async isServiceAvailable(): Promise<boolean> {
-    // Skip frequent checks completely in zero-polling mode
-    const now = Date.now();
-    
-    // Return cached result if very recent (within 30 seconds)
-    if (this.availabilityCache && (now - this.availabilityCache.timestamp < this.CACHE_DURATION)) {
-      return this.availabilityCache.result;
-    }
-
-    try {
-      const mfs100Available = await this.checkMFS100ServiceOnce();
-      
-      this.availabilityCache = {
-        result: mfs100Available,
-        timestamp: now
-      };
-
-      if (mfs100Available) {
-        this.consecutiveFailures = 0;
-      } else {
-        this.consecutiveFailures++;
-      }
-
-      return mfs100Available;
-
-    } catch (error) {
-      this.consecutiveFailures++;
-      this.availabilityCache = {
-        result: false,
-        timestamp: now
-      };
-      
-      return false;
-    }
-  }
-
-  /**
-   * Single service check - no retries, no logging unless explicitly requested
-   */
-  private async checkMFS100ServiceOnce(logErrors = false): Promise<boolean> {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
+      const timeout = setTimeout(() => controller.abort(), 2000);
 
       const response = await fetch(`${this.baseUrl}/info`, {
         method: 'GET',
@@ -111,24 +64,9 @@ export class RDServiceClient {
       }
 
       const data = await response.json();
-      const isAvailable = data.ErrorCode === "0";
+      return data.ErrorCode === "0";
       
-      if (isAvailable && data.DeviceInfo) {
-        this.deviceInfo = {
-          dpId: data.DeviceInfo.SerialNo || 'MFS100',
-          rdsId: data.DeviceInfo.Make || 'MANTRA',
-          rdsVer: data.DeviceInfo.Model || 'MFS100',
-          dc: data.DeviceInfo.Certificate || '',
-          mi: data.DeviceInfo.Make || 'MANTRA',
-          mc: data.DeviceInfo.Model || 'MFS100'
-        };
-      }
-      
-      return isAvailable;
     } catch (error) {
-      if (logErrors) {
-        console.debug('MFS100 service check failed:', error instanceof Error ? error.message : 'Unknown error');
-      }
       return false;
     }
   }
@@ -178,7 +116,7 @@ export class RDServiceClient {
   }
 
   /**
-   * ZERO-POLLING capture - direct communication only when called
+   * PASSIVE capture - direct communication only when called
    */
   async captureFingerprint(timeout: number = 15000): Promise<RDServiceResponse> {
     const requestBody = {
@@ -187,9 +125,6 @@ export class RDServiceClient {
     };
 
     try {
-      this.sessionActive = true;
-      const now = Date.now();
-      
       const controller = new AbortController();
       const requestTimeout = setTimeout(() => controller.abort(), timeout + 2000);
 
@@ -228,19 +163,9 @@ export class RDServiceClient {
         throw new Error(result.errInfo);
       }
 
-      this.lastCaptureTime = now;
-      
-      // Update availability cache on successful capture
-      this.availabilityCache = {
-        result: true,
-        timestamp: now
-      };
-      this.consecutiveFailures = 0;
-
       return result;
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        this.sessionActive = false;
         throw new Error('Fingerprint capture timed out');
       }
       throw error;
@@ -262,15 +187,7 @@ export class RDServiceClient {
   }
 
   /**
-   * Clear cache - minimal disruption
-   */
-  clearCache(): void {
-    this.availabilityCache = null;
-    this.consecutiveFailures = 0;
-  }
-
-  /**
-   * ZERO-POLLING session reset - only when explicitly requested
+   * PASSIVE session reset - only when explicitly requested
    */
   async forceSessionReset(): Promise<void> {
     if (this.isResetting) {
@@ -280,9 +197,7 @@ export class RDServiceClient {
     this.isResetting = true;
     
     try {
-      this.clearCache();
-      this.sessionActive = false;
-      this.lastCaptureTime = 0;
+      this.deviceInfo = null;
       
       // Wait for device to settle
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -293,7 +208,7 @@ export class RDServiceClient {
   }
 
   /**
-   * Get service status - ZERO-POLLING mode
+   * Get service status - PASSIVE mode
    */
   async getServiceStatus(): Promise<{
     available: boolean;
@@ -306,16 +221,16 @@ export class RDServiceClient {
     
     let message: string;
     if (available) {
-      message = `Zero-polling mode: MFS100 service ready${this.sessionActive ? ' (session active)' : ''}`;
+      message = 'Passive mode: MFS100 service ready';
     } else {
-      message = 'Zero-polling mode: MFS100 service not available';
+      message = 'Passive mode: MFS100 service not available';
     }
     
     return {
       available,
       service: this.baseUrl,
       message,
-      sessionActive: this.sessionActive
+      sessionActive: false
     };
   }
 }

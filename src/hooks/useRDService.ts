@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { rdServiceClient, DeviceInfo } from '@/services/rdServiceClient';
 
 export function useRDService() {
@@ -7,26 +7,18 @@ export function useRDService() {
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
-  const [sessionActive, setSessionActive] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [serviceStatus, setServiceStatus] = useState<{
     service: string;
     message: string;
   }>({
     service: '',
-    message: 'Zero-polling mode: Ready for capture'
+    message: 'Passive mode: Ready for capture'
   });
   
   const mountedRef = useRef(true);
 
-  // ZERO-POLLING: No automatic background checks
-  useEffect(() => {
-    console.log('🔵 Zero-polling RD Service hook initialized - NO background monitoring');
-    
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+  console.log('🔵 Passive RD Service hook initialized - NO background monitoring');
 
   // Manual availability check only
   const checkAvailability = async (showLogs = false) => {
@@ -40,7 +32,6 @@ export function useRDService() {
       if (!mountedRef.current) return;
 
       setIsAvailable(status.available);
-      setSessionActive(status.sessionActive);
       setServiceStatus({
         service: status.service,
         message: status.message
@@ -57,11 +48,11 @@ export function useRDService() {
             setDeviceInfo(info);
             
             if (showLogs) {
-              console.log('✅ Zero-polling: MFS100 device ready:', info);
+              console.log('✅ Passive: MFS100 device ready:', info);
             }
           } catch (err) {
             if (showLogs) {
-              console.warn('Zero-polling: Could not get device info:', err);
+              console.warn('Passive: Could not get device info:', err);
             }
           }
         }
@@ -72,7 +63,7 @@ export function useRDService() {
     } catch (err) {
       if (!mountedRef.current) return;
       
-      const errorMessage = err instanceof Error ? err.message : 'Zero-polling: Connection failed';
+      const errorMessage = err instanceof Error ? err.message : 'Passive: Connection failed';
       setIsAvailable(false);
       setError(errorMessage);
       setRetryCount(prev => prev + 1);
@@ -119,7 +110,6 @@ export function useRDService() {
   const retry = async () => {
     setError(null);
     setRetryCount(0);
-    rdServiceClient.clearCache();
     checkAvailability(true);
   };
 
@@ -128,11 +118,10 @@ export function useRDService() {
     setIsAvailable(false);
     setDeviceInfo(null);
     setError(null);
-    setSessionActive(false);
     setRetryCount(0);
     setServiceStatus({
       service: '',
-      message: 'Zero-polling: Resetting connection...'
+      message: 'Passive: Resetting connection...'
     });
     
     await rdServiceClient.forceSessionReset();
@@ -151,7 +140,7 @@ export function useRDService() {
     error,
     deviceInfo,
     serviceStatus,
-    sessionActive,
+    sessionActive: false,
     retryCount,
     
     // Actions

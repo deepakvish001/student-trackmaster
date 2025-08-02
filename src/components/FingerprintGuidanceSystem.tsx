@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -223,10 +224,10 @@ export function FingerprintGuidanceSystem({
                 >
                   <div className="absolute -top-3 -right-3 z-10">
                     <Badge 
-                      variant={status === 'accepted' ? "default" : "secondary"}
-                      className="px-3 py-1 text-sm font-bold shadow-lg bg-blue-500 text-white"
+                      variant="default"
+                      className="px-3 py-1 text-sm font-bold shadow-lg bg-green-500 text-white"
                     >
-                      Zero-Polling Ready
+                      Ready
                     </Badge>
                   </div>
 
