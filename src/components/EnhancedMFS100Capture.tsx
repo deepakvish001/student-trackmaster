@@ -1,11 +1,10 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Fingerprint, Wifi, WifiOff, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { Fingerprint, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { FingerprintPreview } from "./FingerprintPreview";
 import { useFingerprintCaptureState } from "@/hooks/useFingerprintCaptureState";
 import { useModernDeviceConnection } from "@/hooks/useModernDeviceConnection";
@@ -31,26 +30,17 @@ export function EnhancedMFS100Capture({
 }: EnhancedMFS100CaptureProps) {
   const {
     isConnected,
-    isChecking,
-    error,
-    deviceInfo,
-    isInitialized,
-    forceCheck,
-    reconnect,
     mfs100Client
   } = useModernDeviceConnection();
 
   const [captureProgress, setCaptureProgress] = useState<{
     isCapturing: boolean;
-    currentStep: string;
     progress: number;
   }>({
     isCapturing: false,
-    currentStep: '',
     progress: 0
   });
 
-  const [capturedImageData, setCapturedImageData] = useState<string>("");
   const [captureQuality, setCaptureQuality] = useState<number | null>(null);
 
   const {
@@ -61,14 +51,6 @@ export function EnhancedMFS100Capture({
     acceptCapture,
     resetCapture
   } = useFingerprintCaptureState();
-
-  const handleProgressUpdate = useCallback((status: string) => {
-    setCaptureProgress(prev => ({
-      ...prev,
-      currentStep: status,
-      progress: Math.min(prev.progress + 25, 90)
-    }));
-  }, []);
 
   // Enhanced bitmap processing for crystal-clear fingerprint images
   const processFingerprintBitmap = useCallback((bitmapData: string, width: number = 256, height: number = 256): string => {
@@ -131,21 +113,16 @@ export function EnhancedMFS100Capture({
   }, [fingerName]);
 
   const handleCapture = useCallback(async () => {
-    if (!isConnected || !isInitialized) {
-      toast.error(`Device not ready: Please check MFS100 connection`);
-    }
-
     try {
       startCapture();
       setCaptureProgress({
         isCapturing: true,
-        currentStep: 'Preparing device...',
         progress: 10
       });
 
       toast.info(`Place ${fingerName} on scanner`, { duration: 4000 });
 
-      handleProgressUpdate('Capturing fingerprint...');
+      setCaptureProgress(prev => ({ ...prev, progress: 30 }));
       
       const result = await mfs100Client.captureFingerprint({
         quality: targetQuality,
@@ -157,7 +134,7 @@ export function EnhancedMFS100Capture({
         throw new Error(result.data?.ErrorDescription || result.err || "Capture failed");
       }
 
-      handleProgressUpdate('Processing image...');
+      setCaptureProgress(prev => ({ ...prev, progress: 70 }));
       
       const quality = result.data.Quality || 0;
       setCaptureQuality(quality);
@@ -173,16 +150,14 @@ export function EnhancedMFS100Capture({
         );
         
         if (processedImage) {
-          setCapturedImageData(processedImage);
-          
           showPreview({
             template: result.data.IsoTemplate || '',
             imageData: processedImage,
             quality: quality
           });
 
-          toast.success(`${fingerName} image captured! Please review and accept.`);
-          handleProgressUpdate('Capture completed!');
+          toast.success(`${fingerName} captured successfully!`);
+          setCaptureProgress(prev => ({ ...prev, progress: 100 }));
         } else {
           throw new Error("Failed to process fingerprint image");
         }
@@ -198,19 +173,17 @@ export function EnhancedMFS100Capture({
       resetCapture();
       setCaptureProgress({
         isCapturing: false,
-        currentStep: 'Capture failed',
         progress: 0
       });
     } finally {
       setTimeout(() => {
         setCaptureProgress({
           isCapturing: false,
-          currentStep: '',
           progress: 0
         });
       }, 2000);
     }
-  }, [isConnected, isInitialized, targetQuality, fingerName, startCapture, showPreview, resetCapture, handleProgressUpdate, mfs100Client, processFingerprintBitmap]);
+  }, [targetQuality, fingerName, startCapture, showPreview, resetCapture, mfs100Client, processFingerprintBitmap]);
 
   const handleAcceptCapture = useCallback(() => {
     if (!captureData) return;
@@ -222,12 +195,11 @@ export function EnhancedMFS100Capture({
     acceptCapture();
     onAccepted?.();
     
-    toast.success(`${fingerName} image accepted and saved!`);
+    toast.success(`${fingerName} accepted and saved!`);
   }, [captureData, onChange, onImageChange, acceptCapture, onAccepted, fingerName]);
 
   const handleRecapture = useCallback(() => {
     resetCapture();
-    setCapturedImageData("");
     setCaptureQuality(null);
     toast.info(`Ready to recapture ${fingerName}`);
   }, [resetCapture, fingerName]);
@@ -246,64 +218,46 @@ export function EnhancedMFS100Capture({
     );
   }
 
-  // Show the captured image (processed image data)
-  const displayImageData = captureState === 'accepted' ? capturedImageData : '';
-  const displayQuality = captureState === 'accepted' ? captureQuality : null;
-
+  // Clean grid layout - always show capture button
   return (
-    <div className="flex flex-col items-center space-y-3 bg-white border rounded-lg p-4 w-full max-w-[240px] mx-auto shadow-sm">
-      {/* Header with Finger Name */}
-      <div className="text-center">
-        <h3 className="font-semibold text-base">{fingerName}</h3>
-        <div className="flex items-center justify-center space-x-2 mt-1">
-          <div className="flex items-center space-x-1">
-            {isConnected ? (
-              <Wifi className="h-3 w-3 text-green-500" />
-            ) : (
-              <WifiOff className="h-3 w-3 text-red-500" />
-            )}
-            <div className={`w-2 h-2 rounded-full ${
-              !isInitialized ? 'bg-gray-400' : 
-              isChecking ? 'bg-yellow-500' : 
-              isConnected ? 'bg-green-500' : 'bg-red-500'
-            }`}></div>
-          </div>
-          
-          {displayQuality && (
-            <Badge variant={displayQuality >= 70 ? "default" : "secondary"} className="text-xs">
-              {displayQuality}%
-            </Badge>
-          )}
-        </div>
+    <div className="bg-white border rounded-lg p-4 shadow-sm">
+      {/* Header */}
+      <div className="text-center mb-3">
+        <h3 className="font-semibold text-sm">{fingerName}</h3>
+        {captureQuality && (
+          <Badge variant={captureQuality >= 70 ? "default" : "secondary"} className="text-xs mt-1">
+            {captureQuality}%
+          </Badge>
+        )}
       </div>
 
       {/* Fingerprint Display Area */}
-      <div className={`relative w-40 h-48 border-2 rounded-lg flex items-center justify-center bg-gray-50 transition-all duration-300 ${
+      <div className={`relative w-32 h-40 border-2 rounded-lg flex items-center justify-center mx-auto mb-3 transition-all duration-300 ${
         captureState === 'capturing' 
           ? 'border-blue-500 border-dashed animate-pulse bg-blue-50' 
-          : displayImageData
+          : captureState === 'accepted' && value
             ? 'border-green-500 bg-green-50'
-            : 'border-gray-300'
+            : 'border-gray-300 bg-gray-50'
       }`}>
         {captureState === 'capturing' ? (
           <div className="flex flex-col items-center space-y-2 text-blue-600">
-            <Fingerprint className="h-8 w-8 animate-pulse" />
-            <span className="text-sm font-medium">Scanning...</span>
+            <Fingerprint className="h-6 w-6 animate-pulse" />
+            <span className="text-xs font-medium">Scanning...</span>
             <div className="flex space-x-1">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></div>
+              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
             </div>
             {captureProgress.progress > 0 && (
-              <Progress value={captureProgress.progress} className="w-32 h-2" />
+              <Progress value={captureProgress.progress} className="w-24 h-1" />
             )}
           </div>
-        ) : displayImageData ? (
-          <div className="relative w-full h-full flex items-center justify-center">
+        ) : value ? (
+          <div className="relative w-full h-full">
             <img 
-              src={displayImageData}
+              src={value}
               alt={`${fingerName} fingerprint`}
-              className="w-full h-full object-contain rounded border"
+              className="w-full h-full object-contain rounded"
               style={{ 
                 filter: 'contrast(1.2) brightness(1.1)',
                 imageRendering: 'crisp-edges'
@@ -312,27 +266,27 @@ export function EnhancedMFS100Capture({
             {captureState === 'accepted' && (
               <div className="absolute -top-2 -right-2">
                 <div className="bg-green-500 text-white rounded-full p-1">
-                  <CheckCircle className="h-4 w-4" />
+                  <CheckCircle className="h-3 w-3" />
                 </div>
               </div>
             )}
           </div>
         ) : (
           <div className="flex flex-col items-center space-y-2 text-gray-400">
-            <Fingerprint className="h-8 w-8" />
-            <span className="text-sm">No Print</span>
+            <Fingerprint className="h-6 w-6" />
+            <span className="text-xs">No Print</span>
           </div>
         )}
       </div>
 
-      {/* Capture Button - Always Available */}
+      {/* Always-Available Capture Button */}
       <Button
-        onClick={captureState === 'accepted' ? handleRecapture : handleCapture}
+        onClick={captureState === 'accepted' && value ? handleRecapture : handleCapture}
         disabled={captureState === 'capturing'}
-        className={`w-full text-white transition-all duration-300 ${
+        className={`w-full text-white transition-all duration-300 text-xs py-1.5 ${
           captureState === 'capturing' 
             ? 'bg-blue-500 hover:bg-blue-600 animate-pulse' 
-            : captureState === 'accepted'
+            : captureState === 'accepted' && value
               ? 'bg-orange-500 hover:bg-orange-600'
             : isConnected 
               ? 'bg-blue-500 hover:bg-blue-600' 
@@ -340,42 +294,20 @@ export function EnhancedMFS100Capture({
         }`}
         size="sm"
       >
-        <Fingerprint className="mr-2 h-4 w-4" />
+        <Fingerprint className="mr-1.5 h-3 w-3" />
         {captureState === 'capturing' 
           ? 'Capturing...' 
-          : captureState === 'accepted'
+          : captureState === 'accepted' && value
             ? 'Recapture'
             : 'Capture'
         }
       </Button>
 
-      {/* Connection Warning - Show when device is disconnected */}
+      {/* Connection Warning - Only show when disconnected and not capturing */}
       {!isConnected && captureState !== 'capturing' && (
-        <div className="text-xs text-orange-600 text-center bg-orange-50 p-2 rounded border w-full">
-          Device disconnected - capture may fail
-        </div>
-      )}
-
-      {/* Error Display */}
-      {!isConnected && !isChecking && error && captureState !== 'capturing' && (
-        <Alert variant="destructive" className="w-full">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="flex items-center justify-between">
-            <span className="text-xs">{error}</span>
-            <div className="flex space-x-1">
-              <Button variant="outline" size="sm" onClick={forceCheck} disabled={isChecking}>
-                <RefreshCw className={`h-3 w-3 ${isChecking ? 'animate-spin' : ''}`} />
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Success Status */}
-      {captureState === 'accepted' && (
-        <div className="flex items-center space-x-2 text-sm text-green-600 w-full justify-center">
-          <CheckCircle className="h-4 w-4" />
-          <span>Captured ✓</span>
+        <div className="text-xs text-orange-600 text-center mt-2 flex items-center justify-center">
+          <AlertCircle className="h-3 w-3 mr-1" />
+          Device offline
         </div>
       )}
     </div>
