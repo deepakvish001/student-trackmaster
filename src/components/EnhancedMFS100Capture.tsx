@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -5,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Fingerprint, Wifi, WifiOff, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { FingerprintDisplay } from "./FingerprintDisplay";
 import { FingerprintPreview } from "./FingerprintPreview";
 import { useFingerprintCaptureState } from "@/hooks/useFingerprintCaptureState";
 import { useModernDeviceConnection } from "@/hooks/useModernDeviceConnection";
@@ -246,125 +246,136 @@ export function EnhancedMFS100Capture({
     );
   }
 
-  const getConnectionStatusColor = () => {
-    if (!isInitialized) return 'bg-gray-500';
-    if (isChecking) return 'bg-yellow-500';
-    return isConnected ? 'bg-green-500' : 'bg-red-500';
-  };
-
-  const getConnectionStatusText = () => {
-    if (!isInitialized) return 'Initializing...';
-    if (isChecking) return 'Checking...';
-    return isConnected ? 'Connected' : 'Disconnected';
-  };
-
   // Show the captured image (processed image data)
   const displayImageData = captureState === 'accepted' ? capturedImageData : '';
   const displayQuality = captureState === 'accepted' ? captureQuality : null;
 
   return (
-    <div className="flex flex-col items-center space-y-4">
-      <div className="relative">
-        <FingerprintDisplay 
-          value={displayImageData}
-          imageData={displayImageData}
-          index={index}
-          quality={displayQuality}
-          isCapturing={captureState === 'capturing'}
-          showQuality={true}
-          isConnected={isConnected}
-          onCapture={handleCapture}
-          onRecapture={handleRecapture}
-        />
-        
-        {captureState === 'capturing' && (
-          <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center">
-            <div className="bg-white p-3 rounded-lg shadow-lg text-center">
-              <div className="flex items-center space-x-2 mb-2">
-                <RefreshCw className="h-4 w-4 animate-spin text-blue-500" />
-                <span className="text-sm font-medium">Capturing...</span>
-              </div>
-              {captureProgress.progress > 0 && (
-                <Progress value={captureProgress.progress} className="w-32 h-2" />
-              )}
-            </div>
-          </div>
-        )}
-
-        {captureState === 'accepted' && (
-          <div className="absolute -top-2 -right-2">
-            <div className="bg-green-500 text-white rounded-full p-1">
-              <CheckCircle className="h-4 w-4" />
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-col items-center space-y-2">
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2">
+    <div className="flex flex-col items-center space-y-3 bg-white border rounded-lg p-4 w-full max-w-[240px] mx-auto shadow-sm">
+      {/* Header with Finger Name */}
+      <div className="text-center">
+        <h3 className="font-semibold text-base">{fingerName}</h3>
+        <div className="flex items-center justify-center space-x-2 mt-1">
+          <div className="flex items-center space-x-1">
             {isConnected ? (
-              <div className="flex items-center space-x-1">
-                <Wifi className="h-4 w-4 text-green-500" />
-                <div className={`w-2 h-2 rounded-full ${getConnectionStatusColor()}`}></div>
-              </div>
+              <Wifi className="h-3 w-3 text-green-500" />
             ) : (
-              <WifiOff className="h-4 w-4 text-red-500" />
+              <WifiOff className="h-3 w-3 text-red-500" />
             )}
+            <div className={`w-2 h-2 rounded-full ${
+              !isInitialized ? 'bg-gray-400' : 
+              isChecking ? 'bg-yellow-500' : 
+              isConnected ? 'bg-green-500' : 'bg-red-500'
+            }`}></div>
           </div>
           
-          <Badge variant={isConnected ? "default" : "destructive"}>
-            {getConnectionStatusText()}
-          </Badge>
-          
-          {captureState === 'accepted' && captureQuality && (
-            <Badge variant={captureQuality >= 70 ? "default" : "secondary"}>
-              Quality: {captureQuality}%
+          {displayQuality && (
+            <Badge variant={displayQuality >= 70 ? "default" : "secondary"} className="text-xs">
+              {displayQuality}%
             </Badge>
           )}
         </div>
+      </div>
 
-        {deviceInfo && isConnected && (
-          <div className="text-xs text-center text-gray-600">
-            {deviceInfo.Make} {deviceInfo.Model}
+      {/* Fingerprint Display Area */}
+      <div className={`relative w-40 h-48 border-2 rounded-lg flex items-center justify-center bg-gray-50 transition-all duration-300 ${
+        captureState === 'capturing' 
+          ? 'border-blue-500 border-dashed animate-pulse bg-blue-50' 
+          : displayImageData
+            ? 'border-green-500 bg-green-50'
+            : 'border-gray-300'
+      }`}>
+        {captureState === 'capturing' ? (
+          <div className="flex flex-col items-center space-y-2 text-blue-600">
+            <Fingerprint className="h-8 w-8 animate-pulse" />
+            <span className="text-sm font-medium">Scanning...</span>
+            <div className="flex space-x-1">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+            {captureProgress.progress > 0 && (
+              <Progress value={captureProgress.progress} className="w-32 h-2" />
+            )}
+          </div>
+        ) : displayImageData ? (
+          <div className="relative w-full h-full flex items-center justify-center">
+            <img 
+              src={displayImageData}
+              alt={`${fingerName} fingerprint`}
+              className="w-full h-full object-contain rounded border"
+              style={{ 
+                filter: 'contrast(1.2) brightness(1.1)',
+                imageRendering: 'crisp-edges'
+              }}
+            />
+            {captureState === 'accepted' && (
+              <div className="absolute -top-2 -right-2">
+                <div className="bg-green-500 text-white rounded-full p-1">
+                  <CheckCircle className="h-4 w-4" />
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center space-y-2 text-gray-400">
+            <Fingerprint className="h-8 w-8" />
+            <span className="text-sm">No Print</span>
           </div>
         )}
       </div>
 
-      {!isConnected && !isChecking && error && (
-        <Alert variant="destructive">
+      {/* Capture Button - Always Available */}
+      <Button
+        onClick={captureState === 'accepted' ? handleRecapture : handleCapture}
+        disabled={captureState === 'capturing'}
+        className={`w-full text-white transition-all duration-300 ${
+          captureState === 'capturing' 
+            ? 'bg-blue-500 hover:bg-blue-600 animate-pulse' 
+            : captureState === 'accepted'
+              ? 'bg-orange-500 hover:bg-orange-600'
+            : isConnected 
+              ? 'bg-blue-500 hover:bg-blue-600' 
+              : 'bg-orange-500 hover:bg-orange-600'
+        }`}
+        size="sm"
+      >
+        <Fingerprint className="mr-2 h-4 w-4" />
+        {captureState === 'capturing' 
+          ? 'Capturing...' 
+          : captureState === 'accepted'
+            ? 'Recapture'
+            : 'Capture'
+        }
+      </Button>
+
+      {/* Connection Warning - Show when device is disconnected */}
+      {!isConnected && captureState !== 'capturing' && (
+        <div className="text-xs text-orange-600 text-center bg-orange-50 p-2 rounded border w-full">
+          Device disconnected - capture may fail
+        </div>
+      )}
+
+      {/* Error Display */}
+      {!isConnected && !isChecking && error && captureState !== 'capturing' && (
+        <Alert variant="destructive" className="w-full">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">
-            <span>{error}</span>
+            <span className="text-xs">{error}</span>
             <div className="flex space-x-1">
               <Button variant="outline" size="sm" onClick={forceCheck} disabled={isChecking}>
-                <RefreshCw className={`h-4 w-4 ${isChecking ? 'animate-spin' : ''}`} />
-              </Button>
-              <Button variant="outline" size="sm" onClick={reconnect}>
-                Reconnect
+                <RefreshCw className={`h-3 w-3 ${isChecking ? 'animate-spin' : ''}`} />
               </Button>
             </div>
           </AlertDescription>
         </Alert>
       )}
 
-      {captureProgress.isCapturing && captureProgress.currentStep && (
-        <div className="w-full text-center space-y-2">
-          <div className="text-sm text-gray-600">{captureProgress.currentStep}</div>
-        </div>
-      )}
-
-      {/* Connection Warning - Show when device is disconnected */}
-      {!isConnected && (
-        <div className="text-xs text-orange-600 text-center bg-orange-50 p-2 rounded border">
-          Device disconnected - capture may fail
-        </div>
-      )}
-
+      {/* Success Status */}
       {captureState === 'accepted' && (
-        <div className="flex items-center space-x-2 text-sm text-green-600">
+        <div className="flex items-center space-x-2 text-sm text-green-600 w-full justify-center">
           <CheckCircle className="h-4 w-4" />
-          <span>Fingerprint image captured and saved</span>
+          <span>Captured ✓</span>
         </div>
       )}
     </div>
