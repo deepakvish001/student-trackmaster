@@ -9,13 +9,13 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 
 export default function StudentDetails() {
-  const { id } = useParams<{ id: string }>();
+  const { fingerprintId } = useParams<{ fingerprintId: string }>();
   const navigate = useNavigate();
 
   const { data: student, isLoading } = useQuery({
-    queryKey: ['student-details', id],
+    queryKey: ['student-by-fingerprint', fingerprintId],
     queryFn: async () => {
-      if (!id) return null;
+      if (!fingerprintId) return null;
       
       const { data, error } = await supabase
         .from('students')
@@ -25,18 +25,18 @@ export default function StudentDetails() {
             batch_name
           )
         `)
-        .eq('id', id)
+        .or(`finger_1.eq.${fingerprintId},finger_2.eq.${fingerprintId},finger_3.eq.${fingerprintId},finger_4.eq.${fingerprintId},finger_5.eq.${fingerprintId}`)
         .single();
 
       if (error) {
-        console.error('Error fetching student:', error);
+        console.error('Error fetching student by fingerprint:', error);
         throw error;
       }
       
       return data as Student;
     },
-    enabled: !!id,
-    refetchInterval: 2000, // Real-time updates every 2 seconds
+    enabled: !!fingerprintId,
+    refetchInterval: 1000, // Real-time updates every 1 second
     refetchIntervalInBackground: true
   });
 
@@ -64,14 +64,12 @@ export default function StudentDetails() {
           </Button>
           <div className="text-center py-8">
             <h1 className="text-2xl font-bold text-gray-900">Student Not Found</h1>
-            <p className="text-gray-500 mt-2">The student you're looking for doesn't exist.</p>
+            <p className="text-gray-500 mt-2">No student found with fingerprint ID: {fingerprintId}</p>
           </div>
         </div>
       </div>
     );
   }
-
-  const randomFingerprintId = Math.random().toString(36).substr(2, 9).toUpperCase();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -143,7 +141,7 @@ export default function StudentDetails() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Fingerprint ID</p>
-                  <p className="text-lg font-semibold text-gray-900">{randomFingerprintId}</p>
+                  <p className="text-lg font-semibold text-gray-900">{fingerprintId}</p>
                 </div>
               </div>
 
@@ -183,12 +181,18 @@ export default function StudentDetails() {
                       <div className="w-32 h-32 mx-auto mb-3 bg-gray-50 border border-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
                         {imageData ? (
                           <img
-                            src={imageData}
+                            src={imageData.startsWith('data:') ? imageData : `data:image/png;base64,${imageData}`}
                             alt={`Finger ${fingerNum}`}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-contain"
                             style={{ 
                               filter: 'contrast(1.2) brightness(1.1)',
                               imageRendering: 'crisp-edges'
+                            }}
+                            onError={(e) => {
+                              console.error(`Failed to load fingerprint image for finger ${fingerNum}:`, e);
+                            }}
+                            onLoad={() => {
+                              console.log(`✅ Fingerprint image loaded for finger ${fingerNum}`);
                             }}
                           />
                         ) : (

@@ -39,8 +39,17 @@ export function StudentActions({ student, onEdit, onDelete, onView, onToggleStat
   };
 
   const handleView = () => {
-    // Navigate to student details page with the student ID as slug
-    navigate(`/students/${student.id}`);
+    // Find the first available fingerprint ID to use as slug
+    const fingerprintId = student.finger_1 || student.finger_2 || student.finger_3 || student.finger_4 || student.finger_5;
+    
+    if (fingerprintId) {
+      // Generate a shorter fingerprint ID for URL (first 8 characters)
+      const shortFingerprintId = fingerprintId.substring(0, 8).toUpperCase();
+      navigate(`/students/${shortFingerprintId}`);
+    } else {
+      // Fallback to student ID if no fingerprint available
+      navigate(`/students/${student.id}`);
+    }
   };
 
   return (

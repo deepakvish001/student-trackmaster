@@ -53,7 +53,7 @@ function App() {
                 </ProtectedRoute>
               } />
               
-              <Route path="/students/:id" element={
+              <Route path="/students/:fingerprintId" element={
                 <ProtectedRoute>
                   <StudentDetails />
                 </ProtectedRoute>
