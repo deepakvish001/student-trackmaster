@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { DashboardLayout } from '@/components/DashboardLayout';
+import DashboardLayout from '@/components/DashboardLayout';
 import { OptimizedFingerprintCapture } from '@/components/rd/OptimizedFingerprintCapture';
 import { useOptimizedMFS100 } from '@/hooks/useOptimizedMFS100';
 
@@ -76,11 +76,8 @@ export default function OptimizedAddStudent() {
       const { data, error } = await supabase
         .from('students')
         .insert([{
-          name: formData.name.trim(),
-          mobile: formData.mobile.trim(),
-          email: formData.email.trim() || null,
-          batch: formData.batch,
-          address: formData.address.trim(),
+          student_name: formData.name.trim(),
+          batch_id: formData.batch, // This should be the batch ID, not the batch name
           finger_1: formData.fingerprints[0] || null,
           finger_2: formData.fingerprints[1] || null,
           finger_3: formData.fingerprints[2] || null,
