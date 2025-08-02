@@ -1,65 +1,73 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { persistentMFS100Service, MFS100CaptureResult, MFS100ConnectionState } from '@/services/persistentMFS100Service';
+import { useGlobalMFS100 } from './useGlobalMFS100';
+
+// Legacy interface compatibility
+export interface MFS100CaptureResult {
+  success: boolean;
+  template: string;
+  imageData: string;
+  quality: number;
+  message: string;
+}
+
+export interface MFS100ConnectionState {
+  isConnected: boolean;
+  isInitialized: boolean;
+  deviceInfo: any;
+  error: string | null;
+  lastActivity: Date | null;
+}
 
 export function usePersistentMFS100() {
-  const [connectionState, setConnectionState] = useState<MFS100ConnectionState>(
-    persistentMFS100Service.getState()
-  );
-  const [isCapturing, setIsCapturing] = useState(false);
+  const globalMFS100 = useGlobalMFS100();
+  
+  // Map global state to legacy interface
+  const [connectionState] = useState<MFS100ConnectionState>(() => ({
+    isConnected: globalMFS100.isConnected,
+    isInitialized: globalMFS100.isConnected,
+    deviceInfo: globalMFS100.deviceInfo,
+    error: globalMFS100.error,
+    lastActivity: globalMFS100.lastConnectionTime
+  }));
 
-  // Subscribe to connection state changes
+  // Update legacy state when global state changes
   useEffect(() => {
-    const unsubscribe = persistentMFS100Service.subscribe(setConnectionState);
-    return unsubscribe;
+    // This hook now just provides compatibility layer
+    console.log('🔄 Persistent MFS100 hook now using Global Manager');
   }, []);
 
-  // Initialize device on first use
   const initializeDevice = useCallback(async () => {
-    console.log('🎯 Hook: Requesting device initialization...');
-    return await persistentMFS100Service.initializeDevice();
-  }, []);
+    console.log('🎯 Legacy Hook: Delegating to Global Manager...');
+    // The global manager handles initialization automatically
+    if (!globalMFS100.isConnected && !globalMFS100.isInitializing) {
+      return await globalMFS100.reconnectDevice();
+    }
+    return globalMFS100.isConnected;
+  }, [globalMFS100]);
 
-  // Fast capture without any delays or retries
   const captureFingerprint = useCallback(async (
     quality: number = 60,
     timeout: number = 15
   ): Promise<MFS100CaptureResult> => {
-    if (isCapturing) {
-      return {
-        success: false,
-        template: '',
-        imageData: '',
-        quality: 0,
-        message: 'Capture already in progress'
-      };
-    }
+    return await globalMFS100.captureFingerprint(quality, timeout);
+  }, [globalMFS100]);
 
-    setIsCapturing(true);
-
-    try {
-      const result = await persistentMFS100Service.captureFingerprint(quality, timeout);
-      return result;
-    } finally {
-      setIsCapturing(false);
-    }
-  }, [isCapturing]);
-
-  // Reset connection
   const resetConnection = useCallback(() => {
-    persistentMFS100Service.resetConnection();
-  }, []);
+    console.log('🔄 Legacy Hook: Requesting global reset...');
+    globalMFS100.forceReset();
+  }, [globalMFS100]);
 
   return {
-    // Connection state
-    isConnected: connectionState.isConnected,
-    isInitialized: connectionState.isInitialized,
-    error: connectionState.error,
-    deviceInfo: connectionState.deviceInfo,
-    lastActivity: connectionState.lastActivity,
+    // Connection state (mapped from global state)
+    isConnected: globalMFS100.isConnected,
+    isInitialized: globalMFS100.isConnected,
+    error: globalMFS100.error,
+    deviceInfo: globalMFS100.deviceInfo,
+    lastActivity: globalMFS100.lastConnectionTime,
     
     // Capture state
-    isCapturing,
+    isCapturing: globalMFS100.isCapturing,
     
     // Actions
     initializeDevice,
