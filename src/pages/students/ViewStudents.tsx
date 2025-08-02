@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,11 +9,18 @@ import { Input } from '@/components/ui/input';
 import { ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Student } from '@/types';
+import { StudentActions } from '@/components/students/StudentActions';
+import { EditStudentDialog } from '@/components/students/EditStudentDialog';
+import { toast } from 'sonner';
 
 export default function ViewStudents() {
   const [selectedBatchId, setSelectedBatchId] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+
+  const queryClient = useQueryClient();
 
   // Fetch batches for dropdown
   const { data: batches = [] } = useQuery({
@@ -56,7 +63,6 @@ export default function ViewStudents() {
         throw error;
       }
       
-      // Log the data to debug fingerprint images
       console.log('Students data with fingerprints:', data?.map(student => ({
         id: student.id,
         name: student.student_name,
@@ -76,6 +82,60 @@ export default function ViewStudents() {
     refetchIntervalInBackground: true
   });
 
+  // Update student mutation
+  const updateStudentMutation = useMutation({
+    mutationFn: async ({ studentId, updates }: { studentId: string; updates: Partial<Student> }) => {
+      const { error } = await supabase
+        .from('students')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', studentId);
+
+      if (error) {
+        console.error('Update student error:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students-filtered'] });
+      toast.success('Student updated successfully');
+      setShowEditDialog(false);
+      setEditingStudent(null);
+    },
+    onError: (error) => {
+      console.error('Error updating student:', error);
+      toast.error('Failed to update student');
+    }
+  });
+
+  // Delete student mutation (soft delete)
+  const deleteStudentMutation = useMutation({
+    mutationFn: async (studentId: string) => {
+      const { error } = await supabase
+        .from('students')
+        .update({ 
+          is_enabled: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', studentId);
+
+      if (error) {
+        console.error('Delete student error:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students-filtered'] });
+      toast.success('Student deleted successfully');
+    },
+    onError: (error) => {
+      console.error('Error deleting student:', error);
+      toast.error('Failed to delete student');
+    }
+  });
+
   // Filter students based on search term
   const filteredStudents = students.filter((student: Student) =>
     student.student_name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -83,6 +143,30 @@ export default function ViewStudents() {
 
   const handleSubmit = () => {
     console.log('Submit clicked with batch:', selectedBatchId);
+  };
+
+  const handleEditStudent = (student: Student) => {
+    setEditingStudent(student);
+    setShowEditDialog(true);
+  };
+
+  const handleUpdateStudent = (updates: Partial<Student>) => {
+    if (editingStudent) {
+      updateStudentMutation.mutate({
+        studentId: editingStudent.id,
+        updates
+      });
+    }
+  };
+
+  const handleDeleteStudent = (studentId: string) => {
+    deleteStudentMutation.mutate(studentId);
+  };
+
+  const handleViewStudent = (student: Student) => {
+    console.log('Viewing student:', student);
+    // You can implement a view dialog here if needed
+    toast.info(`Viewing details for ${student.student_name}`);
   };
 
   // Enhanced fingerprint image component with real-time display
@@ -316,14 +400,12 @@ export default function ViewStudents() {
                               />
                             </td>
                             <td className="px-4 py-4 text-center">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500"
-                              >
-                                Action
-                                <ChevronDown className="ml-1 h-3 w-3" />
-                              </Button>
+                              <StudentActions
+                                student={student}
+                                onEdit={handleEditStudent}
+                                onDelete={handleDeleteStudent}
+                                onView={handleViewStudent}
+                              />
                             </td>
                           </tr>
                         ))
@@ -335,6 +417,16 @@ export default function ViewStudents() {
             </CardContent>
           </Card>
         )}
+
+        {/* Edit Student Dialog */}
+        <EditStudentDialog
+          student={editingStudent}
+          open={showEditDialog}
+          onOpenChange={setShowEditDialog}
+          onUpdate={handleUpdateStudent}
+          batches={batches}
+          isUpdating={updateStudentMutation.isPending}
+        />
       </div>
     </DashboardLayout>
   );
