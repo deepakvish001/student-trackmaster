@@ -46,8 +46,14 @@ class GlobalMFS100Manager {
     timeout: number;
   }> = [];
 
+  // Stability improvements
+  private lastSuccessfulOperation = 0;
+  private connectionStable = false;
+  private consecutiveSuccesses = 0;
+  private healthCheckInterval: NodeJS.Timeout | null = null;
+
   constructor() {
-    console.log('🌐 Global MFS100 Manager initialized');
+    console.log('🌐 Global MFS100 Manager initialized with enhanced stability');
     
     // Auto-initialize on page load
     this.autoInitialize();
@@ -59,6 +65,53 @@ class GlobalMFS100Manager {
         this.reconnectDevice();
       }
     });
+
+    // Start gentle health monitoring
+    this.startHealthMonitoring();
+  }
+
+  private startHealthMonitoring() {
+    // Very gentle health check every 30 seconds, only if device seems problematic
+    this.healthCheckInterval = setInterval(() => {
+      const timeSinceLastSuccess = Date.now() - this.lastSuccessfulOperation;
+      const shouldCheck = !this.connectionStable && 
+                         this.state.isConnected && 
+                         !this.state.isCapturing && 
+                         timeSinceLastSuccess > 60000; // Only if no activity for 1 minute
+
+      if (shouldCheck) {
+        console.log('🏥 Gentle health check - device inactive for 1 minute');
+        this.performGentleHealthCheck();
+      }
+    }, 30000);
+  }
+
+  private async performGentleHealthCheck() {
+    try {
+      // Very quick, non-disruptive check
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 3000); // Short timeout
+
+      const response = await fetch('https://localhost:8003/mfs100/info', {
+        method: 'GET',
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (response.ok) {
+        this.lastSuccessfulOperation = Date.now();
+        this.consecutiveSuccesses++;
+        
+        // Mark connection as stable after 3 successful operations
+        if (this.consecutiveSuccesses >= 3) {
+          this.connectionStable = true;
+          console.log('✅ Connection marked as stable - reducing health checks');
+        }
+      }
+    } catch (error) {
+      // Ignore health check failures - they're just gentle probes
+      console.log('🏥 Health check failed (ignored):', error instanceof Error ? error.message : 'Unknown');
+    }
   }
 
   private async autoInitialize() {
@@ -73,10 +126,10 @@ class GlobalMFS100Manager {
       });
     }
 
-    // Small delay to ensure all scripts are loaded
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Longer delay to ensure all scripts are loaded
+    await new Promise(resolve => setTimeout(resolve, 3000));
     
-    console.log('🚀 Starting auto-initialization...');
+    console.log('🚀 Starting auto-initialization with enhanced stability...');
     await this.initializeDevice();
   }
 
@@ -94,9 +147,15 @@ class GlobalMFS100Manager {
     const previousState = { ...this.state };
     this.state = { ...this.state, ...updates };
     
-    // Log significant state changes
+    // Log significant state changes only
     if (previousState.isConnected !== this.state.isConnected) {
       console.log(`📡 Device ${this.state.isConnected ? 'CONNECTED' : 'DISCONNECTED'}`);
+      
+      // Reset stability tracking on connection changes
+      if (this.state.isConnected) {
+        this.consecutiveSuccesses = 0;
+        this.connectionStable = false;
+      }
     }
     
     this.subscribers.forEach(callback => callback(this.state));
@@ -132,14 +191,14 @@ class GlobalMFS100Manager {
         throw new Error('MFS100 SDK not loaded. Please refresh the page and ensure the device service is running.');
       }
 
-      // Initialize the SDK
-      const initResult = await this.callSDKFunction('InitMFS100');
+      // Initialize the SDK with longer timeout
+      const initResult = await this.callSDKFunctionWithTimeout('InitMFS100', 10000);
       if (!this.isValidResponse(initResult)) {
         throw new Error(initResult?.data?.ErrorDescription || 'SDK initialization failed');
       }
 
       // Get device info to confirm connection
-      const deviceInfo = await this.getDeviceInfo();
+      const deviceInfo = await this.getDeviceInfoWithRetry();
       
       this.updateState({
         isInitializing: false,
@@ -149,6 +208,10 @@ class GlobalMFS100Manager {
         lastConnectionTime: new Date(),
         reconnectAttempts: 0
       });
+
+      // Mark successful operation
+      this.lastSuccessfulOperation = Date.now();
+      this.consecutiveSuccesses = 1;
 
       console.log('✅ MFS100 Device initialized successfully!', deviceInfo);
       
@@ -167,9 +230,9 @@ class GlobalMFS100Manager {
         error: errorMessage
       });
 
-      // Auto-retry with exponential backoff for specific errors
-      if (this.shouldRetryInitialization(errorMessage) && this.state.reconnectAttempts < 5) {
-        const retryDelay = Math.min(1000 * Math.pow(2, this.state.reconnectAttempts - 1), 30000);
+      // More conservative retry logic
+      if (this.shouldRetryInitialization(errorMessage) && this.state.reconnectAttempts < 3) {
+        const retryDelay = Math.min(5000 * Math.pow(2, this.state.reconnectAttempts - 1), 60000);
         console.log(`🔄 Retrying initialization in ${retryDelay}ms...`);
         
         setTimeout(() => {
@@ -179,6 +242,65 @@ class GlobalMFS100Manager {
 
       return false;
     }
+  }
+
+  private async callSDKFunctionWithTimeout(functionName: string, timeoutMs: number = 8000, ...args: any[]): Promise<any> {
+    return new Promise((resolve) => {
+      const sdkFunction = (window as any)[functionName];
+      if (typeof sdkFunction !== 'function') {
+        resolve({ httpStaus: false, err: `Function ${functionName} not available` });
+        return;
+      }
+
+      let completed = false;
+      const timeout = setTimeout(() => {
+        if (!completed) {
+          completed = true;
+          resolve({ httpStaus: false, err: `${functionName} timeout` });
+        }
+      }, timeoutMs);
+
+      try {
+        sdkFunction((result: any) => {
+          if (!completed) {
+            completed = true;
+            clearTimeout(timeout);
+            resolve(result);
+          }
+        }, ...args);
+      } catch (error) {
+        if (!completed) {
+          completed = true;
+          clearTimeout(timeout);
+          resolve({ httpStaus: false, err: error instanceof Error ? error.message : 'SDK call failed' });
+        }
+      }
+    });
+  }
+
+  private async getDeviceInfoWithRetry(maxRetries: number = 2): Promise<any> {
+    let lastError;
+    
+    for (let i = 0; i <= maxRetries; i++) {
+      try {
+        if (i > 0) {
+          // Small delay between retries
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          console.log(`🔄 Retrying device info (${i}/${maxRetries})...`);
+        }
+
+        const result = await this.callSDKFunctionWithTimeout('GetMFS100Info', 8000);
+        if (this.isValidResponse(result)) {
+          return result.data;
+        }
+        
+        lastError = new Error(result?.data?.ErrorDescription || 'Failed to get device info');
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    
+    throw lastError;
   }
 
   private isSDKAvailable(): boolean {
@@ -192,7 +314,7 @@ class GlobalMFS100Manager {
       'SDK not loaded',
       'initialization failed',
       'device not found',
-      'connection timeout'
+      'timeout'
     ];
     
     return retryableErrors.some(retryError => 
@@ -200,27 +322,8 @@ class GlobalMFS100Manager {
     );
   }
 
-  private async callSDKFunction(functionName: string, ...args: any[]): Promise<any> {
-    return new Promise((resolve) => {
-      const sdkFunction = (window as any)[functionName];
-      if (typeof sdkFunction === 'function') {
-        sdkFunction(resolve, ...args);
-      } else {
-        resolve({ httpStaus: false, err: `Function ${functionName} not available` });
-      }
-    });
-  }
-
   private isValidResponse(response: any): boolean {
     return response?.httpStaus && response.data?.ErrorCode === "0";
-  }
-
-  private async getDeviceInfo(): Promise<any> {
-    const result = await this.callSDKFunction('GetMFS100Info');
-    if (!this.isValidResponse(result)) {
-      throw new Error(result?.data?.ErrorDescription || 'Failed to get device info');
-    }
-    return result.data;
   }
 
   async captureFingerprint(quality: number = 60, timeout: number = 15): Promise<CaptureResult> {
@@ -235,19 +338,37 @@ class GlobalMFS100Manager {
         timeout
       });
 
-      // If not connected, try to initialize first
+      // Smart connection handling - don't re-initialize if recently successful
+      const timeSinceSuccess = Date.now() - this.lastSuccessfulOperation;
+      
       if (!this.state.isConnected && !this.state.isInitializing) {
-        this.initializeDevice().then(() => {
+        // Only reinitialize if we haven't had success recently
+        if (timeSinceSuccess > 120000) { // 2 minutes
+          this.initializeDevice().then(() => {
+            this.processQueue();
+          });
+        } else {
+          // Try to process queue directly - device might still work
+          console.log('🎯 Attempting direct capture - device was working recently');
           this.processQueue();
-        });
-      } else if (this.state.isConnected) {
+        }
+      } else if (this.state.isConnected || timeSinceSuccess < 30000) {
+        // Process immediately if connected or recently successful
         this.processQueue();
       }
     });
   }
 
   private async processQueue() {
-    if (this.state.isCapturing || this.captureQueue.length === 0 || !this.state.isConnected) {
+    if (this.state.isCapturing || this.captureQueue.length === 0) {
+      return;
+    }
+
+    // Allow processing even if marked as "disconnected" if we had recent success
+    const timeSinceSuccess = Date.now() - this.lastSuccessfulOperation;
+    const canProcess = this.state.isConnected || timeSinceSuccess < 60000; // 1 minute grace period
+
+    if (!canProcess) {
       return;
     }
 
@@ -259,29 +380,46 @@ class GlobalMFS100Manager {
     try {
       console.log(`📷 Processing capture request ${captureRequest.id}...`);
       
-      const result = await this.performCapture(captureRequest.quality, captureRequest.timeout);
+      const result = await this.performCaptureWithStability(captureRequest.quality, captureRequest.timeout);
       captureRequest.resolve(result);
       
       console.log(`✅ Capture ${captureRequest.id} completed successfully`);
+      
+      // Mark successful operation and connection as stable
+      this.lastSuccessfulOperation = Date.now();
+      this.consecutiveSuccesses++;
+      
+      // Update connection state to connected on successful capture
+      this.updateState({ 
+        isConnected: true, 
+        error: null, 
+        reconnectAttempts: 0 
+      });
       
     } catch (error) {
       console.error(`❌ Capture ${captureRequest.id} failed:`, error);
       captureRequest.reject(error instanceof Error ? error : new Error('Capture failed'));
       
-      // If capture failed due to connection, try to reconnect
-      if (this.isConnectionError(error)) {
-        this.reconnectDevice();
+      // Don't immediately mark as disconnected - could be temporary
+      const timeSinceLastSuccess = Date.now() - this.lastSuccessfulOperation;
+      if (timeSinceLastSuccess > 300000) { // Only mark disconnected after 5 minutes of no success
+        this.updateState({ 
+          isConnected: false, 
+          error: error instanceof Error ? error.message : 'Capture failed' 
+        });
       }
+      
     } finally {
       this.updateState({ isCapturing: false });
       
-      // Process next item in queue
-      setTimeout(() => this.processQueue(), 100);
+      // Process next item in queue with delay
+      setTimeout(() => this.processQueue(), 500);
     }
   }
 
-  private async performCapture(quality: number, timeout: number): Promise<CaptureResult> {
-    const result = await this.callSDKFunction('CaptureFinger');
+  private async performCaptureWithStability(quality: number, timeout: number): Promise<CaptureResult> {
+    // Use longer timeout and better error handling
+    const result = await this.callSDKFunctionWithTimeout('CaptureFinger', (timeout + 5) * 1000);
     
     if (!this.isValidResponse(result)) {
       throw new Error(result?.data?.ErrorDescription || result?.err || 'Capture failed');
@@ -337,19 +475,11 @@ class GlobalMFS100Manager {
     }
   }
 
-  private isConnectionError(error: any): boolean {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const connectionErrors = ['device not found', 'connection lost', 'timeout', 'not connected'];
-    return connectionErrors.some(err => errorMessage.toLowerCase().includes(err));
-  }
-
   async reconnectDevice(): Promise<boolean> {
     console.log('🔄 Attempting device reconnection...');
     
-    this.updateState({ 
-      isConnected: false, 
-      error: 'Reconnecting...' 
-    });
+    // Don't mark as disconnected immediately - could be temporary issue
+    this.updateState({ error: 'Reconnecting...' });
     
     // Clear any existing initialization promise
     this.initPromise = null;
@@ -374,8 +504,18 @@ class GlobalMFS100Manager {
   async forceReset() {
     console.log('🔄 Forcing complete device reset...');
     
+    // Clear health monitoring
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+    }
+    
     this.clearQueue();
     this.initPromise = null;
+    
+    // Reset all tracking variables
+    this.lastSuccessfulOperation = 0;
+    this.connectionStable = false;
+    this.consecutiveSuccesses = 0;
     
     this.updateState({
       isConnected: false,
@@ -387,10 +527,13 @@ class GlobalMFS100Manager {
       reconnectAttempts: 0
     });
     
+    // Restart health monitoring
+    this.startHealthMonitoring();
+    
     // Wait a moment then reinitialize
     setTimeout(() => {
       this.initializeDevice();
-    }, 1000);
+    }, 2000);
   }
 }
 
