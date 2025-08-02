@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import {
   Table,
@@ -17,9 +18,10 @@ interface EnhancedStudentTableProps {
   students: Student[];
   onEdit: (student: Student) => void;
   onDelete: (studentId: string) => void;
+  onToggleStatus: (student: Student) => void;
 }
 
-export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStudentTableProps) {
+export function EnhancedStudentTable({ students, onEdit, onDelete, onToggleStatus }: EnhancedStudentTableProps) {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
@@ -97,6 +99,7 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
                       onEdit={onEdit}
                       onDelete={onDelete}
                       onView={handleViewStudent}
+                      onToggleStatus={onToggleStatus}
                     />
                   </TableCell>
                 </TableRow>
