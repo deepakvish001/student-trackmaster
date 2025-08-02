@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,14 +44,14 @@ export function FingerprintGuidanceSystem({
   ];
 
   const handleFingerprintCaptured = useCallback((index: number, imageData: string, quality: number) => {
-    console.log(`Fingerprint ${index + 1} captured with zero-polling:`, {
+    console.log(`✅ Zero-polling capture completed for finger ${index + 1}:`, {
       hasImage: !!imageData,
       quality,
       imageLength: imageData?.length || 0
     });
     
     // Store the captured data
-    onFingerprintChange(index, imageData); // Using imageData as template for now
+    onFingerprintChange(index, imageData);
     
     if (imageData) {
       setCapturedImages(prev => {
@@ -76,7 +75,7 @@ export function FingerprintGuidanceSystem({
   }, [onFingerprintChange, onImageChange, showPreview]);
 
   const handleFingerprintError = useCallback((index: number, error: string) => {
-    console.log(`Fingerprint ${index + 1} capture error:`, error);
+    console.log(`❌ Zero-polling capture error for finger ${index + 1}:`, error);
   }, []);
 
   const handlePreviewAccept = useCallback(() => {
@@ -201,9 +200,8 @@ export function FingerprintGuidanceSystem({
         </CardContent>
       </Card>
 
-      {/* Zero-Polling Fingerprint Grid Layout - ALL fingers use same component */}
+      {/* Zero-Polling Fingerprint Grid - All 5 fingers */}
       <div className="space-y-8">
-        {/* All 5 fingers in a single responsive grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 justify-items-center">
           {fingerNames.map((name, index) => {
             const status = getFingerStatus(index);
@@ -226,24 +224,9 @@ export function FingerprintGuidanceSystem({
                   <div className="absolute -top-3 -right-3 z-10">
                     <Badge 
                       variant={status === 'accepted' ? "default" : "secondary"}
-                      className="px-3 py-1 text-sm font-bold shadow-lg"
+                      className="px-3 py-1 text-sm font-bold shadow-lg bg-blue-500 text-white"
                     >
-                      {status === 'accepted' ? (
-                        <>
-                          <div className="w-3 h-3 bg-green-500 rounded-full mr-2" />
-                          Ready ✓
-                        </>
-                      ) : status === 'captured' ? (
-                        <>
-                          <div className="w-3 h-3 bg-amber-500 rounded-full mr-2" />
-                          Ready
-                        </>
-                      ) : (
-                        <>
-                          <div className="w-3 h-3 bg-blue-500 rounded-full mr-2" />
-                          Ready
-                        </>
-                      )}
+                      Zero-Polling Ready
                     </Badge>
                   </div>
 
@@ -282,8 +265,8 @@ export function FingerprintGuidanceSystem({
                           <Circle className="h-8 w-8 text-blue-500 animate-pulse" />
                         ) : (
                           <>
-                            <Fingerprint className="h-8 w-8 text-gray-400" />
-                            <span className="text-xs font-medium text-gray-500">No Print</span>
+                            <Fingerprint className="h-8 w-8 text-blue-500" />
+                            <span className="text-xs font-medium text-blue-600">Ready</span>
                           </>
                         )}
                       </div>
