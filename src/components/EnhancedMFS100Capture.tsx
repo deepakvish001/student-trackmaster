@@ -218,12 +218,12 @@ export function EnhancedMFS100Capture({
     );
   }
 
-  // Clean grid layout - always show capture button
+  // Clean grid layout matching the screenshot
   return (
-    <div className="bg-white border rounded-lg p-4 shadow-sm">
+    <div className="bg-white border rounded-lg p-3 shadow-sm w-full max-w-[180px] mx-auto">
       {/* Header */}
-      <div className="text-center mb-3">
-        <h3 className="font-semibold text-sm">{fingerName}</h3>
+      <div className="text-center mb-2">
+        <h3 className="font-medium text-sm text-gray-800">{fingerName}</h3>
         {captureQuality && (
           <Badge variant={captureQuality >= 70 ? "default" : "secondary"} className="text-xs mt-1">
             {captureQuality}%
@@ -231,8 +231,8 @@ export function EnhancedMFS100Capture({
         )}
       </div>
 
-      {/* Fingerprint Display Area */}
-      <div className={`relative w-32 h-40 border-2 rounded-lg flex items-center justify-center mx-auto mb-3 transition-all duration-300 ${
+      {/* Fingerprint Display Area - Fixed dimensions to match screenshot */}
+      <div className={`relative w-full h-32 border-2 rounded-lg flex items-center justify-center mb-3 transition-all duration-300 ${
         captureState === 'capturing' 
           ? 'border-blue-500 border-dashed animate-pulse bg-blue-50' 
           : captureState === 'accepted' && value
@@ -241,15 +241,10 @@ export function EnhancedMFS100Capture({
       }`}>
         {captureState === 'capturing' ? (
           <div className="flex flex-col items-center space-y-2 text-blue-600">
-            <Fingerprint className="h-6 w-6 animate-pulse" />
+            <Fingerprint className="h-5 w-5 animate-pulse" />
             <span className="text-xs font-medium">Scanning...</span>
-            <div className="flex space-x-1">
-              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></div>
-              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-            </div>
             {captureProgress.progress > 0 && (
-              <Progress value={captureProgress.progress} className="w-24 h-1" />
+              <Progress value={captureProgress.progress} className="w-20 h-1" />
             )}
           </div>
         ) : value ? (
@@ -264,16 +259,16 @@ export function EnhancedMFS100Capture({
               }}
             />
             {captureState === 'accepted' && (
-              <div className="absolute -top-2 -right-2">
-                <div className="bg-green-500 text-white rounded-full p-1">
-                  <CheckCircle className="h-3 w-3" />
+              <div className="absolute -top-1 -right-1">
+                <div className="bg-green-500 text-white rounded-full p-0.5">
+                  <CheckCircle className="h-2.5 w-2.5" />
                 </div>
               </div>
             )}
           </div>
         ) : (
-          <div className="flex flex-col items-center space-y-2 text-gray-400">
-            <Fingerprint className="h-6 w-6" />
+          <div className="flex flex-col items-center space-y-1 text-gray-400">
+            <Fingerprint className="h-5 w-5" />
             <span className="text-xs">No Print</span>
           </div>
         )}
@@ -283,18 +278,18 @@ export function EnhancedMFS100Capture({
       <Button
         onClick={captureState === 'accepted' && value ? handleRecapture : handleCapture}
         disabled={captureState === 'capturing'}
-        className={`w-full text-white transition-all duration-300 text-xs py-1.5 ${
+        className={`w-full text-white transition-all duration-300 text-xs py-1.5 h-8 ${
           captureState === 'capturing' 
             ? 'bg-blue-500 hover:bg-blue-600 animate-pulse' 
             : captureState === 'accepted' && value
               ? 'bg-orange-500 hover:bg-orange-600'
-            : isConnected 
-              ? 'bg-blue-500 hover:bg-blue-600' 
-              : 'bg-orange-500 hover:bg-orange-600'
+              : isConnected 
+                ? 'bg-blue-500 hover:bg-blue-600' 
+                : 'bg-orange-500 hover:bg-orange-600'
         }`}
         size="sm"
       >
-        <Fingerprint className="mr-1.5 h-3 w-3" />
+        <Fingerprint className="mr-1 h-3 w-3" />
         {captureState === 'capturing' 
           ? 'Capturing...' 
           : captureState === 'accepted' && value
@@ -305,8 +300,8 @@ export function EnhancedMFS100Capture({
 
       {/* Connection Warning - Only show when disconnected and not capturing */}
       {!isConnected && captureState !== 'capturing' && (
-        <div className="text-xs text-orange-600 text-center mt-2 flex items-center justify-center">
-          <AlertCircle className="h-3 w-3 mr-1" />
+        <div className="text-xs text-orange-600 text-center mt-1 flex items-center justify-center">
+          <AlertCircle className="h-2.5 w-2.5 mr-1" />
           Device offline
         </div>
       )}
