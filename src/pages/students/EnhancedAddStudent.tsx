@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
@@ -24,35 +25,21 @@ interface FingerprintData {
 }
 
 const formSchema = z.object({
-  firstName: z.string().min(2, {
-    message: "First Name must be at least 2 characters.",
+  studentName: z.string().min(2, {
+    message: "Student Name must be at least 2 characters.",
   }),
-  lastName: z.string().min(2, {
-    message: "Last Name must be at least 2 characters.",
+  mobileNumber: z.string().regex(/^[0-9]{10}$/, {
+    message: "Mobile Number must be exactly 10 digits.",
   }),
   email: z.string().email({
     message: "Invalid email address.",
-  }),
-  gender: z.enum(['male', 'female', 'other'], {
-    required_error: "You need to select a gender.",
-  }),
-  address: z.string().min(10, {
-    message: "Address must be at least 10 characters.",
-  }),
-  phoneNumber: z.string().regex(/^(\+?\d{1,4}[-.\s]?)?(\(?\d{1,}\)?[-.\s]?)?(\d{1,}[-.\s]?)?(\d{1,})?$/, {
-    message: "Invalid phone number",
-  }),
-  dateOfBirth: z.string(),
-  guardianName: z.string().min(2, {
-    message: "Guardian Name must be at least 2 characters.",
-  }),
-  guardianPhoneNumber:  z.string().regex(/^(\+?\d{1,4}[-.\s]?)?(\(?\d{1,}\)?[-.\s]?)?(\d{1,}[-.\s]?)?(\d{1,})?$/, {
-    message: "Invalid phone number",
-  }),
+  }).optional().or(z.literal("")),
   batch: z.string().min(1, {
     message: "Please select a batch",
   }),
-  notes: z.string().optional(),
+  address: z.string().min(10, {
+    message: "Complete Address must be at least 10 characters.",
+  }),
   fingerprint_1: z.string().optional(),
   fingerprint_2: z.string().optional(),
   fingerprint_3: z.string().optional(),
@@ -62,24 +49,6 @@ const formSchema = z.object({
 
 export default function EnhancedAddStudent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    gender: '',
-    address: '',
-    phoneNumber: '',
-    dateOfBirth: '',
-    guardianName: '',
-    guardianPhoneNumber: '',
-    batch: '',
-    notes: '',
-    fingerprint_1: '',
-    fingerprint_2: '',
-    fingerprint_3: '',
-    fingerprint_4: '',
-    fingerprint_5: '',
-  });
   const [fingerprintData, setFingerprintData] = useState<{ [key: number]: FingerprintData }>({});
   const [fingerprintQualities, setFingerprintQualities] = useState<{ [key: number]: number }>({});
   const navigate = useNavigate();
@@ -87,23 +56,18 @@ export default function EnhancedAddStudent() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
+      studentName: "",
+      mobileNumber: "",
       email: "",
-      gender: "male",
-      address: "",
-      phoneNumber: "",
-      dateOfBirth: "",
-      guardianName: "",
-      guardianPhoneNumber: "",
       batch: "",
-      notes: "",
+      address: "",
     },
   })
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
-    console.log(values)
+    console.log('Student data:', values);
+    console.log('Fingerprint data:', fingerprintData);
 
     // Simulate API call
     setTimeout(() => {
@@ -130,16 +94,13 @@ export default function EnhancedAddStudent() {
       }
     }));
 
-    // Update form data
-    setFormData(prev => ({
-      ...prev,
-      [`fingerprint_${index + 1}`]: template || imageData || 'captured'
-    }));
-
     setFingerprintQualities(prev => ({
       ...prev,
       [index]: quality
     }));
+
+    // Update form data
+    form.setValue(`fingerprint_${index + 1}` as any, template || imageData || 'captured');
 
     toast.success(`Finger ${index + 1} captured successfully!`, {
       description: `Quality: ${quality}%`
@@ -170,103 +131,88 @@ export default function EnhancedAddStudent() {
   return (
     <DashboardLayout>
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6">
           <h1 className="text-2xl font-semibold">Add New Student</h1>
-          <div>
-            <Label htmlFor="batch" className="mr-2">Select Batch:</Label>
-            <Select onValueChange={(value) => setFormData({ ...formData, batch: value })}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select batch" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="2021">Batch 2021</SelectItem>
-                <SelectItem value="2022">Batch 2022</SelectItem>
-                <SelectItem value="2023">Batch 2023</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Add New Student</CardTitle>
+            <CardTitle>Student Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-8">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="firstName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>First Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="First Name" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          This is your public display name.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="lastName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Last Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Last Name" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          This is your public display name.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {/* Student Name */}
                 <FormField
                   control={form.control}
-                  name="email"
+                  name="studentName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>Student Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="shadcn@example.com" {...field} />
+                        <Input placeholder="Enter Student Name" {...field} />
                       </FormControl>
-                      <FormDescription>
-                        You can use a valid email address.
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
+                {/* Mobile Number */}
                 <FormField
                   control={form.control}
-                  name="gender"
+                  name="mobileNumber"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-md border p-4 space-y-0">
-                      <div className="space-y-0.5">
-                        <FormLabel>Gender</FormLabel>
-                        <FormDescription>
-                          What is your Gender.
-                        </FormDescription>
-                      </div>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormItem>
+                      <FormLabel>Mobile Number</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter Mobile Number" 
+                          maxLength={10}
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Email Address (Optional) */}
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email Address (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="email"
+                          placeholder="student@example.com" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Select Batch */}
+                <FormField
+                  control={form.control}
+                  name="batch"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Batch</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a gender" />
+                            <SelectValue placeholder="Select batch" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
+                          <SelectItem value="2021">Batch 2021</SelectItem>
+                          <SelectItem value="2022">Batch 2022</SelectItem>
+                          <SelectItem value="2023">Batch 2023</SelectItem>
+                          <SelectItem value="2024">Batch 2024</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -274,116 +220,20 @@ export default function EnhancedAddStudent() {
                   )}
                 />
 
+                {/* Complete Address */}
                 <FormField
                   control={form.control}
                   name="address"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Address</FormLabel>
+                      <FormLabel>Complete Address</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Address"
-                          className="resize-none"
+                          placeholder="Enter complete address"
+                          className="resize-none min-h-[80px]"
                           {...field}
                         />
                       </FormControl>
-                      <FormDescription>
-                        Tell us a little bit about yourself.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="phoneNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone Number</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Phone Number" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          Enter valid Phone Number.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="dateOfBirth"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date Of Birth</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="date"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Enter your Date of Birth.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="guardianName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Guardian Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Guardian Name" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          Enter Guardian Name.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="guardianPhoneNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Guardian Phone Number</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Guardian Phone Number" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          Enter Guardian Phone Number.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notes</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Notes"
-                          className="resize-none"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Any notes about student.
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -465,8 +315,13 @@ export default function EnhancedAddStudent() {
                   </div>
                 </div>
 
-                <Button disabled={isSubmitting} type="submit">
-                  {isSubmitting ? "Submitting..." : "Submit"}
+                <Button 
+                  disabled={isSubmitting} 
+                  type="submit"
+                  size="lg"
+                  className="w-full md:w-auto"
+                >
+                  {isSubmitting ? "Saving Student..." : "Save Student"}
                 </Button>
               </form>
             </Form>
