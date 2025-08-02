@@ -3,20 +3,25 @@ import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
-import { useRDService } from '@/hooks/useRDService';
+import { useSmartDeviceDetection } from '@/hooks/useSmartDeviceDetection';
 
 export function RDServiceStatusIndicator() {
-  const { isAvailable, isChecking, error, resetConnection } = useRDService();
-  const [lastStatusChange, setLastStatusChange] = useState<Date>(new Date());
+  const { isConnected, lastStateChange, manualCheck } = useSmartDeviceDetection();
+  const [isManualChecking, setIsManualChecking] = useState(false);
 
-  useEffect(() => {
-    setLastStatusChange(new Date());
-  }, [isAvailable]);
+  const handleManualCheck = async () => {
+    setIsManualChecking(true);
+    try {
+      await manualCheck();
+    } finally {
+      setIsManualChecking(false);
+    }
+  };
 
   return (
     <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
       <div className="flex items-center space-x-2">
-        {isAvailable ? (
+        {isConnected ? (
           <Wifi className="h-5 w-5 text-green-500" />
         ) : (
           <WifiOff className="h-5 w-5 text-red-500" />
@@ -25,30 +30,32 @@ export function RDServiceStatusIndicator() {
         <div className="flex flex-col">
           <div className="flex items-center space-x-2">
             <span className="text-sm font-medium">RD Service</span>
-            <Badge variant={isAvailable ? "default" : "destructive"}>
-              {isChecking ? 'Checking...' : isAvailable ? 'Connected' : 'Disconnected'}
+            <Badge variant={isConnected ? "default" : "destructive"}>
+              {isManualChecking ? 'Checking...' : isConnected ? 'Connected' : 'Disconnected'}
             </Badge>
           </div>
           
-          {error && (
-            <span className="text-xs text-red-600 mt-1">{error}</span>
-          )}
-          
           <span className="text-xs text-gray-500 mt-1">
-            Last check: {lastStatusChange.toLocaleTimeString()}
+            Last check: {lastStateChange.toLocaleTimeString()}
           </span>
+          
+          {isConnected && (
+            <span className="text-xs text-green-600 mt-1">
+              Smart detection active - will detect reconnections automatically
+            </span>
+          )}
         </div>
       </div>
       
       <Button
         variant="outline"
         size="sm"
-        onClick={resetConnection}
-        disabled={isChecking}
+        onClick={handleManualCheck}
+        disabled={isManualChecking}
         className="ml-auto"
       >
-        <RefreshCw className={`h-4 w-4 ${isChecking ? 'animate-spin' : ''}`} />
-        <span className="ml-1">Retry</span>
+        <RefreshCw className={`h-4 w-4 ${isManualChecking ? 'animate-spin' : ''}`} />
+        <span className="ml-1">Check Now</span>
       </Button>
     </div>
   );
