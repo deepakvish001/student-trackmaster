@@ -33,7 +33,7 @@ export default function ViewStudents() {
     }
   });
 
-  // Fetch students based on selected batch
+  // Fetch students based on selected batch with real-time updates
   const { data: students = [], isLoading } = useQuery({
     queryKey: ['students-filtered', selectedBatchId],
     queryFn: async () => {
@@ -55,9 +55,25 @@ export default function ViewStudents() {
         console.error('Error fetching students:', error);
         throw error;
       }
+      
+      // Log the data to debug fingerprint images
+      console.log('Students data with fingerprints:', data?.map(student => ({
+        id: student.id,
+        name: student.student_name,
+        fingerprints: {
+          finger_1_image: !!student.finger_1_image,
+          finger_2_image: !!student.finger_2_image,
+          finger_3_image: !!student.finger_3_image,
+          finger_4_image: !!student.finger_4_image,
+          finger_5_image: !!student.finger_5_image,
+        }
+      })));
+      
       return data || [];
     },
-    enabled: !!selectedBatchId
+    enabled: !!selectedBatchId,
+    refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
+    refetchIntervalInBackground: true
   });
 
   // Filter students based on search term
@@ -66,8 +82,60 @@ export default function ViewStudents() {
   );
 
   const handleSubmit = () => {
-    // This would typically trigger the student fetch, but we're using reactive queries
     console.log('Submit clicked with batch:', selectedBatchId);
+  };
+
+  // Enhanced fingerprint image component with real-time display
+  const FingerprintImage = ({ imageData, fingerNumber }: { imageData: string | null, fingerNumber: number }) => {
+    if (!imageData) {
+      return (
+        <div className="w-12 h-12 mx-auto bg-gray-200 rounded border flex items-center justify-center text-gray-400 text-xs">
+          No Print
+        </div>
+      );
+    }
+
+    // Handle different image data formats
+    let imageSrc = imageData;
+    if (imageData && !imageData.startsWith('data:image/')) {
+      // If it's base64 without data URL prefix, add it
+      if (imageData.length > 1000) {
+        imageSrc = `data:image/png;base64,${imageData}`;
+      }
+    }
+
+    return (
+      <div className="relative">
+        <img
+          src={imageSrc}
+          alt={`Finger ${fingerNumber}`}
+          className="w-12 h-12 mx-auto rounded border bg-gray-100 object-cover"
+          style={{ 
+            filter: 'contrast(1.2) brightness(1.1)',
+            imageRendering: 'crisp-edges'
+          }}
+          onError={(e) => {
+            console.error(`Failed to load fingerprint image for finger ${fingerNumber}`, imageData?.substring(0, 100));
+            const target = e.target as HTMLImageElement;
+            target.style.display = 'none';
+            const parent = target.parentElement;
+            if (parent) {
+              parent.innerHTML = `
+                <div class="w-12 h-12 mx-auto bg-red-100 rounded border flex items-center justify-center text-red-400 text-xs">
+                  Error
+                </div>
+              `;
+            }
+          }}
+          onLoad={() => {
+            console.log(`✅ Fingerprint image loaded successfully for finger ${fingerNumber}`);
+          }}
+        />
+        <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">
+          ✓
+        </div>
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -129,7 +197,12 @@ export default function ViewStudents() {
           <Card>
             <CardContent className="p-6">
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Student List</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Student List</h3>
+                  <div className="text-sm text-green-600 font-medium">
+                    Auto-refreshing every 5 seconds
+                  </div>
+                </div>
                 
                 {/* Table Controls */}
                 <div className="flex items-center justify-between">
@@ -213,74 +286,34 @@ export default function ViewStudents() {
                               </div>
                             </td>
                             <td className="px-4 py-4 text-center border-r">
-                              {student.finger_1_image ? (
-                                <img
-                                  src={student.finger_1_image}
-                                  alt="Finger 1"
-                                  className="w-12 h-12 mx-auto rounded border bg-gray-100 object-cover"
-                                  style={{ filter: 'contrast(1.2) brightness(1.1)' }}
-                                />
-                              ) : (
-                                <div className="w-12 h-12 mx-auto bg-gray-200 rounded border flex items-center justify-center text-gray-400 text-xs">
-                                  No Print
-                                </div>
-                              )}
+                              <FingerprintImage 
+                                imageData={student.finger_1_image} 
+                                fingerNumber={1} 
+                              />
                             </td>
                             <td className="px-4 py-4 text-center border-r">
-                              {student.finger_2_image ? (
-                                <img
-                                  src={student.finger_2_image}
-                                  alt="Finger 2"
-                                  className="w-12 h-12 mx-auto rounded border bg-gray-100 object-cover"
-                                  style={{ filter: 'contrast(1.2) brightness(1.1)' }}
-                                />
-                              ) : (
-                                <div className="w-12 h-12 mx-auto bg-gray-200 rounded border flex items-center justify-center text-gray-400 text-xs">
-                                  No Print
-                                </div>
-                              )}
+                              <FingerprintImage 
+                                imageData={student.finger_2_image} 
+                                fingerNumber={2} 
+                              />
                             </td>
                             <td className="px-4 py-4 text-center border-r">
-                              {student.finger_3_image ? (
-                                <img
-                                  src={student.finger_3_image}
-                                  alt="Finger 3"
-                                  className="w-12 h-12 mx-auto rounded border bg-gray-100 object-cover"
-                                  style={{ filter: 'contrast(1.2) brightness(1.1)' }}
-                                />
-                              ) : (
-                                <div className="w-12 h-12 mx-auto bg-gray-200 rounded border flex items-center justify-center text-gray-400 text-xs">
-                                  No Print
-                                </div>
-                              )}
+                              <FingerprintImage 
+                                imageData={student.finger_3_image} 
+                                fingerNumber={3} 
+                              />
                             </td>
                             <td className="px-4 py-4 text-center border-r">
-                              {student.finger_4_image ? (
-                                <img
-                                  src={student.finger_4_image}
-                                  alt="Finger 4"
-                                  className="w-12 h-12 mx-auto rounded border bg-gray-100 object-cover"
-                                  style={{ filter: 'contrast(1.2) brightness(1.1)' }}
-                                />
-                              ) : (
-                                <div className="w-12 h-12 mx-auto bg-gray-200 rounded border flex items-center justify-center text-gray-400 text-xs">
-                                  No Print
-                                </div>
-                              )}
+                              <FingerprintImage 
+                                imageData={student.finger_4_image} 
+                                fingerNumber={4} 
+                              />
                             </td>
                             <td className="px-4 py-4 text-center border-r">
-                              {student.finger_5_image ? (
-                                <img
-                                  src={student.finger_5_image}
-                                  alt="Finger 5"
-                                  className="w-12 h-12 mx-auto rounded border bg-gray-100 object-cover"
-                                  style={{ filter: 'contrast(1.2) brightness(1.1)' }}
-                                />
-                              ) : (
-                                <div className="w-12 h-12 mx-auto bg-gray-200 rounded border flex items-center justify-center text-gray-400 text-xs">
-                                  No Print
-                                </div>
-                              )}
+                              <FingerprintImage 
+                                imageData={student.finger_5_image} 
+                                fingerNumber={5} 
+                              />
                             </td>
                             <td className="px-4 py-4 text-center">
                               <Button
