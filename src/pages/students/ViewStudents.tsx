@@ -63,7 +63,7 @@ export default function ViewStudents() {
       return data || [];
     },
     enabled: !!selectedBatchId,
-    refetchInterval: 5000,
+    refetchInterval: 2000, // Real-time updates every 2 seconds
     refetchIntervalInBackground: true
   });
 
@@ -116,6 +116,32 @@ export default function ViewStudents() {
     }
   });
 
+  // Real-time update function for inline editing
+  const handleInlineUpdate = async (studentId: string, field: string, value: string) => {
+    try {
+      const { error } = await supabase
+        .from('students')
+        .update({
+          [field]: value,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', studentId);
+
+      if (error) {
+        console.error('Inline update error:', error);
+        toast.error('Failed to update student');
+        return;
+      }
+      
+      // Refresh data immediately
+      queryClient.invalidateQueries({ queryKey: ['students-filtered'] });
+      toast.success('Student updated');
+    } catch (error) {
+      console.error('Error updating student:', error);
+      toast.error('Failed to update student');
+    }
+  };
+
   const filteredStudents = students.filter((student: Student) =>
     student.student_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -146,11 +172,98 @@ export default function ViewStudents() {
   };
 
   const handleDeleteStudent = (studentId: string) => {
-    deleteStudentMutation.mutate(studentId);
+    if (confirm('Are you sure you want to delete this student?')) {
+      deleteStudentMutation.mutate(studentId);
+    }
   };
 
   const handleViewStudent = (student: Student) => {
-    // This is now handled inside the StudentActions component
+    const randomFingerprintId = Math.random().toString(36).substr(2, 9).toUpperCase();
+    
+    const studentData = {
+      ...student,
+      fingerprintId: randomFingerprintId
+    };
+
+    const newTab = window.open('', '_blank');
+    if (newTab) {
+      newTab.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Student Details - ${student.student_name}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+            .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .header { border-bottom: 2px solid #007bff; padding-bottom: 15px; margin-bottom: 20px; }
+            .student-info { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+            .info-group { background: #f8f9fa; padding: 15px; border-radius: 6px; }
+            .label { font-weight: bold; color: #333; margin-bottom: 5px; }
+            .value { color: #666; }
+            .fingerprint-section { margin-top: 20px; }
+            .fingerprint-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-top: 15px; }
+            .fingerprint-card { text-align: center; background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #dee2e6; }
+            .fingerprint-image { width: 80px; height: 80px; margin: 0 auto 10px; background: #e9ecef; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #6c757d; }
+            .fingerprint-status { font-size: 12px; font-weight: bold; }
+            .available { color: #28a745; }
+            .unavailable { color: #dc3545; }
+            .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+            .status-active { background: #d4edda; color: #155724; }
+            .status-inactive { background: #f8d7da; color: #721c24; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Student Finger List</h1>
+              <p>Real-time student fingerprint details</p>
+            </div>
+            
+            <div class="student-info">
+              <div class="info-group">
+                <div class="label">Student Name:</div>
+                <div class="value">${student.student_name}</div>
+              </div>
+              <div class="info-group">
+                <div class="label">Batch:</div>
+                <div class="value">${student.batches?.batch_name || 'No Batch'}</div>
+              </div>
+              <div class="info-group">
+                <div class="label">Fingerprint ID:</div>
+                <div class="value">${randomFingerprintId}</div>
+              </div>
+              <div class="info-group">
+                <div class="label">Status:</div>
+                <div class="value">
+                  <span class="status-badge ${student.is_enabled ? 'status-active' : 'status-inactive'}">
+                    ${student.is_enabled ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="fingerprint-section">
+              <h2>Fingerprint Data</h2>
+              <div class="fingerprint-grid">
+                ${[1, 2, 3, 4, 5].map(i => `
+                  <div class="fingerprint-card">
+                    <div class="fingerprint-image">
+                      ${student[`finger_${i}_image`] ? `<img src="${student[`finger_${i}_image`]}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;" />` : 'No Print'}
+                    </div>
+                    <div>Finger ${i}</div>
+                    <div class="fingerprint-status ${student[`finger_${i}`] ? 'available' : 'unavailable'}">
+                      ${student[`finger_${i}`] ? 'Available' : 'Not Available'}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `);
+      newTab.document.close();
+    }
   };
 
   const FingerprintImage = ({ imageData, fingerNumber }: { imageData: string | null, fingerNumber: number }) => {
@@ -257,8 +370,13 @@ export default function ViewStudents() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold">Student List</h3>
-                  <div className="text-sm text-green-600 font-medium">
-                    Auto-refreshing every 5 seconds
+                  <div className="flex items-center space-x-4">
+                    <div className="text-sm text-green-600 font-medium">
+                      🔄 Real-time updates every 2 seconds
+                    </div>
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                      Live Data
+                    </Badge>
                   </div>
                 </div>
                 
@@ -293,7 +411,10 @@ export default function ViewStudents() {
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">Name</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">
+                          Name
+                          <Badge variant="outline" className="ml-2 text-xs bg-blue-50">Real-time</Badge>
+                        </th>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">Mobile Number</th>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">Batch</th>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">Address</th>
@@ -302,22 +423,38 @@ export default function ViewStudents() {
                         <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Finger 3</th>
                         <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Finger 4</th>
                         <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Finger 5</th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Status</th>
                         <th className="px-4 py-3 text-center text-sm font-medium text-gray-900">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredStudents.length === 0 ? (
                         <tr>
-                          <td colSpan={11} className="px-4 py-8 text-center text-gray-500">
+                          <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
                             {selectedBatchId ? 'No students found in this batch.' : 'Please select a batch to view students.'}
                           </td>
                         </tr>
                       ) : (
                         filteredStudents.slice(0, entriesPerPage).map((student: Student) => (
-                          <tr key={student.id} className="border-t hover:bg-gray-50">
+                          <tr key={student.id} className={`border-t hover:bg-gray-50 transition-colors ${!student.is_enabled ? 'opacity-75 bg-gray-50' : ''}`}>
                             <td className="px-4 py-4 border-r">
-                              <div className="font-medium">{student.student_name}</div>
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="text"
+                                  defaultValue={student.student_name}
+                                  onBlur={(e) => {
+                                    if (e.target.value !== student.student_name) {
+                                      handleInlineUpdate(student.id, 'student_name', e.target.value);
+                                    }
+                                  }}
+                                  className="font-medium bg-transparent border-none outline-none focus:bg-white focus:border focus:border-blue-300 rounded px-2 py-1 w-full"
+                                />
+                                <Badge 
+                                  variant={student.is_enabled ? "default" : "secondary"}
+                                  className={`text-xs ${student.is_enabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
+                                >
+                                  {student.is_enabled ? "Active" : "Inactive"}
+                                </Badge>
+                              </div>
                             </td>
                             <td className="px-4 py-4 border-r">
                               <div>{student.id.slice(-10)}</div>
@@ -342,11 +479,6 @@ export default function ViewStudents() {
                             </td>
                             <td className="px-4 py-4 text-center border-r">
                               <FingerprintImage imageData={student.finger_5_image} fingerNumber={5} />
-                            </td>
-                            <td className="px-4 py-4 text-center border-r">
-                              <Badge variant={student.is_enabled ? "default" : "destructive"}>
-                                {student.is_enabled ? "Enabled" : "Disabled"}
-                              </Badge>
                             </td>
                             <td className="px-4 py-4 text-center">
                               <StudentActions 
