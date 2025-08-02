@@ -201,11 +201,11 @@ export function FingerprintGuidanceSystem({
         </CardContent>
       </Card>
 
-      {/* Zero-Polling Fingerprint Grid Layout */}
+      {/* Zero-Polling Fingerprint Grid Layout - ALL fingers use same component */}
       <div className="space-y-8">
-        {/* Row 1: First 3 fingers */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 justify-items-center">
-          {fingerNames.slice(0, 3).map((name, index) => {
+        {/* All 5 fingers in a single responsive grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 justify-items-center">
+          {fingerNames.map((name, index) => {
             const status = getFingerStatus(index);
             const quality = capturedQualities[index];
             
@@ -226,17 +226,17 @@ export function FingerprintGuidanceSystem({
                   <div className="absolute -top-3 -right-3 z-10">
                     <Badge 
                       variant={status === 'accepted' ? "default" : "secondary"}
-                      className="px-4 py-2 text-sm font-bold shadow-lg"
+                      className="px-3 py-1 text-sm font-bold shadow-lg"
                     >
                       {status === 'accepted' ? (
                         <>
                           <div className="w-3 h-3 bg-green-500 rounded-full mr-2" />
-                          Captured ✓
+                          Ready ✓
                         </>
                       ) : status === 'captured' ? (
                         <>
                           <div className="w-3 h-3 bg-amber-500 rounded-full mr-2" />
-                          Review
+                          Ready
                         </>
                       ) : (
                         <>
@@ -247,24 +247,24 @@ export function FingerprintGuidanceSystem({
                     </Badge>
                   </div>
 
-                  <CardHeader className="text-center pb-4">
-                    <CardTitle className="text-lg font-bold text-gray-900">
+                  <CardHeader className="text-center pb-3">
+                    <CardTitle className="text-base font-bold text-gray-900">
                       Finger {index + 1}
                     </CardTitle>
-                    <div className="text-sm text-gray-700 font-semibold">
+                    <div className="text-sm text-gray-700 font-medium">
                       {name}
                     </div>
                     {quality && (
-                      <div className="text-xs text-center mt-2">
-                        <Badge variant={quality >= 70 ? "default" : "secondary"}>
+                      <div className="text-xs text-center mt-1">
+                        <Badge variant={quality >= 70 ? "default" : "secondary"} className="text-xs">
                           Quality: {quality}%
                         </Badge>
                       </div>
                     )}
                   </CardHeader>
                   
-                  <CardContent className="text-center space-y-6 pb-6">
-                    <div className={`mx-auto w-32 h-40 border-3 rounded-xl flex items-center justify-center transition-all duration-500 ${
+                  <CardContent className="text-center space-y-4 pb-4">
+                    <div className={`mx-auto w-24 h-32 border-2 rounded-lg flex items-center justify-center transition-all duration-500 ${
                       status === 'current'
                         ? 'border-blue-500 border-dashed animate-pulse bg-gradient-to-br from-blue-100 to-indigo-100 shadow-inner' 
                         : status === 'accepted'
@@ -273,23 +273,23 @@ export function FingerprintGuidanceSystem({
                             ? 'border-amber-500 bg-gradient-to-br from-amber-100 to-yellow-100 shadow-inner'
                             : 'border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100 shadow-inner'
                     }`}>
-                      <div className="flex flex-col items-center space-y-3">
+                      <div className="flex flex-col items-center space-y-2">
                         {status === 'accepted' ? (
-                          <CheckCircle2 className="h-12 w-12 text-green-600" />
+                          <CheckCircle2 className="h-8 w-8 text-green-600" />
                         ) : status === 'captured' ? (
-                          <Eye className="h-12 w-12 text-amber-600" />
+                          <Eye className="h-8 w-8 text-amber-600" />
                         ) : status === 'current' ? (
-                          <Circle className="h-12 w-12 text-blue-500 animate-pulse" />
+                          <Circle className="h-8 w-8 text-blue-500 animate-pulse" />
                         ) : (
                           <>
-                            <Fingerprint className="h-12 w-12 text-gray-400" />
+                            <Fingerprint className="h-8 w-8 text-gray-400" />
                             <span className="text-xs font-medium text-gray-500">No Print</span>
                           </>
                         )}
                       </div>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {status === 'current' ? (
                         <ZeroPollingMFS100Capture
                           index={index}
@@ -300,10 +300,10 @@ export function FingerprintGuidanceSystem({
                         />
                       ) : (
                         <Button
-                          size="lg"
+                          size="sm"
                           variant={status === 'accepted' ? "default" : "outline"}
                           disabled={status === 'accepted'}
-                          className="w-full py-3 text-sm font-bold transition-all duration-300 shadow-lg"
+                          className="w-full py-2 text-xs font-bold transition-all duration-300 shadow-md"
                           onClick={() => {
                             if (status === 'captured') {
                               showPreview(index, capturedImages[index], capturedQualities[index]);
@@ -312,7 +312,7 @@ export function FingerprintGuidanceSystem({
                             }
                           }}
                         >
-                          <Fingerprint className="mr-2 h-5 w-5" />
+                          <Fingerprint className="mr-1 h-3 w-3" />
                           {status === 'accepted' ? 'Captured ✓' : status === 'captured' ? 'Review' : 'Select'}
                         </Button>
                       )}
@@ -322,130 +322,6 @@ export function FingerprintGuidanceSystem({
               </div>
             );
           })}
-        </div>
-
-        {/* Row 2: Last 2 fingers - Centered */}
-        <div className="flex justify-center">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-2xl">
-            {fingerNames.slice(3, 5).map((name, idx) => {
-              const index = idx + 3;
-              const status = getFingerStatus(index);
-              const quality = capturedQualities[index];
-              
-              return (
-                <div key={index} className="w-full max-w-xs">
-                  <Card 
-                    className={`relative transition-all duration-500 cursor-pointer hover:scale-105 transform ${
-                      status === 'current'
-                        ? 'border-3 border-blue-500 shadow-2xl bg-gradient-to-br from-blue-50 to-indigo-50 scale-105 ring-4 ring-blue-200/50' 
-                        : status === 'accepted'
-                          ? 'border-3 border-green-500 shadow-xl bg-gradient-to-br from-green-50 to-emerald-50'
-                          : status === 'captured'
-                            ? 'border-3 border-amber-500 shadow-lg bg-gradient-to-br from-amber-50 to-yellow-50'
-                            : 'border-2 border-gray-200 shadow-lg hover:border-blue-300 bg-white hover:shadow-xl'
-                    }`}
-                    onClick={() => handleFingerClick(index)}
-                  >
-                    <div className="absolute -top-3 -right-3 z-10">
-                      <Badge 
-                        variant={status === 'accepted' ? "default" : "secondary"}
-                        className="px-4 py-2 text-sm font-bold shadow-lg"
-                      >
-                        {status === 'accepted' ? (
-                          <>
-                            <div className="w-3 h-3 bg-green-500 rounded-full mr-2" />
-                            Captured ✓
-                          </>
-                        ) : status === 'captured' ? (
-                          <>
-                            <div className="w-3 h-3 bg-amber-500 rounded-full mr-2" />
-                            Review
-                          </>
-                        ) : (
-                          <>
-                            <div className="w-3 h-3 bg-blue-500 rounded-full mr-2" />
-                            Ready
-                          </>
-                        )}
-                      </Badge>
-                    </div>
-
-                    <CardHeader className="text-center pb-4">
-                      <CardTitle className="text-lg font-bold text-gray-900">
-                        Finger {index + 1}
-                      </CardTitle>
-                      <div className="text-sm text-gray-700 font-semibold">
-                        {name}
-                      </div>
-                      {quality && (
-                        <div className="text-xs text-center mt-2">
-                          <Badge variant={quality >= 70 ? "default" : "secondary"}>
-                            Quality: {quality}%
-                          </Badge>
-                        </div>
-                      )}
-                    </CardHeader>
-                    
-                    <CardContent className="text-center space-y-6 pb-6">
-                      <div className={`mx-auto w-32 h-40 border-3 rounded-xl flex items-center justify-center transition-all duration-500 ${
-                        status === 'current'
-                          ? 'border-blue-500 border-dashed animate-pulse bg-gradient-to-br from-blue-100 to-indigo-100 shadow-inner' 
-                          : status === 'accepted'
-                            ? 'border-green-500 bg-gradient-to-br from-green-100 to-emerald-100 shadow-inner'
-                            : status === 'captured'
-                              ? 'border-amber-500 bg-gradient-to-br from-amber-100 to-yellow-100 shadow-inner'
-                              : 'border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100 shadow-inner'
-                      }`}>
-                        <div className="flex flex-col items-center space-y-3">
-                          {status === 'accepted' ? (
-                            <CheckCircle2 className="h-12 w-12 text-green-600" />
-                          ) : status === 'captured' ? (
-                            <Eye className="h-12 w-12 text-amber-600" />
-                          ) : status === 'current' ? (
-                            <Circle className="h-12 w-12 text-blue-500 animate-pulse" />
-                          ) : (
-                            <>
-                              <Fingerprint className="h-12 w-12 text-gray-400" />
-                              <span className="text-xs font-medium text-gray-500">No Print</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        {status === 'current' ? (
-                          <ZeroPollingMFS100Capture
-                            index={index}
-                            onCaptureSuccess={(imageData, quality) => handleFingerprintCaptured(index, imageData, quality)}
-                            onCaptureError={(error) => handleFingerprintError(index, error)}
-                            fingerName={name}
-                            targetQuality={targetQuality}
-                          />
-                        ) : (
-                          <Button
-                            size="lg"
-                            variant={status === 'accepted' ? "default" : "outline"}
-                            disabled={status === 'accepted'}
-                            className="w-full py-3 text-sm font-bold transition-all duration-300 shadow-lg"
-                            onClick={() => {
-                              if (status === 'captured') {
-                                showPreview(index, capturedImages[index], capturedQualities[index]);
-                              } else {
-                                setCurrentFinger(index);
-                              }
-                            }}
-                          >
-                            <Fingerprint className="mr-2 h-5 w-5" />
-                            {status === 'accepted' ? 'Captured ✓' : status === 'captured' ? 'Review' : 'Select'}
-                          </Button>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              );
-            })}
-          </div>
         </div>
       </div>
 
@@ -466,25 +342,25 @@ export function FingerprintGuidanceSystem({
       {/* Enhanced Completion Status */}
       {getProgressPercentage() === 100 && (
         <Card className="border-3 border-green-500 bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 shadow-2xl">
-          <CardContent className="pt-10 pb-8">
-            <div className="text-center space-y-6">
+          <CardContent className="pt-8 pb-6">
+            <div className="text-center space-y-4">
               <div className="flex justify-center">
-                <div className="p-6 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full shadow-xl">
-                  <CheckCircle2 className="h-20 w-20 text-white" />
+                <div className="p-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full shadow-xl">
+                  <CheckCircle2 className="h-16 w-16 text-white" />
                 </div>
               </div>
-              <h3 className="text-3xl font-bold bg-gradient-to-r from-green-800 to-emerald-900 bg-clip-text text-transparent">
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-green-800 to-emerald-900 bg-clip-text text-transparent">
                 Zero-Polling Enrollment Complete!
               </h3>
-              <p className="text-green-800 text-xl max-w-2xl mx-auto font-semibold">
+              <p className="text-green-800 text-lg max-w-2xl mx-auto font-medium">
                 All 5 fingerprints have been captured using the zero-polling approach with no background checks. 
                 The student registration is now ready to be saved.
               </p>
-              <div className="flex justify-center space-x-6 mt-8">
-                <Badge variant="default" className="px-6 py-3 text-base font-bold bg-gradient-to-r from-green-500 to-emerald-600">
+              <div className="flex justify-center space-x-4 mt-6">
+                <Badge variant="default" className="px-4 py-2 text-sm font-bold bg-gradient-to-r from-green-500 to-emerald-600">
                   ✓ All Fingers Zero-Polling Enrolled
                 </Badge>
-                <Badge variant="secondary" className="px-6 py-3 text-base font-bold bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
+                <Badge variant="secondary" className="px-4 py-2 text-sm font-bold bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
                   🚀 Ready to Save
                 </Badge>
               </div>
