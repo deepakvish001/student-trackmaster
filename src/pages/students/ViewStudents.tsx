@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -28,7 +27,6 @@ export default function ViewStudents() {
 
   const queryClient = useQueryClient();
 
-  // Fetch batches for dropdown
   const { data: batches = [] } = useQuery({
     queryKey: ['batches-for-filter'],
     queryFn: async () => {
@@ -46,7 +44,6 @@ export default function ViewStudents() {
     }
   });
 
-  // Fetch students based on selected batch with real-time updates
   const { data: students = [], isLoading } = useQuery({
     queryKey: ['students-filtered', selectedBatchId],
     queryFn: async () => {
@@ -75,7 +72,6 @@ export default function ViewStudents() {
     refetchIntervalInBackground: true
   });
 
-  // Update student mutation for enable/disable
   const updateStudentMutation = useMutation({
     mutationFn: async ({ studentId, updates }: { studentId: string; updates: Partial<Student> }) => {
       const { error } = await supabase
@@ -103,7 +99,6 @@ export default function ViewStudents() {
     }
   });
 
-  // Filter students based on search term
   const filteredStudents = students.filter((student: Student) =>
     student.student_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -134,155 +129,300 @@ export default function ViewStudents() {
   };
 
   const handleViewStudent = (student: Student) => {
-    // Generate random fingerprint ID
     const fingerprintId = Math.random().toString(36).substr(2, 9).toUpperCase();
     
-    // Create a new window/tab with student details
-    const newWindow = window.open('', '_blank', 'width=1200,height=800');
+    const newWindow = window.open('', '_blank', 'width=1400,height=900');
     if (newWindow) {
       newWindow.document.write(`
         <!DOCTYPE html>
         <html>
         <head>
-          <title>Student Details - ${student.student_name}</title>
+          <title>Student Finger List - ${student.student_name}</title>
           <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
             body { 
-              font-family: Arial, sans-serif; 
-              padding: 20px; 
-              background: #f5f5f5; 
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              background: #f5f7fa;
+              color: #2d3748;
+              line-height: 1.6;
             }
-            .container { 
-              max-width: 1000px; 
-              margin: 0 auto; 
-              background: white; 
-              padding: 30px; 
-              border-radius: 8px; 
-              box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            .header {
+              background: #2d3748;
+              color: white;
+              padding: 20px;
+              border-bottom: 3px solid #4299e1;
             }
-            .header { 
-              text-align: center; 
-              margin-bottom: 30px; 
-              border-bottom: 2px solid #e5e5e5; 
-              padding-bottom: 20px; 
+            .header h1 {
+              font-size: 28px;
+              font-weight: 600;
+              margin-bottom: 8px;
             }
-            .info-grid { 
-              display: grid; 
-              grid-template-columns: repeat(2, 1fr); 
-              gap: 15px; 
-              margin-bottom: 30px; 
+            .breadcrumb {
+              color: #a0aec0;
+              font-size: 14px;
             }
-            .info-item { 
-              padding: 10px; 
-              border: 1px solid #e5e5e5; 
-              border-radius: 4px; 
+            .breadcrumb a {
+              color: #4299e1;
+              text-decoration: none;
             }
-            .fingerprints { 
-              display: grid; 
-              grid-template-columns: repeat(5, 1fr); 
-              gap: 15px; 
-              margin-bottom: 20px; 
+            .container {
+              max-width: 1200px;
+              margin: 0 auto;
+              padding: 30px;
             }
-            .fingerprint { 
-              text-align: center; 
-              border: 1px solid #e5e5e5; 
-              padding: 15px; 
-              border-radius: 8px; 
+            .student-info {
+              background: white;
+              border-radius: 12px;
+              padding: 25px;
+              margin-bottom: 30px;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+              border: 1px solid #e2e8f0;
             }
-            .fingerprint img { 
-              width: 80px; 
-              height: 80px; 
-              object-fit: cover; 
-              border-radius: 4px; 
-              border: 1px solid #ddd; 
+            .info-grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+              gap: 20px;
+              margin-bottom: 20px;
             }
-            .no-print { 
-              width: 80px; 
-              height: 80px; 
-              background: #f0f0f0; 
-              display: flex; 
-              align-items: center; 
-              justify-content: center; 
-              border-radius: 4px; 
-              color: #999; 
-              font-size: 12px; 
+            .info-item {
+              display: flex;
+              flex-direction: column;
             }
-            .status-enabled { 
-              color: green; 
-              font-weight: bold; 
+            .info-label {
+              font-weight: 600;
+              color: #4a5568;
+              font-size: 14px;
+              margin-bottom: 5px;
             }
-            .status-disabled { 
-              color: red; 
-              font-weight: bold; 
+            .info-value {
+              font-size: 16px;
+              color: #2d3748;
+            }
+            .fingerprint-id {
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              padding: 12px 20px;
+              border-radius: 8px;
+              text-align: center;
+              font-weight: 600;
+              font-size: 18px;
+              letter-spacing: 2px;
+            }
+            .status-badge {
+              padding: 6px 12px;
+              border-radius: 20px;
+              font-weight: 600;
+              font-size: 14px;
+            }
+            .status-enabled {
+              background: #48bb78;
+              color: white;
+            }
+            .status-disabled {
+              background: #f56565;
+              color: white;
+            }
+            .finger-section {
+              background: white;
+              border-radius: 12px;
+              padding: 25px;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+              border: 1px solid #e2e8f0;
+            }
+            .finger-section h2 {
+              font-size: 24px;
+              margin-bottom: 25px;
+              color: #2d3748;
+              text-align: center;
+              border-bottom: 2px solid #e2e8f0;
+              padding-bottom: 15px;
+            }
+            .finger-grid {
+              display: grid;
+              grid-template-columns: repeat(5, 1fr);
+              gap: 25px;
+              max-width: 1000px;
+              margin: 0 auto;
+            }
+            .finger-item {
+              text-align: center;
+              background: #f8fafc;
+              border-radius: 12px;
+              padding: 20px;
+              border: 2px solid #e2e8f0;
+              transition: all 0.3s ease;
+            }
+            .finger-item:hover {
+              border-color: #4299e1;
+              box-shadow: 0 8px 25px rgba(66, 153, 225, 0.15);
+              transform: translateY(-2px);
+            }
+            .finger-tab {
+              background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+              color: white;
+              padding: 8px 16px;
+              border-radius: 8px 8px 0 0;
+              font-weight: 600;
+              font-size: 16px;
+              margin: -20px -20px 15px -20px;
+            }
+            .finger-image {
+              width: 140px;
+              height: 140px;
+              object-fit: cover;
+              border-radius: 8px;
+              border: 3px solid #e2e8f0;
+              background: #f0f4f7;
+              margin: 0 auto;
+              display: block;
+            }
+            .no-print {
+              width: 140px;
+              height: 140px;
+              background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              border-radius: 8px;
+              border: 3px dashed #cbd5e0;
+              color: #a0aec0;
+              font-size: 14px;
+              font-weight: 500;
+              margin: 0 auto;
+              flex-direction: column;
+            }
+            .no-print-icon {
+              font-size: 24px;
+              margin-bottom: 8px;
+            }
+            .quality-badge {
+              background: #38a169;
+              color: white;
+              padding: 4px 8px;
+              border-radius: 12px;
+              font-size: 12px;
+              font-weight: 600;
+              margin-top: 8px;
+              display: inline-block;
+            }
+            @media (max-width: 768px) {
+              .finger-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+              }
+              .info-grid {
+                grid-template-columns: 1fr;
+              }
+              .container {
+                padding: 15px;
+              }
             }
           </style>
         </head>
         <body>
+          <div class="header">
+            <h1>Student Finger List</h1>
+            <div class="breadcrumb">
+              <a href="#">Home</a> / Student Finger List
+            </div>
+          </div>
+          
           <div class="container">
-            <div class="header">
-              <h1>${student.student_name}</h1>
-              <p>Fingerprint ID: <strong>${fingerprintId}</strong></p>
-              <p>Status: <span class="${student.is_enabled ? 'status-enabled' : 'status-disabled'}">
-                ${student.is_enabled ? 'ENABLED' : 'DISABLED'}
-              </span></p>
+            <div class="student-info">
+              <div class="info-grid">
+                <div class="info-item">
+                  <div class="info-label">Student Name</div>
+                  <div class="info-value">${student.student_name}</div>
+                </div>
+                <div class="info-item">
+                  <div class="info-label">Mobile Number</div>
+                  <div class="info-value">${student.id.slice(-10)}</div>
+                </div>
+                <div class="info-item">
+                  <div class="info-label">Batch</div>
+                  <div class="info-value">${student.batches?.batch_name || 'No Batch Assigned'}</div>
+                </div>
+                <div class="info-item">
+                  <div class="info-label">Address</div>
+                  <div class="info-value">Not Available</div>
+                </div>
+                <div class="info-item">
+                  <div class="info-label">Status</div>
+                  <div class="info-value">
+                    <span class="status-badge ${student.is_enabled ? 'status-enabled' : 'status-disabled'}">
+                      ${student.is_enabled ? 'ENABLED' : 'DISABLED'}
+                    </span>
+                  </div>
+                </div>
+                <div class="info-item">
+                  <div class="info-label">Fingerprint ID</div>
+                  <div class="fingerprint-id">${fingerprintId}</div>
+                </div>
+              </div>
             </div>
             
-            <div class="info-grid">
-              <div class="info-item">
-                <strong>Name:</strong> ${student.student_name}
-              </div>
-              <div class="info-item">
-                <strong>Mobile:</strong> ${student.id.slice(-10)}
-              </div>
-              <div class="info-item">
-                <strong>Batch:</strong> ${student.batches?.batch_name || 'No Batch'}
-              </div>
-              <div class="info-item">
-                <strong>Address:</strong> Not Available
-              </div>
-              <div class="info-item">
-                <strong>Created:</strong> ${new Date(student.created_at).toLocaleDateString()}
-              </div>
-              <div class="info-item">
-                <strong>Updated:</strong> ${new Date(student.updated_at).toLocaleDateString()}
-              </div>
-            </div>
-            
-            <h3>Fingerprint Data</h3>
-            <div class="fingerprints">
-              <div class="fingerprint">
-                <h4>Finger 1</h4>
-                ${student.finger_1_image ? 
-                  `<img src="${student.finger_1_image}" alt="Finger 1" />` : 
-                  '<div class="no-print">No Print</div>'
-                }
-              </div>
-              <div class="fingerprint">
-                <h4>Finger 2</h4>
-                ${student.finger_2_image ? 
-                  `<img src="${student.finger_2_image}" alt="Finger 2" />` : 
-                  '<div class="no-print">No Print</div>'
-                }
-              </div>
-              <div class="fingerprint">
-                <h4>Finger 3</h4>
-                ${student.finger_3_image ? 
-                  `<img src="${student.finger_3_image}" alt="Finger 3" />` : 
-                  '<div class="no-print">No Print</div>'
-                }
-              </div>
-              <div class="fingerprint">
-                <h4>Finger 4</h4>
-                ${student.finger_4_image ? 
-                  `<img src="${student.finger_4_image}" alt="Finger 4" />` : 
-                  '<div class="no-print">No Print</div>'
-                }
-              </div>
-              <div class="fingerprint">
-                <h4>Finger 5</h4>
-                ${student.finger_5_image ? 
-                  `<img src="${student.finger_5_image}" alt="Finger 5" />` : 
-                  '<div class="no-print">No Print</div>'
-                }
+            <div class="finger-section">
+              <h2>Finger List</h2>
+              <div class="finger-grid">
+                <div class="finger-item">
+                  <div class="finger-tab">Finger 1</div>
+                  ${student.finger_1_image ? 
+                    `<img src="${student.finger_1_image}" alt="Finger 1" class="finger-image" />
+                     <div class="quality-badge">Quality: Good</div>` : 
+                    `<div class="no-print">
+                       <div class="no-print-icon">👆</div>
+                       <div>No Print</div>
+                     </div>`
+                  }
+                </div>
+                <div class="finger-item">
+                  <div class="finger-tab">Finger 2</div>
+                  ${student.finger_2_image ? 
+                    `<img src="${student.finger_2_image}" alt="Finger 2" class="finger-image" />
+                     <div class="quality-badge">Quality: Good</div>` : 
+                    `<div class="no-print">
+                       <div class="no-print-icon">👆</div>
+                       <div>No Print</div>
+                     </div>`
+                  }
+                </div>
+                <div class="finger-item">
+                  <div class="finger-tab">Finger 3</div>
+                  ${student.finger_3_image ? 
+                    `<img src="${student.finger_3_image}" alt="Finger 3" class="finger-image" />
+                     <div class="quality-badge">Quality: Good</div>` : 
+                    `<div class="no-print">
+                       <div class="no-print-icon">👆</div>
+                       <div>No Print</div>
+                     </div>`
+                  }
+                </div>
+                <div class="finger-item">
+                  <div class="finger-tab">Finger 4</div>
+                  ${student.finger_4_image ? 
+                    `<img src="${student.finger_4_image}" alt="Finger 4" class="finger-image" />
+                     <div class="quality-badge">Quality: Good</div>` : 
+                    `<div class="no-print">
+                       <div class="no-print-icon">👆</div>
+                       <div>No Print</div>
+                     </div>`
+                  }
+                </div>
+                <div class="finger-item">
+                  <div class="finger-tab">Finger 5</div>
+                  ${student.finger_5_image ? 
+                    `<img src="${student.finger_5_image}" alt="Finger 5" class="finger-image" />
+                     <div class="quality-badge">Quality: Good</div>` : 
+                    `<div class="no-print">
+                       <div class="no-print-icon">👆</div>
+                       <div>No Print</div>
+                     </div>`
+                  }
+                </div>
               </div>
             </div>
           </div>
@@ -293,7 +433,6 @@ export default function ViewStudents() {
     }
   };
 
-  // Enhanced fingerprint image component
   const FingerprintImage = ({ imageData, fingerNumber }: { imageData: string | null, fingerNumber: number }) => {
     if (!imageData) {
       return (
@@ -340,7 +479,6 @@ export default function ViewStudents() {
     );
   };
 
-  // Action buttons component
   const StudentActionButtons = ({ student }: { student: Student }) => {
     return (
       <DropdownMenu>
@@ -392,7 +530,6 @@ export default function ViewStudents() {
   return (
     <DashboardLayout>
       <div className="space-y-6 p-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Student List</h1>
@@ -404,7 +541,6 @@ export default function ViewStudents() {
           </div>
         </div>
 
-        {/* Batch Selection Card */}
         <Card>
           <CardContent className="p-6">
             <div className="space-y-4">
@@ -433,7 +569,6 @@ export default function ViewStudents() {
           </CardContent>
         </Card>
 
-        {/* Student List */}
         {selectedBatchId && (
           <Card>
             <CardContent className="p-6">
@@ -445,7 +580,6 @@ export default function ViewStudents() {
                   </div>
                 </div>
                 
-                {/* Table Controls */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <span className="text-sm">Show</span>
@@ -473,44 +607,21 @@ export default function ViewStudents() {
                   </div>
                 </div>
 
-                {/* Students Table */}
                 <div className="border rounded-lg overflow-hidden">
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">
-                          Name
-                        </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">
-                          Mobile Number
-                        </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">
-                          Batch
-                        </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">
-                          Address
-                        </th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">
-                          Finger 1
-                        </th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">
-                          Finger 2
-                        </th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">
-                          Finger 3
-                        </th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">
-                          Finger 4
-                        </th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">
-                          Finger 5
-                        </th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">
-                          Status
-                        </th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900">
-                          Action
-                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">Name</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">Mobile Number</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">Batch</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">Address</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Finger 1</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Finger 2</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Finger 3</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Finger 4</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Finger 5</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Status</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900">Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -536,34 +647,19 @@ export default function ViewStudents() {
                               <div className="text-gray-500 text-sm">Not Available</div>
                             </td>
                             <td className="px-4 py-4 text-center border-r">
-                              <FingerprintImage 
-                                imageData={student.finger_1_image} 
-                                fingerNumber={1} 
-                              />
+                              <FingerprintImage imageData={student.finger_1_image} fingerNumber={1} />
                             </td>
                             <td className="px-4 py-4 text-center border-r">
-                              <FingerprintImage 
-                                imageData={student.finger_2_image} 
-                                fingerNumber={2} 
-                              />
+                              <FingerprintImage imageData={student.finger_2_image} fingerNumber={2} />
                             </td>
                             <td className="px-4 py-4 text-center border-r">
-                              <FingerprintImage 
-                                imageData={student.finger_3_image} 
-                                fingerNumber={3} 
-                              />
+                              <FingerprintImage imageData={student.finger_3_image} fingerNumber={3} />
                             </td>
                             <td className="px-4 py-4 text-center border-r">
-                              <FingerprintImage 
-                                imageData={student.finger_4_image} 
-                                fingerNumber={4} 
-                              />
+                              <FingerprintImage imageData={student.finger_4_image} fingerNumber={4} />
                             </td>
                             <td className="px-4 py-4 text-center border-r">
-                              <FingerprintImage 
-                                imageData={student.finger_5_image} 
-                                fingerNumber={5} 
-                              />
+                              <FingerprintImage imageData={student.finger_5_image} fingerNumber={5} />
                             </td>
                             <td className="px-4 py-4 text-center border-r">
                               <Badge variant={student.is_enabled ? "default" : "destructive"}>
@@ -584,7 +680,6 @@ export default function ViewStudents() {
           </Card>
         )}
 
-        {/* Edit Student Dialog */}
         <EditStudentDialog
           student={editingStudent}
           open={showEditDialog}
