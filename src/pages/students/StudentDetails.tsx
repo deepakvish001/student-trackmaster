@@ -17,7 +17,10 @@ export default function StudentDetails() {
     queryFn: async () => {
       if (!fingerprintId) return null;
       
-      const { data, error } = await supabase
+      console.log('Searching for student with ID/fingerprint:', fingerprintId);
+      
+      // First try to find by student ID (direct match)
+      let { data, error } = await supabase
         .from('students')
         .select(`
           *,
@@ -25,14 +28,41 @@ export default function StudentDetails() {
             batch_name
           )
         `)
-        .or(`finger_1.eq.${fingerprintId},finger_2.eq.${fingerprintId},finger_3.eq.${fingerprintId},finger_4.eq.${fingerprintId},finger_5.eq.${fingerprintId}`)
-        .single();
+        .eq('id', fingerprintId)
+        .maybeSingle();
+
+      // If not found by ID, try fingerprint matching
+      if (!data && !error) {
+        console.log('Not found by ID, searching by fingerprint...');
+        ({ data, error } = await supabase
+          .from('students')
+          .select(`
+            *,
+            batches:batch_id (
+              batch_name
+            )
+          `)
+          .or(`finger_1.ilike.%${fingerprintId}%,finger_2.ilike.%${fingerprintId}%,finger_3.ilike.%${fingerprintId}%,finger_4.ilike.%${fingerprintId}%,finger_5.ilike.%${fingerprintId}%`)
+          .limit(1));
+        
+        if (data && data.length > 0) {
+          data = data[0];
+        } else {
+          data = null;
+        }
+      }
 
       if (error) {
-        console.error('Error fetching student by fingerprint:', error);
+        console.error('Error fetching student:', error);
         throw error;
       }
       
+      if (!data) {
+        console.log('No student found with ID/fingerprint:', fingerprintId);
+        return null;
+      }
+      
+      console.log('Found student:', data);
       return data as Student;
     },
     enabled: !!fingerprintId,
@@ -64,12 +94,15 @@ export default function StudentDetails() {
           </Button>
           <div className="text-center py-8">
             <h1 className="text-2xl font-bold text-gray-900">Student Not Found</h1>
-            <p className="text-gray-500 mt-2">No student found with fingerprint ID: {fingerprintId}</p>
+            <p className="text-gray-500 mt-2">No student found with ID: {fingerprintId}</p>
           </div>
         </div>
       </div>
     );
   }
+
+  // Get the actual fingerprint ID that was used for matching
+  const actualFingerprintId = student.finger_1 || student.finger_2 || student.finger_3 || student.finger_4 || student.finger_5 || 'N/A';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -140,8 +173,8 @@ export default function StudentDetails() {
                   <Hash className="h-6 w-6 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Fingerprint ID</p>
-                  <p className="text-lg font-semibold text-gray-900">{fingerprintId}</p>
+                  <p className="text-sm font-medium text-gray-500">Student ID</p>
+                  <p className="text-lg font-semibold text-gray-900">{student.id}</p>
                 </div>
               </div>
 
