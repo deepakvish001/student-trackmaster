@@ -8,11 +8,8 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Batches from "./pages/Batches";
 import Downloads from "./pages/Downloads";
-import Testing from "./pages/Testing";
-import AddStudent from "./pages/students/AddStudent";
 import EnhancedAddStudent from "./pages/students/EnhancedAddStudent";
 import ViewStudents from "./pages/students/ViewStudents";
-import StudentList from "./pages/students/StudentList";
 import { EnhancedAuthProvider } from "./contexts/EnhancedAuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -49,22 +46,6 @@ function App() {
               }
             />
             <Route
-              path="/students/list"
-              element={
-                <ProtectedRoute>
-                  <StudentList />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/students/add"
-              element={
-                <ProtectedRoute>
-                  <AddStudent />
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/students/enhanced-add"
               element={
                 <ProtectedRoute>
@@ -85,14 +66,6 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Downloads />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/testing"
-              element={
-                <ProtectedRoute>
-                  <Testing />
                 </ProtectedRoute>
               }
             />
