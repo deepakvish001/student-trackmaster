@@ -1,4 +1,3 @@
-
 /**
  * RD Service Client for Fingerprint Authentication
  * Zero-polling mode - NO automatic background checks
@@ -30,13 +29,19 @@ export interface DeviceInfo {
   mc: string;
 }
 
+// Global flag to prevent repeated initialization logs
+let clientInitialized = false;
+
 export class RDServiceClient {
   private baseUrl = 'https://localhost:8003/mfs100';
   private deviceInfo: DeviceInfo | null = null;
   private isResetting = false;
 
   constructor() {
-    console.log('🔵 RDServiceClient initialized - COMPLETELY PASSIVE MODE');
+    if (!clientInitialized) {
+      console.log('🔵 RDServiceClient initialized - COMPLETELY PASSIVE MODE');
+      clientInitialized = true;
+    }
   }
 
   /**

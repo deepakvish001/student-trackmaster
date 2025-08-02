@@ -1,6 +1,10 @@
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { rdServiceClient, DeviceInfo } from '@/services/rdServiceClient';
+
+// Global flag to prevent multiple hook initializations
+let globalHookCount = 0;
+const MAX_HOOKS = 5;
 
 export function useRDService() {
   const [isAvailable, setIsAvailable] = useState(false);
@@ -17,8 +21,25 @@ export function useRDService() {
   });
   
   const mountedRef = useRef(true);
+  const hookIdRef = useRef<number>(0);
 
-  console.log('🔵 Passive RD Service hook initialized - NO background monitoring');
+  // Only log initialization for the first few hooks to prevent spam
+  useEffect(() => {
+    globalHookCount++;
+    hookIdRef.current = globalHookCount;
+    
+    if (globalHookCount <= MAX_HOOKS) {
+      console.log(`🔵 Passive RD Service hook #${globalHookCount} initialized - NO background monitoring`);
+    } else if (globalHookCount === MAX_HOOKS + 1) {
+      console.warn(`⚠️ RD Service hook created ${globalHookCount} times - suppressing further logs to prevent spam`);
+    }
+
+    return () => {
+      if (globalHookCount <= MAX_HOOKS) {
+        console.log(`🔵 RD Service hook #${hookIdRef.current} cleanup`);
+      }
+    };
+  }, []);
 
   // Manual availability check only
   const checkAvailability = async (showLogs = false) => {
