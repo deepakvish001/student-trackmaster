@@ -238,18 +238,22 @@ export function FingerprintDisplay({
         </div>
       )}
 
-      {/* Action Button */}
+      {/* Action Button - Always Available */}
       {onCapture && (
         <div className="mt-4">
           {!hasFingerprint && !hasTemplateOnly ? (
             <Button
               onClick={onCapture}
-              disabled={!isConnected || isCapturing}
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+              disabled={isCapturing}
+              className={`w-full text-white ${
+                isConnected 
+                  ? 'bg-blue-500 hover:bg-blue-600' 
+                  : 'bg-orange-500 hover:bg-orange-600'
+              }`}
               size="sm"
             >
               <Fingerprint className="mr-2 h-4 w-4" />
-              Capture
+              {isConnected ? 'Capture' : 'Try Capture'}
             </Button>
           ) : (
             <Button
@@ -257,9 +261,17 @@ export function FingerprintDisplay({
               variant="outline"
               className="w-full"
               size="sm"
+              disabled={isCapturing}
             >
-              Recapture
+              {isCapturing ? 'Capturing...' : 'Recapture'}
             </Button>
+          )}
+          
+          {/* Connection Warning */}
+          {!isConnected && (
+            <div className="mt-2 text-xs text-orange-600 text-center">
+              Device disconnected - capture may fail
+            </div>
           )}
         </div>
       )}
