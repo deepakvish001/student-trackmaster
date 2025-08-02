@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { CheckCircle, Fingerprint, Info } from 'lucide-react';
 
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -82,7 +82,7 @@ export default function EnhancedAddStudent() {
   });
   const [fingerprintData, setFingerprintData] = useState<{ [key: number]: FingerprintData }>({});
   const [fingerprintQualities, setFingerprintQualities] = useState<{ [key: number]: number }>({});
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -109,7 +109,7 @@ export default function EnhancedAddStudent() {
     setTimeout(() => {
       setIsSubmitting(false);
       toast.success("Student added successfully!");
-      router.push('/students');
+      navigate('/students');
     }, 2000);
   }
 
