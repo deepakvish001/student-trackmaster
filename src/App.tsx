@@ -28,9 +28,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <EnhancedAuthProvider>
-          <Toaster />
-          <BrowserRouter>
+        <BrowserRouter>
+          <EnhancedAuthProvider>
+            <Toaster />
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -71,8 +71,8 @@ function App() {
                 </ProtectedRoute>
               } />
             </Routes>
-          </BrowserRouter>
-        </EnhancedAuthProvider>
+          </EnhancedAuthProvider>
+        </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   );
