@@ -37,8 +37,6 @@ export function StudentActions({ student, onEdit, onDelete, onView, onToggleStat
   };
 
   const handleView = () => {
-    const fingerprintId = Math.random().toString(36).substr(2, 9).toUpperCase();
-    
     const newWindow = window.open('', '_blank', 'width=1400,height=900');
     if (newWindow) {
       newWindow.document.write(`
@@ -54,285 +52,349 @@ export function StudentActions({ student, onEdit, onDelete, onView, onToggleStat
             }
             body { 
               font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-              background: #f5f7fa;
+              background: #f8f9fa;
               color: #2d3748;
               line-height: 1.6;
             }
-            .header {
-              background: #2d3748;
+            .sidebar {
+              position: fixed;
+              left: 0;
+              top: 0;
+              width: 250px;
+              height: 100vh;
+              background: #2c3e50;
               color: white;
+              padding: 20px 0;
+              z-index: 1000;
+            }
+            .sidebar .user-info {
               padding: 20px;
-              border-bottom: 3px solid #4299e1;
-            }
-            .header h1 {
-              font-size: 28px;
-              font-weight: 600;
-              margin-bottom: 8px;
-            }
-            .breadcrumb {
-              color: #a0aec0;
-              font-size: 14px;
-            }
-            .breadcrumb a {
-              color: #4299e1;
-              text-decoration: none;
-            }
-            .container {
-              max-width: 1200px;
-              margin: 0 auto;
-              padding: 30px;
-            }
-            .student-info {
-              background: white;
-              border-radius: 12px;
-              padding: 25px;
-              margin-bottom: 30px;
-              box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-              border: 1px solid #e2e8f0;
-            }
-            .info-grid {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-              gap: 20px;
+              border-bottom: 1px solid #34495e;
+              display: flex;
+              align-items: center;
               margin-bottom: 20px;
             }
-            .info-item {
+            .sidebar .user-avatar {
+              width: 40px;
+              height: 40px;
+              background: #3498db;
+              border-radius: 50%;
               display: flex;
-              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              margin-right: 12px;
+              font-weight: bold;
             }
-            .info-label {
-              font-weight: 600;
-              color: #4a5568;
-              font-size: 14px;
-              margin-bottom: 5px;
+            .sidebar .menu-item {
+              display: flex;
+              align-items: center;
+              padding: 15px 20px;
+              color: #ecf0f1;
+              text-decoration: none;
+              transition: background 0.3s;
             }
-            .info-value {
-              font-size: 16px;
-              color: #2d3748;
+            .sidebar .menu-item:hover {
+              background: #34495e;
             }
-            .fingerprint-id {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              padding: 12px 20px;
-              border-radius: 8px;
-              text-align: center;
-              font-weight: 600;
+            .sidebar .menu-item.active {
+              background: #3498db;
+            }
+            .sidebar .menu-icon {
+              margin-right: 12px;
               font-size: 18px;
-              letter-spacing: 2px;
             }
-            .status-badge {
-              padding: 6px 12px;
-              border-radius: 20px;
+            .header {
+              position: fixed;
+              top: 0;
+              left: 250px;
+              right: 0;
+              height: 60px;
+              background: white;
+              border-bottom: 1px solid #e2e8f0;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              padding: 0 30px;
+              z-index: 999;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .header h1 {
+              font-size: 24px;
               font-weight: 600;
+              color: #2d3748;
+            }
+            .header .breadcrumb {
+              color: #718096;
               font-size: 14px;
             }
-            .status-enabled {
-              background: #48bb78;
-              color: white;
+            .header .breadcrumb a {
+              color: #3498db;
+              text-decoration: none;
             }
-            .status-disabled {
-              background: #f56565;
-              color: white;
+            .header .user-actions {
+              display: flex;
+              align-items: center;
+              gap: 15px;
             }
-            .finger-section {
+            .main-content {
+              margin-left: 250px;
+              margin-top: 60px;
+              padding: 30px;
+              min-height: calc(100vh - 60px);
+            }
+            .finger-list-container {
               background: white;
-              border-radius: 12px;
-              padding: 25px;
-              box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-              border: 1px solid #e2e8f0;
+              border-radius: 8px;
+              padding: 30px;
+              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             }
-            .finger-section h2 {
-              font-size: 24px;
-              margin-bottom: 25px;
+            .finger-list-header {
+              background: #f8f9fa;
+              padding: 20px;
+              border-radius: 8px 8px 0 0;
+              border-bottom: 2px solid #3498db;
+              margin: -30px -30px 30px -30px;
+            }
+            .finger-list-header h2 {
+              font-size: 20px;
               color: #2d3748;
-              text-align: center;
-              border-bottom: 2px solid #e2e8f0;
-              padding-bottom: 15px;
+              margin: 0;
             }
             .finger-grid {
               display: grid;
               grid-template-columns: repeat(5, 1fr);
-              gap: 25px;
-              max-width: 1000px;
+              gap: 30px;
+              max-width: 1200px;
               margin: 0 auto;
             }
             .finger-item {
               text-align: center;
-              background: #f8fafc;
-              border-radius: 12px;
+              background: #fff;
+              border-radius: 8px;
               padding: 20px;
               border: 2px solid #e2e8f0;
               transition: all 0.3s ease;
+              position: relative;
+            }
+            .finger-item::before {
+              content: '';
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              height: 4px;
+              background: linear-gradient(90deg, #3498db 0%, #2980b9 100%);
+              border-radius: 8px 8px 0 0;
             }
             .finger-item:hover {
-              border-color: #4299e1;
-              box-shadow: 0 8px 25px rgba(66, 153, 225, 0.15);
-              transform: translateY(-2px);
+              border-color: #3498db;
+              box-shadow: 0 8px 25px rgba(52, 152, 219, 0.15);
+              transform: translateY(-3px);
             }
-            .finger-tab {
-              background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
-              color: white;
-              padding: 8px 16px;
-              border-radius: 8px 8px 0 0;
+            .finger-label {
+              color: #2d3748;
               font-weight: 600;
               font-size: 16px;
-              margin: -20px -20px 15px -20px;
+              margin-bottom: 15px;
             }
-            .finger-image {
-              width: 140px;
-              height: 140px;
-              object-fit: cover;
-              border-radius: 8px;
+            .finger-image-container {
+              width: 180px;
+              height: 180px;
+              margin: 0 auto 15px;
               border: 3px solid #e2e8f0;
-              background: #f0f4f7;
-              margin: 0 auto;
-              display: block;
-            }
-            .no-print {
-              width: 140px;
-              height: 140px;
-              background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+              border-radius: 8px;
+              overflow: hidden;
+              background: #f8f9fa;
               display: flex;
               align-items: center;
               justify-content: center;
-              border-radius: 8px;
-              border: 3px dashed #cbd5e0;
+            }
+            .finger-image {
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+              filter: contrast(1.2) brightness(1.1);
+            }
+            .no-print {
               color: #a0aec0;
               font-size: 14px;
-              font-weight: 500;
-              margin: 0 auto;
+              display: flex;
               flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              height: 100%;
             }
             .no-print-icon {
-              font-size: 24px;
+              font-size: 32px;
               margin-bottom: 8px;
+              opacity: 0.5;
             }
-            .quality-badge {
-              background: #38a169;
-              color: white;
-              padding: 4px 8px;
-              border-radius: 12px;
+            .footer {
+              position: fixed;
+              bottom: 0;
+              left: 250px;
+              right: 0;
+              padding: 15px 30px;
+              background: white;
+              border-top: 1px solid #e2e8f0;
+              color: #718096;
               font-size: 12px;
-              font-weight: 600;
-              margin-top: 8px;
-              display: inline-block;
+              text-align: center;
             }
             @media (max-width: 768px) {
+              .sidebar {
+                transform: translateX(-100%);
+              }
+              .header {
+                left: 0;
+              }
+              .main-content {
+                margin-left: 0;
+              }
+              .footer {
+                left: 0;
+              }
               .finger-grid {
                 grid-template-columns: repeat(2, 1fr);
                 gap: 20px;
-              }
-              .info-grid {
-                grid-template-columns: 1fr;
-              }
-              .container {
-                padding: 15px;
               }
             }
           </style>
         </head>
         <body>
+          <!-- Sidebar -->
+          <div class="sidebar">
+            <div class="user-info">
+              <div class="user-avatar">A</div>
+              <div>
+                <div style="font-weight: 600;">AdminLTE USER</div>
+                <div style="font-size: 12px; color: #bdc3c7;">User</div>
+              </div>
+            </div>
+            <a href="#" class="menu-item">
+              <span class="menu-icon">📊</span>
+              Dashboard
+            </a>
+            <a href="#" class="menu-item active">
+              <span class="menu-icon">👥</span>
+              Student List
+            </a>
+            <a href="#" class="menu-item">
+              <span class="menu-icon">📋</span>
+              Batch List
+            </a>
+            <a href="#" class="menu-item">
+              <span class="menu-icon">📥</span>
+              Download
+            </a>
+          </div>
+
+          <!-- Header -->
           <div class="header">
-            <h1>Student Finger List</h1>
+            <div>
+              <h1>Student Finger List</h1>
+            </div>
             <div class="breadcrumb">
               <a href="#">Home</a> / Student Finger List
             </div>
-          </div>
-          
-          <div class="container">
-            <div class="student-info">
-              <div class="info-grid">
-                <div class="info-item">
-                  <div class="info-label">Student Name</div>
-                  <div class="info-value">${student.student_name}</div>
-                </div>
-                <div class="info-item">
-                  <div class="info-label">Mobile Number</div>
-                  <div class="info-value">${student.id.slice(-10)}</div>
-                </div>
-                <div class="info-item">
-                  <div class="info-label">Batch</div>
-                  <div class="info-value">${student.batches?.batch_name || 'No Batch Assigned'}</div>
-                </div>
-                <div class="info-item">
-                  <div class="info-label">Address</div>
-                  <div class="info-value">Not Available</div>
-                </div>
-                <div class="info-item">
-                  <div class="info-label">Status</div>
-                  <div class="info-value">
-                    <span class="status-badge ${student.is_enabled ? 'status-enabled' : 'status-disabled'}">
-                      ${student.is_enabled ? 'ENABLED' : 'DISABLED'}
-                    </span>
-                  </div>
-                </div>
-                <div class="info-item">
-                  <div class="info-label">Fingerprint ID</div>
-                  <div class="fingerprint-id">${fingerprintId}</div>
-                </div>
+            <div class="user-actions">
+              <button style="background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                Logout
+              </button>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; width: 24px; height: 24px;">
+                <div style="background: #3498db; border-radius: 2px;"></div>
+                <div style="background: #3498db; border-radius: 2px;"></div>
+                <div style="background: #3498db; border-radius: 2px;"></div>
+                <div style="background: #3498db; border-radius: 2px;"></div>
+                <div style="background: #3498db; border-radius: 2px;"></div>
+                <div style="background: #3498db; border-radius: 2px;"></div>
+                <div style="background: #3498db; border-radius: 2px;"></div>
+                <div style="background: #3498db; border-radius: 2px;"></div>
+                <div style="background: #3498db; border-radius: 2px;"></div>
               </div>
             </div>
-            
-            <div class="finger-section">
-              <h2>Finger List</h2>
+          </div>
+
+          <!-- Main Content -->
+          <div class="main-content">
+            <div class="finger-list-container">
+              <div class="finger-list-header">
+                <h2>Finger List</h2>
+              </div>
+              
               <div class="finger-grid">
                 <div class="finger-item">
-                  <div class="finger-tab">Finger 1</div>
-                  ${student.finger_1_image ? 
-                    `<img src="${student.finger_1_image}" alt="Finger 1" class="finger-image" />
-                     <div class="quality-badge">Quality: Good</div>` : 
-                    `<div class="no-print">
-                       <div class="no-print-icon">👆</div>
-                       <div>No Print</div>
-                     </div>`
-                  }
+                  <div class="finger-label">Finger 1</div>
+                  <div class="finger-image-container">
+                    ${student.finger_1_image ? 
+                      `<img src="${student.finger_1_image}" alt="Finger 1" class="finger-image" />` : 
+                      `<div class="no-print">
+                         <div class="no-print-icon">👆</div>
+                         <div>No Print</div>
+                       </div>`
+                    }
+                  </div>
                 </div>
+                
                 <div class="finger-item">
-                  <div class="finger-tab">Finger 2</div>
-                  ${student.finger_2_image ? 
-                    `<img src="${student.finger_2_image}" alt="Finger 2" class="finger-image" />
-                     <div class="quality-badge">Quality: Good</div>` : 
-                    `<div class="no-print">
-                       <div class="no-print-icon">👆</div>
-                       <div>No Print</div>
-                     </div>`
-                  }
+                  <div class="finger-label">Finger 2</div>
+                  <div class="finger-image-container">
+                    ${student.finger_2_image ? 
+                      `<img src="${student.finger_2_image}" alt="Finger 2" class="finger-image" />` : 
+                      `<div class="no-print">
+                         <div class="no-print-icon">👆</div>
+                         <div>No Print</div>
+                       </div>`
+                    }
+                  </div>
                 </div>
+                
                 <div class="finger-item">
-                  <div class="finger-tab">Finger 3</div>
-                  ${student.finger_3_image ? 
-                    `<img src="${student.finger_3_image}" alt="Finger 3" class="finger-image" />
-                     <div class="quality-badge">Quality: Good</div>` : 
-                    `<div class="no-print">
-                       <div class="no-print-icon">👆</div>
-                       <div>No Print</div>
-                     </div>`
-                  }
+                  <div class="finger-label">Finger 3</div>
+                  <div class="finger-image-container">
+                    ${student.finger_3_image ? 
+                      `<img src="${student.finger_3_image}" alt="Finger 3" class="finger-image" />` : 
+                      `<div class="no-print">
+                         <div class="no-print-icon">👆</div>
+                         <div>No Print</div>
+                       </div>`
+                    }
+                  </div>
                 </div>
+                
                 <div class="finger-item">
-                  <div class="finger-tab">Finger 4</div>
-                  ${student.finger_4_image ? 
-                    `<img src="${student.finger_4_image}" alt="Finger 4" class="finger-image" />
-                     <div class="quality-badge">Quality: Good</div>` : 
-                    `<div class="no-print">
-                       <div class="no-print-icon">👆</div>
-                       <div>No Print</div>
-                     </div>`
-                  }
+                  <div class="finger-label">Finger 4</div>
+                  <div class="finger-image-container">
+                    ${student.finger_4_image ? 
+                      `<img src="${student.finger_4_image}" alt="Finger 4" class="finger-image" />` : 
+                      `<div class="no-print">
+                         <div class="no-print-icon">👆</div>
+                         <div>No Print</div>
+                       </div>`
+                    }
+                  </div>
                 </div>
+                
                 <div class="finger-item">
-                  <div class="finger-tab">Finger 5</div>
-                  ${student.finger_5_image ? 
-                    `<img src="${student.finger_5_image}" alt="Finger 5" class="finger-image" />
-                     <div class="quality-badge">Quality: Good</div>` : 
-                    `<div class="no-print">
-                       <div class="no-print-icon">👆</div>
-                       <div>No Print</div>
-                     </div>`
-                  }
+                  <div class="finger-label">Finger 5</div>
+                  <div class="finger-image-container">
+                    ${student.finger_5_image ? 
+                      `<img src="${student.finger_5_image}" alt="Finger 5" class="finger-image" />` : 
+                      `<div class="no-print">
+                         <div class="no-print-icon">👆</div>
+                         <div>No Print</div>
+                       </div>`
+                    }
+                  </div>
                 </div>
               </div>
             </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="footer">
+            Copyright © 2014-2021 <strong style="color: #3498db;">AdminLTE.io</strong>. All rights reserved.
+            <span style="float: right;">Version 3.2.0</span>
           </div>
         </body>
         </html>
