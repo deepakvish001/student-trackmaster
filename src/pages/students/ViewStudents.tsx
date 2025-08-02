@@ -6,10 +6,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { ChevronDown } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { MoreHorizontal, Edit, Eye, Power, PowerOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Student } from '@/types';
-import { StudentActions } from '@/components/students/StudentActions';
 import { EditStudentDialog } from '@/components/students/EditStudentDialog';
 import { toast } from 'sonner';
 
@@ -55,7 +61,6 @@ export default function ViewStudents() {
           )
         `)
         .eq('batch_id', selectedBatchId)
-        .eq('is_enabled', true)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -63,26 +68,14 @@ export default function ViewStudents() {
         throw error;
       }
       
-      console.log('Students data with fingerprints:', data?.map(student => ({
-        id: student.id,
-        name: student.student_name,
-        fingerprints: {
-          finger_1_image: !!student.finger_1_image,
-          finger_2_image: !!student.finger_2_image,
-          finger_3_image: !!student.finger_3_image,
-          finger_4_image: !!student.finger_4_image,
-          finger_5_image: !!student.finger_5_image,
-        }
-      })));
-      
       return data || [];
     },
     enabled: !!selectedBatchId,
-    refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
+    refetchInterval: 5000,
     refetchIntervalInBackground: true
   });
 
-  // Update student mutation
+  // Update student mutation for enable/disable
   const updateStudentMutation = useMutation({
     mutationFn: async ({ studentId, updates }: { studentId: string; updates: Partial<Student> }) => {
       const { error } = await supabase
@@ -100,39 +93,13 @@ export default function ViewStudents() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students-filtered'] });
-      toast.success('Student updated successfully');
+      toast.success('Student status updated successfully');
       setShowEditDialog(false);
       setEditingStudent(null);
     },
     onError: (error) => {
       console.error('Error updating student:', error);
-      toast.error('Failed to update student');
-    }
-  });
-
-  // Delete student mutation (soft delete)
-  const deleteStudentMutation = useMutation({
-    mutationFn: async (studentId: string) => {
-      const { error } = await supabase
-        .from('students')
-        .update({ 
-          is_enabled: false,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', studentId);
-
-      if (error) {
-        console.error('Delete student error:', error);
-        throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students-filtered'] });
-      toast.success('Student deleted successfully');
-    },
-    onError: (error) => {
-      console.error('Error deleting student:', error);
-      toast.error('Failed to delete student');
+      toast.error('Failed to update student status');
     }
   });
 
@@ -159,17 +126,174 @@ export default function ViewStudents() {
     }
   };
 
-  const handleDeleteStudent = (studentId: string) => {
-    deleteStudentMutation.mutate(studentId);
+  const handleToggleStatus = (student: Student) => {
+    updateStudentMutation.mutate({
+      studentId: student.id,
+      updates: { is_enabled: !student.is_enabled }
+    });
   };
 
   const handleViewStudent = (student: Student) => {
-    console.log('Viewing student:', student);
-    // You can implement a view dialog here if needed
-    toast.info(`Viewing details for ${student.student_name}`);
+    // Generate random fingerprint ID
+    const fingerprintId = Math.random().toString(36).substr(2, 9).toUpperCase();
+    
+    // Create a new window/tab with student details
+    const newWindow = window.open('', '_blank', 'width=1200,height=800');
+    if (newWindow) {
+      newWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Student Details - ${student.student_name}</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              padding: 20px; 
+              background: #f5f5f5; 
+            }
+            .container { 
+              max-width: 1000px; 
+              margin: 0 auto; 
+              background: white; 
+              padding: 30px; 
+              border-radius: 8px; 
+              box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            }
+            .header { 
+              text-align: center; 
+              margin-bottom: 30px; 
+              border-bottom: 2px solid #e5e5e5; 
+              padding-bottom: 20px; 
+            }
+            .info-grid { 
+              display: grid; 
+              grid-template-columns: repeat(2, 1fr); 
+              gap: 15px; 
+              margin-bottom: 30px; 
+            }
+            .info-item { 
+              padding: 10px; 
+              border: 1px solid #e5e5e5; 
+              border-radius: 4px; 
+            }
+            .fingerprints { 
+              display: grid; 
+              grid-template-columns: repeat(5, 1fr); 
+              gap: 15px; 
+              margin-bottom: 20px; 
+            }
+            .fingerprint { 
+              text-align: center; 
+              border: 1px solid #e5e5e5; 
+              padding: 15px; 
+              border-radius: 8px; 
+            }
+            .fingerprint img { 
+              width: 80px; 
+              height: 80px; 
+              object-fit: cover; 
+              border-radius: 4px; 
+              border: 1px solid #ddd; 
+            }
+            .no-print { 
+              width: 80px; 
+              height: 80px; 
+              background: #f0f0f0; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center; 
+              border-radius: 4px; 
+              color: #999; 
+              font-size: 12px; 
+            }
+            .status-enabled { 
+              color: green; 
+              font-weight: bold; 
+            }
+            .status-disabled { 
+              color: red; 
+              font-weight: bold; 
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>${student.student_name}</h1>
+              <p>Fingerprint ID: <strong>${fingerprintId}</strong></p>
+              <p>Status: <span class="${student.is_enabled ? 'status-enabled' : 'status-disabled'}">
+                ${student.is_enabled ? 'ENABLED' : 'DISABLED'}
+              </span></p>
+            </div>
+            
+            <div class="info-grid">
+              <div class="info-item">
+                <strong>Name:</strong> ${student.student_name}
+              </div>
+              <div class="info-item">
+                <strong>Mobile:</strong> ${student.id.slice(-10)}
+              </div>
+              <div class="info-item">
+                <strong>Batch:</strong> ${student.batches?.batch_name || 'No Batch'}
+              </div>
+              <div class="info-item">
+                <strong>Address:</strong> Not Available
+              </div>
+              <div class="info-item">
+                <strong>Created:</strong> ${new Date(student.created_at).toLocaleDateString()}
+              </div>
+              <div class="info-item">
+                <strong>Updated:</strong> ${new Date(student.updated_at).toLocaleDateString()}
+              </div>
+            </div>
+            
+            <h3>Fingerprint Data</h3>
+            <div class="fingerprints">
+              <div class="fingerprint">
+                <h4>Finger 1</h4>
+                ${student.finger_1_image ? 
+                  `<img src="${student.finger_1_image}" alt="Finger 1" />` : 
+                  '<div class="no-print">No Print</div>'
+                }
+              </div>
+              <div class="fingerprint">
+                <h4>Finger 2</h4>
+                ${student.finger_2_image ? 
+                  `<img src="${student.finger_2_image}" alt="Finger 2" />` : 
+                  '<div class="no-print">No Print</div>'
+                }
+              </div>
+              <div class="fingerprint">
+                <h4>Finger 3</h4>
+                ${student.finger_3_image ? 
+                  `<img src="${student.finger_3_image}" alt="Finger 3" />` : 
+                  '<div class="no-print">No Print</div>'
+                }
+              </div>
+              <div class="fingerprint">
+                <h4>Finger 4</h4>
+                ${student.finger_4_image ? 
+                  `<img src="${student.finger_4_image}" alt="Finger 4" />` : 
+                  '<div class="no-print">No Print</div>'
+                }
+              </div>
+              <div class="fingerprint">
+                <h4>Finger 5</h4>
+                ${student.finger_5_image ? 
+                  `<img src="${student.finger_5_image}" alt="Finger 5" />` : 
+                  '<div class="no-print">No Print</div>'
+                }
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `);
+      newWindow.document.close();
+    }
   };
 
-  // Enhanced fingerprint image component with real-time display
+  // Enhanced fingerprint image component
   const FingerprintImage = ({ imageData, fingerNumber }: { imageData: string | null, fingerNumber: number }) => {
     if (!imageData) {
       return (
@@ -179,10 +303,8 @@ export default function ViewStudents() {
       );
     }
 
-    // Handle different image data formats
     let imageSrc = imageData;
     if (imageData && !imageData.startsWith('data:image/')) {
-      // If it's base64 without data URL prefix, add it
       if (imageData.length > 1000) {
         imageSrc = `data:image/png;base64,${imageData}`;
       }
@@ -199,7 +321,6 @@ export default function ViewStudents() {
             imageRendering: 'crisp-edges'
           }}
           onError={(e) => {
-            console.error(`Failed to load fingerprint image for finger ${fingerNumber}`, imageData?.substring(0, 100));
             const target = e.target as HTMLImageElement;
             target.style.display = 'none';
             const parent = target.parentElement;
@@ -211,14 +332,50 @@ export default function ViewStudents() {
               `;
             }
           }}
-          onLoad={() => {
-            console.log(`✅ Fingerprint image loaded successfully for finger ${fingerNumber}`);
-          }}
         />
         <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">
           ✓
         </div>
       </div>
+    );
+  };
+
+  // Action buttons component
+  const StudentActionButtons = ({ student }: { student: Student }) => {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <span className="sr-only">Open menu</span>
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {student.is_enabled ? (
+            <>
+              <DropdownMenuItem onClick={() => handleEditStudent(student)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Student
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleToggleStatus(student)}>
+                <PowerOff className="mr-2 h-4 w-4" />
+                Disable Student
+              </DropdownMenuItem>
+            </>
+          ) : (
+            <>
+              <DropdownMenuItem onClick={() => handleToggleStatus(student)}>
+                <Power className="mr-2 h-4 w-4" />
+                Enable Student
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleViewStudent(student)}>
+                <Eye className="mr-2 h-4 w-4" />
+                View Details
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   };
 
@@ -322,10 +479,16 @@ export default function ViewStudents() {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">
-                          StudentName
+                          Name
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">
+                          Mobile Number
                         </th>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">
                           Batch
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">
+                          Address
                         </th>
                         <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">
                           Finger 1
@@ -342,6 +505,9 @@ export default function ViewStudents() {
                         <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">
                           Finger 5
                         </th>
+                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">
+                          Status
+                        </th>
                         <th className="px-4 py-3 text-center text-sm font-medium text-gray-900">
                           Action
                         </th>
@@ -350,7 +516,7 @@ export default function ViewStudents() {
                     <tbody>
                       {filteredStudents.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                          <td colSpan={11} className="px-4 py-8 text-center text-gray-500">
                             {selectedBatchId ? 'No students found in this batch.' : 'Please select a batch to view students.'}
                           </td>
                         </tr>
@@ -358,16 +524,16 @@ export default function ViewStudents() {
                         filteredStudents.slice(0, entriesPerPage).map((student: Student) => (
                           <tr key={student.id} className="border-t hover:bg-gray-50">
                             <td className="px-4 py-4 border-r">
-                              <div>
-                                <div className="font-medium">{student.student_name}</div>
-                                <div className="text-sm text-gray-600">Mob: {student.id.slice(-10)}</div>
-                              </div>
+                              <div className="font-medium">{student.student_name}</div>
                             </td>
                             <td className="px-4 py-4 border-r">
-                              <div>
-                                <div>{student.batches?.batch_name}</div>
-                                <div className="text-sm text-gray-600">Batch 1</div>
-                              </div>
+                              <div>{student.id.slice(-10)}</div>
+                            </td>
+                            <td className="px-4 py-4 border-r">
+                              <div>{student.batches?.batch_name || 'No Batch'}</div>
+                            </td>
+                            <td className="px-4 py-4 border-r">
+                              <div className="text-gray-500 text-sm">Not Available</div>
                             </td>
                             <td className="px-4 py-4 text-center border-r">
                               <FingerprintImage 
@@ -399,13 +565,13 @@ export default function ViewStudents() {
                                 fingerNumber={5} 
                               />
                             </td>
+                            <td className="px-4 py-4 text-center border-r">
+                              <Badge variant={student.is_enabled ? "default" : "destructive"}>
+                                {student.is_enabled ? "Enabled" : "Disabled"}
+                              </Badge>
+                            </td>
                             <td className="px-4 py-4 text-center">
-                              <StudentActions
-                                student={student}
-                                onEdit={handleEditStudent}
-                                onDelete={handleDeleteStudent}
-                                onView={handleViewStudent}
-                              />
+                              <StudentActionButtons student={student} />
                             </td>
                           </tr>
                         ))
