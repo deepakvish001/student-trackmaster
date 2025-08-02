@@ -14,27 +14,21 @@ export function useRDService() {
     message: string;
   }>({
     service: '',
-    message: 'Initializing MFS100 connection...'
+    message: 'Zero-polling mode: Ready for capture'
   });
   
-  const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
 
-  // Optimized for stability - longer intervals, less aggressive checking
-  const CHECK_INTERVAL = 30000; // Check every 30 seconds (less frequent)
-  const INITIAL_DELAY = 2000; // Slightly longer initial delay
-
-  // Clean up on unmount
+  // ZERO-POLLING: No automatic background checks
   useEffect(() => {
+    console.log('🔵 Zero-polling RD Service hook initialized - NO background monitoring');
+    
     return () => {
       mountedRef.current = false;
-      if (checkIntervalRef.current) {
-        clearInterval(checkIntervalRef.current);
-      }
     };
   }, []);
 
-  // Check MFS100 availability with gentle approach
+  // Manual availability check only
   const checkAvailability = async (showLogs = false) => {
     if (!mountedRef.current || isChecking) return;
 
@@ -54,7 +48,7 @@ export function useRDService() {
 
       if (status.available) {
         setError(null);
-        setRetryCount(0); // Reset retry count on success
+        setRetryCount(0);
         
         // Try to get device info only if we don't have it
         if (!deviceInfo) {
@@ -63,25 +57,25 @@ export function useRDService() {
             setDeviceInfo(info);
             
             if (showLogs) {
-              console.log('✅ MFS100 device connected:', info);
+              console.log('✅ Zero-polling: MFS100 device ready:', info);
             }
           } catch (err) {
             if (showLogs) {
-              console.warn('Could not get MFS100 device info:', err);
+              console.warn('Zero-polling: Could not get device info:', err);
             }
           }
         }
       } else {
         setError(status.message);
-        setRetryCount(prev => prev + 1); // Increment retry count on failure
+        setRetryCount(prev => prev + 1);
       }
     } catch (err) {
       if (!mountedRef.current) return;
       
-      const errorMessage = err instanceof Error ? err.message : 'MFS100 connection failed';
+      const errorMessage = err instanceof Error ? err.message : 'Zero-polling: Connection failed';
       setIsAvailable(false);
       setError(errorMessage);
-      setRetryCount(prev => prev + 1); // Increment retry count on error
+      setRetryCount(prev => prev + 1);
       setServiceStatus({
         service: '',
         message: errorMessage
@@ -93,56 +87,21 @@ export function useRDService() {
     }
   };
 
-  // Initialize MFS100 connection with gentler approach
-  useEffect(() => {
-    // Initial check with delay
-    const initTimeout = setTimeout(() => {
-      if (mountedRef.current) {
-        checkAvailability(true);
-      }
-    }, INITIAL_DELAY);
-
-    // Less frequent availability checks to reduce service interference
-    checkIntervalRef.current = setInterval(() => {
-      if (mountedRef.current) {
-        checkAvailability(false);
-      }
-    }, CHECK_INTERVAL);
-
-    return () => {
-      clearTimeout(initTimeout);
-      if (checkIntervalRef.current) {
-        clearInterval(checkIntervalRef.current);
-      }
-    };
-  }, []);
-
-  // Capture fingerprint with minimal session interference
+  // Direct fingerprint capture
   const captureFingerprint = async (timeout: number = 15000) => {
-    if (!isAvailable) {
-      throw new Error(error || 'MFS100 device is not available');
-    }
-
     try {
       const result = await rdServiceClient.captureFingerprint(timeout);
       
       if (mountedRef.current && result) {
         setIsAvailable(true);
         setError(null);
-        setRetryCount(0); // Reset retry count on successful capture
+        setRetryCount(0);
       }
       
       return result;
     } catch (err) {
       if (mountedRef.current) {
-        setRetryCount(prev => prev + 1); // Increment retry count on capture error
-        
-        // Check availability after a delay only on capture error
-        setTimeout(() => {
-          if (mountedRef.current) {
-            checkAvailability(true);
-          }
-        }, 2000);
+        setRetryCount(prev => prev + 1);
       }
       
       throw err;
@@ -151,38 +110,33 @@ export function useRDService() {
 
   // Get device info
   const getDeviceInfo = async () => {
-    if (!isAvailable) {
-      throw new Error('MFS100 device is not available');
-    }
-    
     const info = await rdServiceClient.getDeviceInfo();
     setDeviceInfo(info);
     return info;
   };
 
-  // Manual retry with minimal session disruption
+  // Manual retry
   const retry = async () => {
     setError(null);
-    setRetryCount(0); // Reset retry count on manual retry
+    setRetryCount(0);
     rdServiceClient.clearCache();
     checkAvailability(true);
   };
 
-  // Reset connection only when absolutely necessary
+  // Reset connection
   const resetConnection = async () => {
     setIsAvailable(false);
     setDeviceInfo(null);
     setError(null);
     setSessionActive(false);
-    setRetryCount(0); // Reset retry count on connection reset
+    setRetryCount(0);
     setServiceStatus({
       service: '',
-      message: 'Resetting MFS100 connection...'
+      message: 'Zero-polling: Resetting connection...'
     });
     
     await rdServiceClient.forceSessionReset();
     
-    // Longer delay after reset to let device settle
     setTimeout(() => {
       if (mountedRef.current) {
         checkAvailability(true);
