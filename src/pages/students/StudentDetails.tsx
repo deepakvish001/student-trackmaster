@@ -34,7 +34,7 @@ export default function StudentDetails() {
       // If not found by ID, try fingerprint matching
       if (!data && !error) {
         console.log('Not found by ID, searching by fingerprint...');
-        ({ data, error } = await supabase
+        const { data: fingerprintData, error: fingerprintError } = await supabase
           .from('students')
           .select(`
             *,
@@ -43,10 +43,12 @@ export default function StudentDetails() {
             )
           `)
           .or(`finger_1.ilike.%${fingerprintId}%,finger_2.ilike.%${fingerprintId}%,finger_3.ilike.%${fingerprintId}%,finger_4.ilike.%${fingerprintId}%,finger_5.ilike.%${fingerprintId}%`)
-          .limit(1));
+          .limit(1);
         
-        if (data && data.length > 0) {
-          data = data[0];
+        if (fingerprintError) {
+          error = fingerprintError;
+        } else if (fingerprintData && fingerprintData.length > 0) {
+          data = fingerprintData[0];
         } else {
           data = null;
         }
