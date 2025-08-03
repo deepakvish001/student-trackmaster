@@ -10,7 +10,6 @@ import Batches from "./pages/Batches";
 import Downloads from "./pages/Downloads";
 import Testing from "./pages/Testing";
 import AddStudent from "./pages/students/AddStudent";
-import EnhancedAddStudent from "./pages/students/EnhancedAddStudent";
 import ViewStudents from "./pages/students/ViewStudents";
 import StudentList from "./pages/students/StudentList";
 import { EnhancedAuthProvider } from "./contexts/EnhancedAuthContext";
@@ -61,14 +60,6 @@ function App() {
               element={
                 <ProtectedRoute>
                   <AddStudent />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/students/enhanced-add"
-              element={
-                <ProtectedRoute>
-                  <EnhancedAddStudent />
                 </ProtectedRoute>
               }
             />
