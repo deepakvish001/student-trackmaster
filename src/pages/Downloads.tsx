@@ -46,7 +46,7 @@ export default function Downloads() {
   });
 
   // Helper function to validate and process image data
-  const isValidImageData = (imageData: string | null): boolean => {
+  const isValidImageData = (imageData: any): boolean => {
     if (!imageData || typeof imageData !== 'string') {
       return false;
     }
@@ -57,15 +57,15 @@ export default function Downloads() {
     }
     
     // Check for base64 data without prefix (length check for substantial data)
-    if (imageData.length > 10000) {
+    if (imageData.length > 100) {
       return true;
     }
     
     return false;
   };
 
-  // Helper function to convert base64 image data for Excel
-  const processImageForExcel = (imageData: string | null): string => {
+  // Helper function to process image data for Excel
+  const processImageForExcel = (imageData: any): string => {
     if (!isValidImageData(imageData)) {
       return 'No Image Available';
     }
@@ -73,14 +73,14 @@ export default function Downloads() {
     try {
       const validImageData = imageData as string;
       
-      // If it's already a data URL, return it
+      // If it's already a data URL, return a truncated version for display
       if (validImageData.startsWith('data:image/')) {
-        return validImageData;
+        return `Image Available (${Math.round(validImageData.length / 1024)}KB)`;
       }
       
-      // If it's raw base64, add the data URL prefix
-      if (validImageData.length > 10000) {
-        return `data:image/png;base64,${validImageData}`;
+      // If it's raw base64, add info
+      if (validImageData.length > 100) {
+        return `Base64 Image (${Math.round(validImageData.length / 1024)}KB)`;
       }
       
       return 'Invalid Image Format';
@@ -104,6 +104,8 @@ export default function Downloads() {
     setDownloadProgress(0);
 
     try {
+      console.log('📊 Starting Excel export with student data...');
+      
       // Simulate progress updates
       const progressInterval = setInterval(() => {
         setDownloadProgress(prev => {
@@ -111,72 +113,73 @@ export default function Downloads() {
             clearInterval(progressInterval);
             return prev;
           }
-          return prev + 10;
+          return prev + 15;
         });
-      }, 200);
-
-      console.log('📊 Processing student data with fingerprint images for Excel export...');
+      }, 300);
 
       // Prepare data for Excel export
       const exportData = students.map((student, index) => {
+        const batchName = student.batches && typeof student.batches === 'object' && 'batch_name' in student.batches 
+          ? student.batches.batch_name 
+          : 'No Batch';
+
         const row: any = {
           'Sr. No.': index + 1,
           'Student Name': student.student_name || 'N/A',
           'Mobile Number': student.mobile_number || 'Not Provided',
-          'Batch Name': student.batches?.batch_name || 'No Batch',
+          'Batch Name': batchName,
           'Address': student.address || 'Not Provided'
         };
 
         // Process each fingerprint image
-        const fingerKeys = ['finger_1_image', 'finger_2_image', 'finger_3_image', 'finger_4_image', 'finger_5_image'];
+        const fingerKeys = ['finger_1_image', 'finger_2_image', 'finger_3_image', 'finger_4_image', 'finger_5_image'] as const;
         
         fingerKeys.forEach((key, i) => {
-          const imageData = student[key as keyof typeof student] as string | null;
+          const imageData = student[key];
           const processedImage = processImageForExcel(imageData);
-          row[`Finger ${i + 1} Image`] = processedImage;
+          row[`Finger ${i + 1} Status`] = processedImage;
           
           if (isValidImageData(imageData)) {
-            console.log(`✅ Processed image data for student ${student.student_name}, finger ${i + 1}`);
-          } else {
-            console.log(`❌ No valid image data for student ${student.student_name}, finger ${i + 1}`);
+            console.log(`✅ Image found for student ${student.student_name}, finger ${i + 1}`);
           }
         });
 
         return row;
       });
 
-      // Create workbook
+      console.log('📊 Creating Excel workbook...');
+
+      // Create workbook and worksheet
       const workbook = XLSX.utils.book_new();
-      
-      // Create main worksheet
       const mainWorksheet = XLSX.utils.json_to_sheet(exportData);
 
-      // Auto-adjust column widths
+      // Set column widths
       const colWidths = [
         { wch: 8 },  // Sr. No.
         { wch: 25 }, // Student Name
         { wch: 15 }, // Mobile Number
         { wch: 20 }, // Batch Name
         { wch: 30 }, // Address
-        { wch: 30 }, // Finger 1 Image
-        { wch: 30 }, // Finger 2 Image
-        { wch: 30 }, // Finger 3 Image
-        { wch: 30 }, // Finger 4 Image
-        { wch: 30 }  // Finger 5 Image
+        { wch: 25 }, // Finger 1 Status
+        { wch: 25 }, // Finger 2 Status
+        { wch: 25 }, // Finger 3 Status
+        { wch: 25 }, // Finger 4 Status
+        { wch: 25 }  // Finger 5 Status
       ];
       mainWorksheet['!cols'] = colWidths;
 
-      XLSX.utils.book_append_sheet(workbook, mainWorksheet, 'Students with Fingerprints');
+      // Add the main worksheet
+      XLSX.utils.book_append_sheet(workbook, mainWorksheet, 'Students Data');
 
       // Calculate statistics
       const studentsWithImages = students.filter(student => 
         ['finger_1_image', 'finger_2_image', 'finger_3_image', 'finger_4_image', 'finger_5_image']
-          .some(key => isValidImageData(student[key as keyof typeof student] as string | null))
+          .some(key => isValidImageData(student[key]))
       ).length;
 
       const totalImages = students.reduce((count, student) => {
         return count + ['finger_1_image', 'finger_2_image', 'finger_3_image', 'finger_4_image', 'finger_5_image']
-          .filter(key => isValidImageData(student[key as keyof typeof student] as string | null)).length;
+          .filter(key => isValidImageData(student[key])).length;
       }, 0);
 
       const studentsWithMobile = students.filter(s => s.mobile_number).length;
@@ -190,40 +193,53 @@ export default function Downloads() {
         { 'Metric': 'Students with Fingerprint Images', 'Value': studentsWithImages },
         { 'Metric': 'Total Fingerprint Images', 'Value': totalImages },
         { 'Metric': 'Export Date', 'Value': new Date().toLocaleString() },
-        { 'Metric': 'Image Format', 'Value': 'PNG/JPEG Base64 Data URLs' },
-        { 'Metric': 'Export Content', 'Value': 'Name, Mobile, Batch, Address, 5 Fingerprint Images' }
+        { 'Metric': 'Export Notes', 'Value': 'Image data status included in main sheet' }
       ];
 
       const summaryWorksheet = XLSX.utils.json_to_sheet(summaryData);
       summaryWorksheet['!cols'] = [{ wch: 30 }, { wch: 50 }];
-      XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Export Summary');
+      XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Summary');
+
+      // Complete progress
+      setDownloadProgress(100);
 
       // Generate filename with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const filename = `Students_Complete_Data_With_Images_${timestamp}.xlsx`;
+      const filename = `Students_Complete_Data_${timestamp}.xlsx`;
 
-      // Complete progress and download
-      setDownloadProgress(100);
-      
+      console.log('📊 Writing Excel file...');
+
+      // Use a small delay to ensure progress is visible
       setTimeout(() => {
-        // Write and download file
-        XLSX.writeFile(workbook, filename);
-        
-        toast({
-          title: "Download Complete! 📊",
-          description: `Downloaded ${students.length} students with ${totalImages} fingerprint images.`,
-        });
+        try {
+          // Write and download file
+          XLSX.writeFile(workbook, filename);
+          
+          console.log('✅ Excel file downloaded successfully');
+          
+          toast({
+            title: "Download Complete! 📊",
+            description: `Downloaded ${students.length} students with ${totalImages} fingerprint images.`,
+          });
 
-        console.log('✅ Excel export with fingerprint images completed');
-        console.log(`📈 Export stats: ${students.length} students, ${totalImages} images, ${studentsWithImages} students with images`);
-        setIsDownloading(false);
-        setDownloadProgress(0);
-      }, 500);
+          setIsDownloading(false);
+          setDownloadProgress(0);
+        } catch (downloadError) {
+          console.error('❌ Download error:', downloadError);
+          toast({
+            title: "Download Failed",
+            description: "Failed to download the file. Please try again.",
+            variant: "destructive"
+          });
+          setIsDownloading(false);
+          setDownloadProgress(0);
+        }
+      }, 1000);
 
     } catch (error) {
-      console.error('Download error:', error);
+      console.error('❌ Export error:', error);
       toast({
-        title: "Download Failed",
+        title: "Export Failed",
         description: "Failed to generate student data file. Please try again.",
         variant: "destructive"
       });
@@ -247,12 +263,12 @@ export default function Downloads() {
 
   const studentsWithImages = students.filter(student => 
     ['finger_1_image', 'finger_2_image', 'finger_3_image', 'finger_4_image', 'finger_5_image']
-      .some(key => isValidImageData(student[key as keyof typeof student] as string | null))
+      .some(key => isValidImageData(student[key]))
   ).length;
 
   const totalImages = students.reduce((count, student) => {
     return count + ['finger_1_image', 'finger_2_image', 'finger_3_image', 'finger_4_image', 'finger_5_image']
-      .filter(key => isValidImageData(student[key as keyof typeof student] as string | null)).length;
+      .filter(key => isValidImageData(student[key])).length;
   }, 0);
 
   const studentsWithMobile = students.filter(s => s.mobile_number).length;
@@ -268,7 +284,7 @@ export default function Downloads() {
               📥 Student Data with Images
             </h1>
             <p className="text-lg text-muted-foreground">
-              Export complete student data with actual fingerprint images in Excel format
+              Export complete student data with fingerprint image information in Excel format
             </p>
           </div>
 
@@ -305,12 +321,12 @@ export default function Downloads() {
                 {isDownloading ? (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-foreground font-semibold">Processing Images for Excel Export...</span>
+                      <span className="text-foreground font-semibold">Generating Excel File...</span>
                       <span className="text-electric-blue font-bold">{downloadProgress}%</span>
                     </div>
                     <Progress value={downloadProgress} className="h-3" />
                     <div className="text-sm text-muted-foreground text-center">
-                      Converting {totalImages} fingerprint images to Excel-compatible format...
+                      Processing {students.length} students with {totalImages} fingerprint images...
                     </div>
                   </div>
                 ) : (
@@ -321,10 +337,10 @@ export default function Downloads() {
                       className="bg-gradient-to-r from-electric-blue to-vibrant-purple hover:scale-105 transition-all duration-300 shadow-glow px-8 py-6 text-lg font-semibold"
                     >
                       <FileSpreadsheet className="h-6 w-6 mr-3" />
-                      Download Complete Data with Images
+                      Download Complete Data
                     </Button>
                     <p className="text-sm text-muted-foreground">
-                      Downloads: Name, Mobile, Batch, Address & All Actual Fingerprint Images
+                      Downloads: Name, Mobile, Batch, Address & Fingerprint Image Status
                     </p>
                   </div>
                 )}
@@ -354,13 +370,13 @@ export default function Downloads() {
                 <div className="space-y-3">
                   <h4 className="font-semibold text-emerald-green flex items-center">
                     <Image className="h-4 w-4 mr-2" />
-                    Actual Fingerprint Images
+                    Fingerprint Image Status
                   </h4>
                   <div className="text-sm text-muted-foreground space-y-2">
-                    <div>✓ All 5 Fingerprint Images (PNG/JPEG)</div>
-                    <div>✓ Full resolution image data</div>
-                    <div>✓ Excel-compatible format</div>
-                    <div>✓ Real captured biometric images</div>
+                    <div>✓ All 5 Fingerprint Status Info</div>
+                    <div>✓ Image availability indicators</div>
+                    <div>✓ File size information</div>
+                    <div>✓ Complete data overview</div>
                   </div>
                 </div>
               </div>
