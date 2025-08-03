@@ -171,7 +171,7 @@ export function EnhancedMFS100Capture({
         throw new Error(result.data?.ErrorDescription || result.err || "Capture failed");
       }
       
-      const quality = parseInt(result.data.Quality || "0");
+      const quality = parseInt(String(result.data.Quality || "0"));
       setCaptureQuality(quality);
       
       // Process the real MFS100 bitmap data
@@ -185,8 +185,8 @@ export function EnhancedMFS100Capture({
 
         const realFingerprintImage = processRealFingerprintBitmap(
           result.data.BitmapData,
-          parseInt(result.data.InWidth || "300"),
-          parseInt(result.data.InHeight || "300")
+          parseInt(String(result.data.InWidth || "300")),
+          parseInt(String(result.data.InHeight || "300"))
         );
         
         if (realFingerprintImage && realFingerprintImage.startsWith('data:image/')) {
