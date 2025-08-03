@@ -10,8 +10,8 @@ import { GlobalConnectionTestButton } from '@/components/rd/GlobalConnectionTest
 import DashboardLayout from '@/components/DashboardLayout';
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { RealTimeStudentForm } from '@/components/forms/RealTimeStudentForm';
-import { RealTimeFingerprintCapture } from '@/components/fingerprint/RealTimeFingerprintCapture';
+import { StudentRegistrationForm } from '@/components/forms/StudentRegistrationForm';
+import { BatchFingerprintCapture } from '@/components/fingerprint/BatchFingerprintCapture';
 import { supabase } from '@/integrations/supabase/client';
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 
@@ -23,13 +23,25 @@ interface FingerprintData {
   quality: number;
 }
 
+interface StudentFormData {
+  student_name: string;
+  mobile_number: string;
+  batch_id: string;
+  address: string;
+}
+
 export function AddStudent() {
   const navigate = useNavigate();
   const { user } = useEnhancedAuth();
-  const [studentId, setStudentId] = useState<string>("");
+  const [studentFormData, setStudentFormData] = useState<StudentFormData>({
+    student_name: '',
+    mobile_number: '',
+    batch_id: '',
+    address: ''
+  });
   const [capturedFingerprints, setCapturedFingerprints] = useState<number[]>([]);
   const [fingerprintData, setFingerprintData] = useState<FingerprintData[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
 
   // Updated to only 5 fingerprints
@@ -41,11 +53,8 @@ export function AddStudent() {
     "Left Thumb"
   ];
 
-  const handleStudentIdChange = (id: string) => {
-    setStudentId(id);
-    toast.success("Student record created in real-time!", {
-      description: "You can now capture fingerprints"
-    });
+  const handleStudentFormChange = (formData: StudentFormData) => {
+    setStudentFormData(formData);
   };
 
   const handleFingerprintCapture = (
@@ -76,56 +85,61 @@ export function AddStudent() {
   };
 
   // Check if all required data is complete
-  const isDataComplete = studentId && capturedFingerprints.length === 5;
+  const isFormComplete = studentFormData.student_name.trim() && studentFormData.batch_id;
+  const isFingerprintsComplete = capturedFingerprints.length === 5;
+  const isAllDataComplete = isFormComplete && isFingerprintsComplete;
 
-  const handleFinalSave = async () => {
-    if (!studentId || !user?.id || capturedFingerprints.length !== 5) {
+  const handleRegister = async () => {
+    if (!isAllDataComplete || !user?.id) {
       toast.error("Please complete all required information and capture all fingerprints");
       return;
     }
 
     try {
-      setIsSaving(true);
+      setIsRegistering(true);
       
-      // Final verification - check if student exists and has all data
-      const { data: student, error: studentError } = await supabase
+      // Step 1: Create student record
+      const { data: newStudent, error: studentError } = await supabase
         .from('students')
-        .select('*')
-        .eq('id', studentId)
+        .insert({
+          student_name: studentFormData.student_name.trim(),
+          mobile_number: studentFormData.mobile_number || null,
+          batch_id: studentFormData.batch_id,
+          address: studentFormData.address || null,
+          user_id: user.id
+        })
+        .select()
         .single();
 
-      if (studentError || !student) {
-        toast.error("Student record not found. Please try again.");
-        return;
+      if (studentError || !newStudent) {
+        throw new Error(studentError?.message || 'Failed to create student record');
       }
 
-      // Verify all fingerprints are saved
-      const { data: fingerprints, error: fpError } = await supabase
+      // Step 2: Save all fingerprint data
+      const fingerprintInserts = fingerprintData.map(fp => ({
+        student_id: newStudent.id,
+        finger_index: fp.index,
+        pid_data: fp.template,
+        image_data: fp.image,
+        quality_score: fp.quality,
+        user_id: user.id
+      }));
+
+      const { error: fingerprintError } = await supabase
         .from('student_fingerprints')
-        .select('finger_index')
-        .eq('student_id', studentId);
+        .insert(fingerprintInserts);
 
-      if (fpError) {
-        toast.error("Error verifying fingerprint data");
-        return;
-      }
-
-      const savedFingerprints = fingerprints?.map(fp => fp.finger_index) || [];
-      const expectedFingerprints = [0, 1, 2, 3, 4];
-      const allFingerprintsSaved = expectedFingerprints.every(index => 
-        savedFingerprints.includes(index)
-      );
-
-      if (!allFingerprintsSaved) {
-        toast.error("Some fingerprints are missing. Please capture all fingerprints.");
-        return;
+      if (fingerprintError) {
+        // If fingerprint save fails, delete the student record to maintain consistency
+        await supabase.from('students').delete().eq('id', newStudent.id);
+        throw new Error(fingerprintError.message);
       }
 
       // Mark as completed
       setIsCompleted(true);
       
-      toast.success("Student enrollment completed successfully!", {
-        description: `${student.student_name} has been fully enrolled with all fingerprints`,
+      toast.success("Student registration completed successfully!", {
+        description: `${studentFormData.student_name} has been registered with all biometric data`,
         duration: 5000
       });
 
@@ -135,10 +149,10 @@ export function AddStudent() {
       }, 2000);
 
     } catch (error) {
-      console.error('Final save error:', error);
-      toast.error("Error completing enrollment. Please try again.");
+      console.error('Registration error:', error);
+      toast.error(error instanceof Error ? error.message : "Registration failed. Please try again.");
     } finally {
-      setIsSaving(false);
+      setIsRegistering(false);
     }
   };
 
@@ -155,13 +169,13 @@ export function AddStudent() {
                     <UserPlus className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-3xl font-bold text-slate-800">Add New Student</h1>
+                    <h1 className="text-3xl font-bold text-slate-800">Register New Student</h1>
                     <div className="flex items-center text-sm text-slate-500 mt-2">
                       <span className="text-blue-600 hover:underline cursor-pointer">Dashboard</span>
                       <span className="mx-2">/</span>
                       <span className="text-blue-600 hover:underline cursor-pointer">Students</span>
                       <span className="mx-2">/</span>
-                      <span className="text-slate-700 font-medium">Add Student</span>
+                      <span className="text-slate-700 font-medium">Register Student</span>
                     </div>
                   </div>
                 </div>
@@ -169,9 +183,6 @@ export function AddStudent() {
                   <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                     <GraduationCap className="h-4 w-4 mr-1" />
                     Student Registration
-                  </Badge>
-                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                    🔴 Real-time Mode
                   </Badge>
                   {isCompleted && (
                     <Badge className="bg-green-500 text-white">
@@ -183,14 +194,13 @@ export function AddStudent() {
               </div>
             </div>
 
-            {/* Real-time Status Banner */}
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200/60 rounded-xl p-4">
-              <div className="flex items-center justify-center space-x-3">
-                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                <p className="text-green-800 font-medium">
-                  Real-time mode active - All data automatically saves to Supabase as you type and capture
+            {/* Instructions */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/60 rounded-xl p-4">
+              <div className="text-center">
+                <p className="text-blue-800 font-medium">
+                  Fill out student information and capture all fingerprints in any order. 
+                  Click "Register Student" when everything is complete.
                 </p>
-                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
               </div>
             </div>
 
@@ -200,21 +210,23 @@ export function AddStudent() {
             {/* Student Information Card */}
             <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
               <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200/60">
-                <CardTitle className="flex items-center space-x-3 text-xl text-slate-800">
-                  <Users className="h-5 w-5 text-blue-600" />
-                  <span>Student Information</span>
-                  {studentId && (
+                <CardTitle className="flex items-center justify-between text-xl text-slate-800">
+                  <div className="flex items-center space-x-3">
+                    <Users className="h-5 w-5 text-blue-600" />
+                    <span>Student Information</span>
+                  </div>
+                  {isFormComplete && (
                     <Badge className="bg-green-100 text-green-700 border-green-300">
-                      ID: {studentId.slice(-8)}
+                      Form Complete
                     </Badge>
                   )}
                 </CardTitle>
               </CardHeader>
               
               <CardContent className="p-8">
-                <RealTimeStudentForm 
-                  studentId={studentId}
-                  onStudentIdChange={handleStudentIdChange}
+                <StudentRegistrationForm 
+                  formData={studentFormData}
+                  onFormChange={handleStudentFormChange}
                 />
               </CardContent>
             </Card>
@@ -227,72 +239,67 @@ export function AddStudent() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center space-x-3 text-xl text-slate-800">
                     <div className="w-1 h-6 bg-gradient-to-b from-green-500 to-emerald-600 rounded-full"></div>
-                    <span>Real-time Biometric Registration</span>
+                    <span>Biometric Registration</span>
                   </CardTitle>
                   <div className="flex items-center space-x-2">
-                    <Badge variant={capturedFingerprints.length === 5 ? "default" : "secondary"} className="bg-green-50 text-green-700 border-green-200">
+                    <Badge variant={isFingerprintsComplete ? "default" : "secondary"} className="bg-green-50 text-green-700 border-green-200">
                       <Fingerprint className="h-3 w-3 mr-1" />
-                      {capturedFingerprints.length}/5 Captured & Saved
+                      {capturedFingerprints.length}/5 Captured
                     </Badge>
                   </div>
                 </div>
               </CardHeader>
 
               <CardContent className="p-8">
-                {!studentId && (
-                  <div className="text-center py-8 text-slate-500">
-                    <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg font-medium mb-2">Enter Student Information First</p>
-                    <p className="text-sm">Student details will be saved automatically, then you can capture fingerprints</p>
-                  </div>
-                )}
-
-                {studentId && (
-                  <div className="bg-slate-50/50 rounded-xl p-6 border border-slate-200/60">
-                    <div className="grid grid-cols-5 gap-6">
-                      {fingerNames.map((fingerName, index) => (
-                        <RealTimeFingerprintCapture
-                          key={index}
-                          index={index}
-                          fingerName={fingerName}
-                          studentId={studentId}
-                          onCaptureSuccess={handleFingerprintCapture}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <div className="bg-slate-50/50 rounded-xl p-6 border border-slate-200/60">
+                  <BatchFingerprintCapture
+                    fingerNames={fingerNames}
+                    onCaptureSuccess={handleFingerprintCapture}
+                  />
+                </div>
               </CardContent>
             </Card>
 
-            {/* Save Button Section */}
-            {isDataComplete && !isCompleted && (
-              <Card className="shadow-lg border-0 bg-gradient-to-r from-green-50 to-emerald-50">
+            {/* Register Button Section */}
+            {!isCompleted && (
+              <Card className={`shadow-lg border-0 ${isAllDataComplete ? 'bg-gradient-to-r from-green-50 to-emerald-50' : 'bg-gradient-to-r from-gray-50 to-slate-50'}`}>
                 <CardContent className="p-6">
                   <div className="text-center space-y-4">
-                    <div className="flex items-center justify-center space-x-2 text-green-700">
-                      <CheckCircle2 className="h-6 w-6" />
-                      <h3 className="text-xl font-semibold">Ready to Complete Enrollment</h3>
+                    <div className={`flex items-center justify-center space-x-2 ${isAllDataComplete ? 'text-green-700' : 'text-gray-500'}`}>
+                      {isAllDataComplete ? (
+                        <CheckCircle2 className="h-6 w-6" />
+                      ) : (
+                        <RefreshCw className="h-6 w-6" />
+                      )}
+                      <h3 className="text-xl font-semibold">
+                        {isAllDataComplete ? 'Ready to Register' : 'Complete All Requirements'}
+                      </h3>
                     </div>
-                    <p className="text-green-600 mb-6">
-                      All student information and fingerprints have been captured successfully.
-                      Click the button below to finalize the enrollment.
+                    <p className={`mb-6 ${isAllDataComplete ? 'text-green-600' : 'text-gray-600'}`}>
+                      {isAllDataComplete 
+                        ? 'All required information and fingerprints have been captured. Click below to register the student.'
+                        : `Please complete: ${!isFormComplete ? 'Student Information' : ''} ${!isFormComplete && !isFingerprintsComplete ? 'and ' : ''} ${!isFingerprintsComplete ? 'All Fingerprints' : ''}`
+                      }
                     </p>
                     <Button 
-                      onClick={handleFinalSave}
-                      disabled={isSaving}
+                      onClick={handleRegister}
+                      disabled={!isAllDataComplete || isRegistering}
                       size="lg"
-                      className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg font-medium"
+                      className={`px-8 py-3 text-lg font-medium ${
+                        isAllDataComplete 
+                          ? 'bg-green-600 hover:bg-green-700 text-white' 
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
                     >
-                      {isSaving ? (
+                      {isRegistering ? (
                         <>
                           <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
-                          Completing Enrollment...
+                          Registering Student...
                         </>
                       ) : (
                         <>
                           <Save className="mr-2 h-5 w-5" />
-                          Complete Student Enrollment
+                          Register Student
                         </>
                       )}
                     </Button>
@@ -308,10 +315,10 @@ export function AddStudent() {
                   <div className="text-center space-y-4">
                     <div className="flex items-center justify-center space-x-2 text-green-700">
                       <CheckCircle2 className="h-8 w-8" />
-                      <h3 className="text-2xl font-bold">Enrollment Completed!</h3>
+                      <h3 className="text-2xl font-bold">Registration Completed!</h3>
                     </div>
                     <p className="text-green-700 text-lg">
-                      Student has been successfully enrolled with all biometric data.
+                      Student has been successfully registered with all biometric data.
                       Redirecting to student list...
                     </p>
                   </div>
@@ -319,28 +326,25 @@ export function AddStudent() {
               </Card>
             )}
 
-            {/* Real-time Summary */}
+            {/* Progress Summary */}
             <Card className="shadow-lg border-0 bg-gradient-to-r from-blue-50 to-indigo-50">
               <CardContent className="p-6">
                 <div className="text-center space-y-2">
-                  <h3 className="text-lg font-semibold text-slate-800">Real-time Data Summary</h3>
+                  <h3 className="text-lg font-semibold text-slate-800">Registration Progress</h3>
                   <div className="flex items-center justify-center space-x-6 text-sm">
                     <div className="flex items-center space-x-2">
-                      <div className={`w-3 h-3 rounded-full ${studentId ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                      <span>Student Record: {studentId ? 'Created' : 'Pending'}</span>
+                      <div className={`w-3 h-3 rounded-full ${isFormComplete ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                      <span>Student Info: {isFormComplete ? 'Complete' : 'Incomplete'}</span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <div className={`w-3 h-3 rounded-full ${capturedFingerprints.length > 0 ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                      <span>Fingerprints: {capturedFingerprints.length}/5 Saved</span>
+                      <div className={`w-3 h-3 rounded-full ${isFingerprintsComplete ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                      <span>Fingerprints: {capturedFingerprints.length}/5</span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <div className={`w-3 h-3 rounded-full ${isDataComplete ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                      <span>Status: {isCompleted ? 'Completed' : isDataComplete ? 'Ready to Save' : 'In Progress'}</span>
+                      <div className={`w-3 h-3 rounded-full ${isCompleted ? 'bg-green-500' : isAllDataComplete ? 'bg-yellow-500' : 'bg-gray-400'}`}></div>
+                      <span>Status: {isCompleted ? 'Registered' : isAllDataComplete ? 'Ready' : 'In Progress'}</span>
                     </div>
                   </div>
-                  <p className="text-xs text-slate-600 mt-3">
-                    All changes are automatically synced with Supabase database in real-time
-                  </p>
                 </div>
               </CardContent>
             </Card>
