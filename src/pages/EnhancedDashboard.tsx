@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/components/DashboardLayout';
 import { DynamicStatsCard } from '@/components/ui/dynamic-stats-card';
 import { RealTimeClock } from '@/components/ui/real-time-clock';
@@ -14,9 +14,10 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 
 export default function EnhancedDashboard() {
   const { profile } = useUserProfile();
+  const queryClient = useQueryClient();
 
   // Fetch dashboard statistics with real-time updates
-  const { data: stats, refetch } = useQuery({
+  const { data: stats, isLoading, error } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       console.log('📊 Fetching dashboard statistics...');
@@ -62,17 +63,18 @@ export default function EnhancedDashboard() {
       console.log('📈 Dashboard stats calculated:', stats);
       return stats;
     },
-    refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
+    refetchInterval: 3000, // Refresh every 3 seconds for better real-time updates
     refetchOnWindowFocus: true,
-    staleTime: 1000, // Consider data stale after 1 second
+    refetchOnMount: true,
+    staleTime: 0, // Always consider data stale to ensure fresh fetches
   });
 
-  // Set up real-time subscriptions
+  // Set up real-time subscriptions with proper cleanup and error handling
   React.useEffect(() => {
     console.log('🔄 Setting up real-time subscriptions...');
     
     const studentsChannel = supabase
-      .channel('students-changes')
+      .channel('students-realtime-dashboard')
       .on(
         'postgres_changes',
         {
@@ -81,14 +83,21 @@ export default function EnhancedDashboard() {
           table: 'students'
         },
         (payload) => {
-          console.log('📝 Students table change:', payload);
-          refetch();
+          console.log('📝 Students table change detected:', payload.eventType, payload.new, payload.old);
+          
+          // Invalidate and refetch the dashboard stats
+          queryClient.invalidateQueries({ 
+            queryKey: ['dashboard-stats'],
+            exact: true 
+          });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Students channel status:', status);
+      });
 
     const batchesChannel = supabase
-      .channel('batches-changes')
+      .channel('batches-realtime-dashboard')
       .on(
         'postgres_changes',
         {
@@ -97,18 +106,68 @@ export default function EnhancedDashboard() {
           table: 'batches'
         },
         (payload) => {
-          console.log('📦 Batches table change:', payload);
-          refetch();
+          console.log('📦 Batches table change detected:', payload.eventType, payload.new, payload.old);
+          
+          // Invalidate and refetch the dashboard stats
+          queryClient.invalidateQueries({ 
+            queryKey: ['dashboard-stats'],
+            exact: true 
+          });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Batches channel status:', status);
+      });
 
     return () => {
       console.log('🔌 Cleaning up real-time subscriptions...');
       supabase.removeChannel(studentsChannel);
       supabase.removeChannel(batchesChannel);
     };
-  }, [refetch]);
+  }, [queryClient]);
+
+  // Handle loading and error states
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-primary">Dashboard</h2>
+              <p className="text-gray-600">Loading data...</p>
+            </div>
+            <RealTimeClock showDate={true} showSeconds={true} />
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-gray-100 rounded-lg p-6 animate-pulse">
+                <div className="h-4 bg-gray-300 rounded mb-2"></div>
+                <div className="h-8 bg-gray-300 rounded"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    console.error('Dashboard error:', error);
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-primary">Dashboard</h2>
+              <p className="text-red-600">Error loading data. Please refresh the page.</p>
+            </div>
+            <RealTimeClock showDate={true} showSeconds={true} />
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -124,7 +183,7 @@ export default function EnhancedDashboard() {
           <RealTimeClock showDate={true} showSeconds={true} />
         </div>
 
-        {/* Statistics Cards */}
+        {/* Statistics Cards with real-time data */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <DynamicStatsCard
             title="Total Batches"
@@ -140,7 +199,7 @@ export default function EnhancedDashboard() {
             icon={Users}
             color="green"
             animate={true}
-            realTime={true}
+            realTime={false}
           />
           
           <DynamicStatsCard
@@ -152,6 +211,14 @@ export default function EnhancedDashboard() {
           />
         </div>
 
+        {/* Real-time status indicator */}
+        <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          <span>Real-time updates active</span>
+          <span>•</span>
+          <span>Last updated: {new Date().toLocaleTimeString()}</span>
+        </div>
+
         {/* Debug Information (only in development) */}
         {process.env.NODE_ENV === 'development' && (
           <div className="mt-8 p-4 bg-gray-100 rounded-lg">
@@ -159,6 +226,11 @@ export default function EnhancedDashboard() {
             <pre className="text-xs text-gray-600">
               {JSON.stringify(stats, null, 2)}
             </pre>
+            <div className="mt-2 text-xs text-gray-500">
+              <p>Query Status: {isLoading ? 'Loading' : 'Loaded'}</p>
+              <p>Real-time: Active</p>
+              <p>Refresh Interval: 3s</p>
+            </div>
           </div>
         )}
       </div>
