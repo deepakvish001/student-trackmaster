@@ -11,12 +11,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { Student } from '@/types';
 import { EditStudentDialog } from '@/components/students/EditStudentDialog';
 import { StudentActions } from '@/components/students/StudentActions';
+import { BatchPagination } from '@/components/batches/BatchPagination';
 import { toast } from 'sonner';
 
 export default function ViewStudents() {
-  const [selectedBatchId, setSelectedBatchId] = useState<string>('');
+  const [selectedBatchId, setSelectedBatchId] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
 
@@ -40,11 +42,9 @@ export default function ViewStudents() {
   });
 
   const { data: students = [], isLoading } = useQuery({
-    queryKey: ['students-filtered', selectedBatchId],
+    queryKey: ['students-all'],
     queryFn: async () => {
-      if (!selectedBatchId) return [];
-      
-      const { data, error } = await supabase
+      const query = supabase
         .from('students')
         .select(`
           *,
@@ -52,8 +52,9 @@ export default function ViewStudents() {
             batch_name
           )
         `)
-        .eq('batch_id', selectedBatchId)
         .order('created_at', { ascending: false });
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching students:', error);
@@ -62,7 +63,6 @@ export default function ViewStudents() {
       
       return data || [];
     },
-    enabled: !!selectedBatchId,
     refetchInterval: 2000, // Real-time updates every 2 seconds
     refetchIntervalInBackground: true
   });
@@ -83,7 +83,7 @@ export default function ViewStudents() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students-filtered'] });
+      queryClient.invalidateQueries({ queryKey: ['students-all'] });
       toast.success('Student updated successfully');
       setShowEditDialog(false);
       setEditingStudent(null);
@@ -107,7 +107,7 @@ export default function ViewStudents() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students-filtered'] });
+      queryClient.invalidateQueries({ queryKey: ['students-all'] });
       toast.success('Student deleted successfully');
     },
     onError: (error) => {
@@ -134,7 +134,7 @@ export default function ViewStudents() {
       }
       
       // Refresh data immediately
-      queryClient.invalidateQueries({ queryKey: ['students-filtered'] });
+      queryClient.invalidateQueries({ queryKey: ['students-all'] });
       toast.success('Student updated');
     } catch (error) {
       console.error('Error updating student:', error);
@@ -142,12 +142,28 @@ export default function ViewStudents() {
     }
   };
 
-  const filteredStudents = students.filter((student: Student) =>
-    student.student_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter students based on batch selection and search term
+  const filteredStudents = students.filter((student: Student) => {
+    const matchesBatch = selectedBatchId === 'all' || student.batch_id === selectedBatchId;
+    const matchesSearch = student.student_name.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesBatch && matchesSearch;
+  });
 
-  const handleSubmit = () => {
-    console.log('Submit clicked with batch:', selectedBatchId);
+  // Pagination logic
+  const totalStudents = filteredStudents.length;
+  const totalPages = Math.ceil(totalStudents / entriesPerPage);
+  const startIndex = (currentPage - 1) * entriesPerPage;
+  const paginatedStudents = filteredStudents.slice(startIndex, startIndex + entriesPerPage);
+
+  // Reset to page 1 when filters change
+  const handleBatchChange = (value: string) => {
+    setSelectedBatchId(value);
+    setCurrentPage(1);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
   };
 
   const handleEditStudent = (student: Student) => {
@@ -203,7 +219,7 @@ export default function ViewStudents() {
             .fingerprint-section { margin-top: 20px; }
             .fingerprint-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-top: 15px; }
             .fingerprint-card { text-align: center; background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #dee2e6; }
-            .fingerprint-image { width: 80px; height: 80px; margin: 0 auto 10px; background: #e9ecef; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #6c757d; }
+            .fingerprint-image { width: 80px; height: 80px; margin: 0 auto 10px; background: #e9ecef; border-radius: 4px; display: flex; align-items: center; justify-center: center; font-size: 12px; color: #6c757d; }
             .fingerprint-status { font-size: 12px; font-weight: bold; }
             .available { color: #28a745; }
             .unavailable { color: #dc3545; }
@@ -340,12 +356,13 @@ export default function ViewStudents() {
           <CardContent className="p-6">
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Batch Name</label>
-                <Select value={selectedBatchId} onValueChange={setSelectedBatchId}>
+                <label className="text-sm font-medium">Filter by Batch (Optional)</label>
+                <Select value={selectedBatchId} onValueChange={handleBatchChange}>
                   <SelectTrigger className="w-full max-w-md">
-                    <SelectValue placeholder="-- Select Batch --" />
+                    <SelectValue placeholder="-- All Batches --" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="all">-- All Batches --</SelectItem>
                     {batches.map((batch) => (
                       <SelectItem key={batch.id} value={batch.id}>
                         {batch.batch_name}
@@ -354,151 +371,168 @@ export default function ViewStudents() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button 
-                onClick={handleSubmit}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8"
-              >
-                Submit
-              </Button>
             </div>
           </CardContent>
         </Card>
 
-        {selectedBatchId && (
-          <Card>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Student List</h3>
-                  <div className="flex items-center space-x-4">
-                    <div className="text-sm text-green-600 font-medium">
-                      🔄 Real-time updates every 2 seconds
-                    </div>
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
-                      Live Data
-                    </Badge>
+        <Card>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">
+                  Student List 
+                  <span className="text-sm font-normal text-gray-600 ml-2">
+                    ({totalStudents} total{selectedBatchId !== 'all' ? ', filtered by batch' : ''})
+                  </span>
+                </h3>
+                <div className="flex items-center space-x-4">
+                  <div className="text-sm text-green-600 font-medium">
+                    🔄 Real-time updates every 2 seconds
                   </div>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm">Show</span>
-                    <Select value={entriesPerPage.toString()} onValueChange={(value) => setEntriesPerPage(parseInt(value))}>
-                      <SelectTrigger className="w-20">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="25">25</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <span className="text-sm">entries</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm">Search:</span>
-                    <Input
-                      type="text"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-48"
-                      placeholder=""
-                    />
-                  </div>
-                </div>
-
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">
-                          Name
-                          <Badge variant="outline" className="ml-2 text-xs bg-blue-50">Real-time</Badge>
-                        </th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">Mobile Number</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">Batch</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">Address</th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Finger 1</th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Finger 2</th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Finger 3</th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Finger 4</th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Finger 5</th>
-                        <th className="px-4 py-3 text-center text-sm font-medium text-gray-900">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredStudents.length === 0 ? (
-                        <tr>
-                          <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
-                            {selectedBatchId ? 'No students found in this batch.' : 'Please select a batch to view students.'}
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredStudents.slice(0, entriesPerPage).map((student: Student) => (
-                          <tr key={student.id} className={`border-t hover:bg-gray-50 transition-colors ${!student.is_enabled ? 'opacity-75 bg-gray-50' : ''}`}>
-                            <td className="px-4 py-4 border-r">
-                              <div className="flex items-center space-x-2">
-                                <input
-                                  type="text"
-                                  defaultValue={student.student_name}
-                                  onBlur={(e) => {
-                                    if (e.target.value !== student.student_name) {
-                                      handleInlineUpdate(student.id, 'student_name', e.target.value);
-                                    }
-                                  }}
-                                  className="font-medium bg-transparent border-none outline-none focus:bg-white focus:border focus:border-blue-300 rounded px-2 py-1 w-full"
-                                />
-                                <Badge 
-                                  variant={student.is_enabled ? "default" : "secondary"}
-                                  className={`text-xs ${student.is_enabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
-                                >
-                                  {student.is_enabled ? "Active" : "Inactive"}
-                                </Badge>
-                              </div>
-                            </td>
-                            <td className="px-4 py-4 border-r">
-                              <div>{student.id.slice(-10)}</div>
-                            </td>
-                            <td className="px-4 py-4 border-r">
-                              <div>{student.batches?.batch_name || 'No Batch'}</div>
-                            </td>
-                            <td className="px-4 py-4 border-r">
-                              <div className="text-gray-500 text-sm">Not Available</div>
-                            </td>
-                            <td className="px-4 py-4 text-center border-r">
-                              <FingerprintImage imageData={student.finger_1_image} fingerNumber={1} />
-                            </td>
-                            <td className="px-4 py-4 text-center border-r">
-                              <FingerprintImage imageData={student.finger_2_image} fingerNumber={2} />
-                            </td>
-                            <td className="px-4 py-4 text-center border-r">
-                              <FingerprintImage imageData={student.finger_3_image} fingerNumber={3} />
-                            </td>
-                            <td className="px-4 py-4 text-center border-r">
-                              <FingerprintImage imageData={student.finger_4_image} fingerNumber={4} />
-                            </td>
-                            <td className="px-4 py-4 text-center border-r">
-                              <FingerprintImage imageData={student.finger_5_image} fingerNumber={5} />
-                            </td>
-                            <td className="px-4 py-4 text-center">
-                              <StudentActions 
-                                student={student}
-                                onEdit={handleEditStudent}
-                                onDelete={handleDeleteStudent}
-                                onView={handleViewStudent}
-                                onToggleStatus={handleToggleStatus}
-                              />
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                    Live Data
+                  </Badge>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm">Show</span>
+                  <Select value={entriesPerPage.toString()} onValueChange={(value) => {
+                    setEntriesPerPage(parseInt(value));
+                    setCurrentPage(1);
+                  }}>
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-sm">entries</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm">Search:</span>
+                  <Input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    className="w-48"
+                    placeholder=""
+                  />
+                </div>
+              </div>
+
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">
+                        Name
+                        <Badge variant="outline" className="ml-2 text-xs bg-blue-50">Real-time</Badge>
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">Mobile Number</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">Batch</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 border-r">Address</th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Finger 1</th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Finger 2</th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Finger 3</th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Finger 4</th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border-r">Finger 5</th>
+                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-900">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedStudents.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
+                          {totalStudents === 0 ? 'No students found.' : 'No students match your current filters.'}
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedStudents.map((student: Student) => (
+                        <tr key={student.id} className={`border-t hover:bg-gray-50 transition-colors ${!student.is_enabled ? 'opacity-75 bg-gray-50' : ''}`}>
+                          <td className="px-4 py-4 border-r">
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="text"
+                                defaultValue={student.student_name}
+                                onBlur={(e) => {
+                                  if (e.target.value !== student.student_name) {
+                                    handleInlineUpdate(student.id, 'student_name', e.target.value);
+                                  }
+                                }}
+                                className="font-medium bg-transparent border-none outline-none focus:bg-white focus:border focus:border-blue-300 rounded px-2 py-1 w-full"
+                              />
+                              <Badge 
+                                variant={student.is_enabled ? "default" : "secondary"}
+                                className={`text-xs ${student.is_enabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
+                              >
+                                {student.is_enabled ? "Active" : "Inactive"}
+                              </Badge>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 border-r">
+                            <div>{student.id.slice(-10)}</div>
+                          </td>
+                          <td className="px-4 py-4 border-r">
+                            <div>{student.batches?.batch_name || 'No Batch'}</div>
+                          </td>
+                          <td className="px-4 py-4 border-r">
+                            <div className="text-gray-500 text-sm">Not Available</div>
+                          </td>
+                          <td className="px-4 py-4 text-center border-r">
+                            <FingerprintImage imageData={student.finger_1_image} fingerNumber={1} />
+                          </td>
+                          <td className="px-4 py-4 text-center border-r">
+                            <FingerprintImage imageData={student.finger_2_image} fingerNumber={2} />
+                          </td>
+                          <td className="px-4 py-4 text-center border-r">
+                            <FingerprintImage imageData={student.finger_3_image} fingerNumber={3} />
+                          </td>
+                          <td className="px-4 py-4 text-center border-r">
+                            <FingerprintImage imageData={student.finger_4_image} fingerNumber={4} />
+                          </td>
+                          <td className="px-4 py-4 text-center border-r">
+                            <FingerprintImage imageData={student.finger_5_image} fingerNumber={5} />
+                          </td>
+                          <td className="px-4 py-4 text-center">
+                            <StudentActions 
+                              student={student}
+                              onEdit={handleEditStudent}
+                              onDelete={handleDeleteStudent}
+                              onView={handleViewStudent}
+                              onToggleStatus={handleToggleStatus}
+                            />
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {totalPages > 1 && (
+                <BatchPagination 
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              )}
+
+              <div className="flex justify-between items-center text-sm text-gray-600">
+                <div>
+                  Showing {startIndex + 1} to {Math.min(startIndex + entriesPerPage, totalStudents)} of {totalStudents} entries
+                </div>
+                <div>
+                  Page {currentPage} of {totalPages}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <EditStudentDialog
           student={editingStudent}
