@@ -1,18 +1,54 @@
 
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
-import { BatchCRUD } from '@/components/batches/BatchCRUD';
 import { Batch } from '@/types/index';
-import { Search } from 'lucide-react';
+import { Search, Edit, Power, PowerOff, Trash2, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function Batches() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
+  const [formData, setFormData] = useState({
+    batch_name: '',
+    serial_number: '',
+    admin_name: '',
+    username: '',
+    max_students: 50
+  });
+
+  const queryClient = useQueryClient();
 
   const { data: batches = [], isLoading } = useQuery({
     queryKey: ['batches', searchTerm],
@@ -49,6 +85,157 @@ export default function Batches() {
       return batchesWithCounts;
     },
   });
+
+  // Create mutation
+  const createMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      const { error } = await supabase
+        .from('batches')
+        .insert([{
+          ...data,
+          user_id: (await supabase.auth.getUser()).data.user?.id
+        }]);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['batches'] });
+      toast.success('Batch created successfully');
+      setShowCreateDialog(false);
+      resetForm();
+    },
+    onError: (error) => {
+      console.error('Error creating batch:', error);
+      toast.error('Failed to create batch');
+    }
+  });
+
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
+      const { error } = await supabase
+        .from('batches')
+        .update({
+          ...data,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['batches'] });
+      toast.success('Batch updated successfully');
+      setShowEditDialog(false);
+      setSelectedBatch(null);
+      resetForm();
+    },
+    onError: (error) => {
+      console.error('Error updating batch:', error);
+      toast.error('Failed to update batch');
+    }
+  });
+
+  // Toggle status mutation
+  const toggleStatusMutation = useMutation({
+    mutationFn: async ({ id, is_enabled }: { id: string; is_enabled: boolean }) => {
+      const { error } = await supabase
+        .from('batches')
+        .update({ 
+          is_enabled: !is_enabled,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['batches'] });
+      toast.success('Batch status updated successfully');
+    },
+    onError: (error) => {
+      console.error('Error toggling batch status:', error);
+      toast.error('Failed to update batch status');
+    }
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('batches')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['batches'] });
+      toast.success('Batch deleted successfully');
+      setShowDeleteDialog(false);
+      setSelectedBatch(null);
+    },
+    onError: (error) => {
+      console.error('Error deleting batch:', error);
+      toast.error('Failed to delete batch');
+    }
+  });
+
+  const resetForm = () => {
+    setFormData({
+      batch_name: '',
+      serial_number: '',
+      admin_name: '',
+      username: '',
+      max_students: 50
+    });
+  };
+
+  const handleCreate = () => {
+    setShowCreateDialog(true);
+    resetForm();
+  };
+
+  const handleEdit = (batch: Batch) => {
+    setSelectedBatch(batch);
+    setFormData({
+      batch_name: batch.batch_name,
+      serial_number: batch.serial_number,
+      admin_name: batch.admin_name,
+      username: batch.username,
+      max_students: batch.max_students
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleDelete = (batch: Batch) => {
+    setSelectedBatch(batch);
+    setShowDeleteDialog(true);
+  };
+
+  const handleToggleStatus = (batch: Batch) => {
+    toggleStatusMutation.mutate({
+      id: batch.id,
+      is_enabled: batch.is_enabled
+    });
+  };
+
+  const handleSubmitCreate = (e: React.FormEvent) => {
+    e.preventDefault();
+    createMutation.mutate(formData);
+  };
+
+  const handleSubmitEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedBatch) {
+      updateMutation.mutate({
+        id: selectedBatch.id,
+        data: formData
+      });
+    }
+  };
+
+  const handleConfirmDelete = () => {
+    if (selectedBatch) {
+      deleteMutation.mutate(selectedBatch.id);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -90,11 +277,12 @@ export default function Batches() {
                 </div>
                 
                 <div className="flex space-x-3">
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6">
+                  <Button 
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6"
+                    onClick={handleCreate}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
                     Create
-                  </Button>
-                  <Button variant="outline" className="px-6">
-                    Edit
                   </Button>
                 </div>
               </div>
@@ -146,14 +334,42 @@ export default function Batches() {
                         <span className="text-blue-600 font-medium">{batch.student_count || 0}</span>
                       </TableCell>
                       <TableCell>
-                        <div className="relative">
-                          <Button 
-                            variant="outline" 
-                            className="bg-yellow-400 hover:bg-yellow-500 text-black border-yellow-400 px-4"
-                          >
-                            Action ▼
-                          </Button>
-                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              className="bg-yellow-400 hover:bg-yellow-500 text-black border-yellow-400 px-4"
+                            >
+                              Action ▼
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEdit(batch)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleToggleStatus(batch)}>
+                              {batch.is_enabled ? (
+                                <>
+                                  <PowerOff className="mr-2 h-4 w-4" />
+                                  Disable
+                                </>
+                              ) : (
+                                <>
+                                  <Power className="mr-2 h-4 w-4" />
+                                  Enable
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDelete(batch)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -187,6 +403,179 @@ export default function Batches() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Create Dialog */}
+        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Create New Batch</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmitCreate} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="batch_name">Batch Name</Label>
+                <Input
+                  id="batch_name"
+                  value={formData.batch_name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, batch_name: e.target.value }))}
+                  placeholder="Enter batch name"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="serial_number">Serial Number</Label>
+                <Input
+                  id="serial_number"
+                  value={formData.serial_number}
+                  onChange={(e) => setFormData(prev => ({ ...prev, serial_number: e.target.value }))}
+                  placeholder="Enter serial number"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="admin_name">Admin Name</Label>
+                <Input
+                  id="admin_name"
+                  value={formData.admin_name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, admin_name: e.target.value }))}
+                  placeholder="Enter admin name"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  value={formData.username}
+                  onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+                  placeholder="Enter username"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="max_students">Max Students</Label>
+                <Input
+                  id="max_students"
+                  type="number"
+                  value={formData.max_students}
+                  onChange={(e) => setFormData(prev => ({ ...prev, max_students: parseInt(e.target.value) || 0 }))}
+                  placeholder="Enter max students"
+                  min={1}
+                  required
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowCreateDialog(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? 'Creating...' : 'Create'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Dialog */}
+        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Batch</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmitEdit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit_batch_name">Batch Name</Label>
+                <Input
+                  id="edit_batch_name"
+                  value={formData.batch_name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, batch_name: e.target.value }))}
+                  placeholder="Enter batch name"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_serial_number">Serial Number</Label>
+                <Input
+                  id="edit_serial_number"
+                  value={formData.serial_number}
+                  onChange={(e) => setFormData(prev => ({ ...prev, serial_number: e.target.value }))}
+                  placeholder="Enter serial number"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_admin_name">Admin Name</Label>
+                <Input
+                  id="edit_admin_name"
+                  value={formData.admin_name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, admin_name: e.target.value }))}
+                  placeholder="Enter admin name"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_username">Username</Label>
+                <Input
+                  id="edit_username"
+                  value={formData.username}
+                  onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+                  placeholder="Enter username"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_max_students">Max Students</Label>
+                <Input
+                  id="edit_max_students"
+                  type="number"
+                  value={formData.max_students}
+                  onChange={(e) => setFormData(prev => ({ ...prev, max_students: parseInt(e.target.value) || 0 }))}
+                  placeholder="Enter max students"
+                  min={1}
+                  required
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowEditDialog(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={updateMutation.isPending}>
+                  {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the batch 
+                "{selectedBatch?.batch_name}" and all associated data.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleConfirmDelete}
+                className="bg-red-600 hover:bg-red-700"
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete Batch'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );
