@@ -1,35 +1,38 @@
+
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 
 import { AuthProvider as EnhancedAuthProvider } from '@/contexts/AuthContext';
 import Dashboard from '@/pages/Dashboard';
-import Students from '@/pages/students/Students';
 import { AddStudent } from '@/pages/students/AddStudent';
-import EditStudent from '@/pages/students/EditStudent';
-import ViewStudent from '@/pages/students/ViewStudent';
-import Teachers from '@/pages/teachers/Teachers';
-import AddTeacher from '@/pages/teachers/AddTeacher';
-import EditTeacher from '@/pages/teachers/EditTeacher';
-import ViewTeacher from '@/pages/teachers/ViewTeacher';
-import Courses from '@/pages/courses/Courses';
-import AddCourse from '@/pages/courses/AddCourse';
-import EditCourse from '@/pages/courses/EditCourse';
-import ViewCourse from '@/pages/courses/ViewCourse';
-import Batches from '@/pages/batches/Batches';
-import AddBatch from '@/pages/batches/AddBatch';
-import EditBatch from '@/pages/batches/EditBatch';
-import ViewBatch from '@/pages/batches/ViewBatch';
-import Attendance from '@/pages/attendance/Attendance';
-import Settings from '@/pages/Settings';
 import Login from '@/pages/Login';
-import ForgotPassword from '@/pages/ForgotPassword';
-import ResetPassword from '@/pages/ResetPassword';
-import Error404 from '@/pages/Error404';
-import Error500 from '@/pages/Error500';
 import { GlobalRDServiceProvider } from '@/contexts/GlobalRDServiceContext';
 
 const queryClient = new QueryClient();
+
+// Placeholder components for missing pages
+const Students = () => <div className="p-4">Students Page - Coming Soon</div>;
+const EditStudent = () => <div className="p-4">Edit Student Page - Coming Soon</div>;
+const ViewStudent = () => <div className="p-4">View Student Page - Coming Soon</div>;
+const Teachers = () => <div className="p-4">Teachers Page - Coming Soon</div>;
+const AddTeacher = () => <div className="p-4">Add Teacher Page - Coming Soon</div>;
+const EditTeacher = () => <div className="p-4">Edit Teacher Page - Coming Soon</div>;
+const ViewTeacher = () => <div className="p-4">View Teacher Page - Coming Soon</div>;
+const Courses = () => <div className="p-4">Courses Page - Coming Soon</div>;
+const AddCourse = () => <div className="p-4">Add Course Page - Coming Soon</div>;
+const EditCourse = () => <div className="p-4">Edit Course Page - Coming Soon</div>;
+const ViewCourse = () => <div className="p-4">View Course Page - Coming Soon</div>;
+const Batches = () => <div className="p-4">Batches Page - Coming Soon</div>;
+const AddBatch = () => <div className="p-4">Add Batch Page - Coming Soon</div>;
+const EditBatch = () => <div className="p-4">Edit Batch Page - Coming Soon</div>;
+const ViewBatch = () => <div className="p-4">View Batch Page - Coming Soon</div>;
+const Attendance = () => <div className="p-4">Attendance Page - Coming Soon</div>;
+const Settings = () => <div className="p-4">Settings Page - Coming Soon</div>;
+const ForgotPassword = () => <div className="p-4">Forgot Password Page - Coming Soon</div>;
+const ResetPassword = () => <div className="p-4">Reset Password Page - Coming Soon</div>;
+const Error404 = () => <div className="p-4">404 - Page Not Found</div>;
+const Error500 = () => <div className="p-4">500 - Internal Server Error</div>;
 
 function App() {
   return (
