@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -47,17 +46,13 @@ export function AddStudent() {
   const [fingerprintData, setFingerprintData] = useState<FingerprintData[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Updated to only 5 fingerprints
   const fingerNames = [
     "Right Thumb",
     "Right Index",
     "Right Middle", 
-    "Right Ring",
-    "Right Little",
-    "Left Thumb",
     "Left Index",
-    "Left Middle",
-    "Left Ring", 
-    "Left Little"
+    "Left Thumb"
   ];
 
   const {
@@ -80,8 +75,9 @@ export function AddStudent() {
     watchedFields.dateOfBirth,
   ].filter(Boolean).length;
 
+  // Updated calculation for 5 fingerprints
   const completionPercentage = Math.round(
-    ((completedRequiredFields / 5) * 50) + ((capturedFingerprints.length / 10) * 50)
+    ((completedRequiredFields / 5) * 50) + ((capturedFingerprints.length / 5) * 50)
   );
 
   const handleFingerprintCapture = (
@@ -119,7 +115,7 @@ export function AddStudent() {
     });
 
     toast.success(`${fingerNames[index]} captured successfully!`, {
-      description: `Quality: ${quality}% - ${capturedFingerprints.length + 1}/10 fingerprints captured`
+      description: `Quality: ${quality}% - ${capturedFingerprints.length + 1}/5 fingerprints captured`
     });
   };
 
@@ -174,7 +170,7 @@ export function AddStudent() {
                     Add New Student
                   </h1>
                   <p className="text-muted-foreground mt-2 text-lg">
-                    Complete student registration with biometric enrollment
+                    Complete student registration with biometric enrollment (5 fingerprints)
                   </p>
                 </div>
                 
@@ -215,6 +211,7 @@ export function AddStudent() {
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                      
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <Label htmlFor="name" className="text-sm font-medium flex items-center space-x-1">
@@ -382,7 +379,7 @@ export function AddStudent() {
 
               {/* Right Column - Fingerprint Capture */}
               <div className="space-y-6">
-                {/* Stats Cards */}
+                {/* Stats Cards - Updated for 5 fingerprints */}
                 <div className="grid grid-cols-2 gap-4">
                   <Card className="border-2 border-green-200 bg-green-50">
                     <CardContent className="p-4 text-center">
@@ -392,18 +389,18 @@ export function AddStudent() {
                   </Card>
                   <Card className="border-2 border-blue-200 bg-blue-50">
                     <CardContent className="p-4 text-center">
-                      <div className="text-2xl font-bold text-blue-600">{10 - capturedFingerprints.length}</div>
+                      <div className="text-2xl font-bold text-blue-600">{5 - capturedFingerprints.length}</div>
                       <div className="text-sm text-blue-700">Remaining</div>
                     </CardContent>
                   </Card>
                 </div>
 
-                {/* Fingerprint Capture Tabs */}
+                {/* Fingerprint Capture Tabs - Updated for 5 fingerprints */}
                 <Card className="border-2 border-primary/20 shadow-lg">
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <Fingerprint className="h-6 w-6 text-primary" />
-                      <span>Biometric Enrollment</span>
+                      <span>Biometric Enrollment (5 Fingerprints)</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
