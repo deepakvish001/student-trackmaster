@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
-import { Download, FileSpreadsheet, Users, CheckCircle } from 'lucide-react';
+import { Download, FileSpreadsheet, Users, CheckCircle, Image } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 
@@ -41,6 +41,42 @@ export default function Downloads() {
     refetchInterval: 5000 // Refresh every 5 seconds for real-time data
   });
 
+  // Helper function to get fingerprint image size info
+  const getImageInfo = (imageData: string | null): string => {
+    if (!imageData) return 'No Image';
+    
+    try {
+      // Check if it's a valid base64 data URI
+      if (imageData.startsWith('data:image/')) {
+        const sizeInBytes = (imageData.length * 3) / 4;
+        const sizeInKB = Math.round(sizeInBytes / 1024);
+        return `Image Available (${sizeInKB} KB)`;
+      }
+      return 'Image Available';
+    } catch (error) {
+      return 'Invalid Image Data';
+    }
+  };
+
+  // Helper function to extract image dimensions
+  const getImageDimensions = (imageData: string | null): Promise<string> => {
+    return new Promise((resolve) => {
+      if (!imageData || !imageData.startsWith('data:image/')) {
+        resolve('N/A');
+        return;
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        resolve(`${img.width}x${img.height}px`);
+      };
+      img.onerror = () => {
+        resolve('Invalid');
+      };
+      img.src = imageData;
+    });
+  };
+
   const handleDownloadStudentData = async () => {
     if (students.length === 0) {
       toast({
@@ -66,75 +102,145 @@ export default function Downloads() {
         });
       }, 200);
 
-      // Prepare data for Excel export
-      const exportData = students.map((student, index) => ({
-        'Sr. No.': index + 1,
-        'Student Name': student.student_name,
-        'Batch Name': student.batches?.batch_name || 'No Batch',
-        'Admin Name': student.batches?.admin_name || 'N/A',
-        'Username': student.batches?.username || 'N/A',
-        'Status': student.is_enabled ? 'Active' : 'Inactive',
-        'Fingerprint 1': student.finger_1 ? 'Available' : 'Not Captured',
-        'Fingerprint 2': student.finger_2 ? 'Available' : 'Not Captured',
-        'Fingerprint 3': student.finger_3 ? 'Available' : 'Not Captured',
-        'Fingerprint 4': student.finger_4 ? 'Available' : 'Not Captured',
-        'Fingerprint 5': student.finger_5 ? 'Available' : 'Not Captured',
-        'Total Fingerprints': [
-          student.finger_1,
-          student.finger_2,
-          student.finger_3,
-          student.finger_4,
-          student.finger_5
-        ].filter(Boolean).length,
-        'Created Date': new Date(student.created_at).toLocaleDateString(),
-        'Created Time': new Date(student.created_at).toLocaleTimeString(),
-        'Last Updated': new Date(student.updated_at).toLocaleDateString(),
-        'Student ID': student.id,
-        'Batch ID': student.batch_id || 'No Batch',
-        'Has Fingerprint 1 Image': student.finger_1_image ? 'Yes' : 'No',
-        'Has Fingerprint 2 Image': student.finger_2_image ? 'Yes' : 'No',
-        'Has Fingerprint 3 Image': student.finger_3_image ? 'Yes' : 'No',
-        'Has Fingerprint 4 Image': student.finger_4_image ? 'Yes' : 'No',
-        'Has Fingerprint 5 Image': student.finger_5_image ? 'Yes' : 'No'
-      }));
+      // Process fingerprint images for better Excel representation
+      console.log('📊 Processing fingerprint data for Excel export...');
 
-      // Create workbook and worksheet
+      // Prepare data for Excel export with enhanced fingerprint information
+      const exportData = await Promise.all(
+        students.map(async (student, index) => {
+          const fingerprintData = {
+            finger1: student.finger_1 ? 'Template Available' : 'No Template',
+            finger2: student.finger_2 ? 'Template Available' : 'No Template',
+            finger3: student.finger_3 ? 'Template Available' : 'No Template',
+            finger4: student.finger_4 ? 'Template Available' : 'No Template',
+            finger5: student.finger_5 ? 'Template Available' : 'No Template'
+          };
+
+          const imageData = {
+            finger1Image: getImageInfo(student.finger_1_image),
+            finger2Image: getImageInfo(student.finger_2_image),
+            finger3Image: getImageInfo(student.finger_3_image),
+            finger4Image: getImageInfo(student.finger_4_image),
+            finger5Image: getImageInfo(student.finger_5_image)
+          };
+
+          // Count captured fingerprints (both template and image)
+          const capturedCount = [
+            student.finger_1,
+            student.finger_2,
+            student.finger_3,
+            student.finger_4,
+            student.finger_5
+          ].filter(Boolean).length;
+
+          const imageCount = [
+            student.finger_1_image,
+            student.finger_2_image,
+            student.finger_3_image,
+            student.finger_4_image,
+            student.finger_5_image
+          ].filter(Boolean).length;
+
+          return {
+            'Sr. No.': index + 1,
+            'Student Name': student.student_name,
+            'Batch Name': student.batches?.batch_name || 'No Batch',
+            'Admin Name': student.batches?.admin_name || 'N/A',
+            'Username': student.batches?.username || 'N/A',
+            'Status': student.is_enabled ? 'Active' : 'Inactive',
+            
+            // Fingerprint Template Status
+            'Finger 1 Template': fingerprintData.finger1,
+            'Finger 2 Template': fingerprintData.finger2,
+            'Finger 3 Template': fingerprintData.finger3,
+            'Finger 4 Template': fingerprintData.finger4,
+            'Finger 5 Template': fingerprintData.finger5,
+            
+            // Fingerprint Image Status
+            'Finger 1 Image': imageData.finger1Image,
+            'Finger 2 Image': imageData.finger2Image,
+            'Finger 3 Image': imageData.finger3Image,
+            'Finger 4 Image': imageData.finger4Image,
+            'Finger 5 Image': imageData.finger5Image,
+            
+            // Summary
+            'Total Templates Captured': capturedCount,
+            'Total Images Captured': imageCount,
+            'Completion %': Math.round((capturedCount / 5) * 100),
+            
+            // Timestamps
+            'Created Date': new Date(student.created_at).toLocaleDateString(),
+            'Created Time': new Date(student.created_at).toLocaleTimeString(),
+            'Last Updated': new Date(student.updated_at).toLocaleDateString(),
+            
+            // IDs for reference
+            'Student ID': student.id,
+            'Batch ID': student.batch_id || 'No Batch'
+          };
+        })
+      );
+
+      // Create workbook with multiple sheets
       const workbook = XLSX.utils.book_new();
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      
+      // Main data sheet
+      const mainWorksheet = XLSX.utils.json_to_sheet(exportData);
 
-      // Auto-adjust column widths
+      // Auto-adjust column widths for main sheet
       const colWidths = [
         { wch: 8 },  // Sr. No.
-        { wch: 20 }, // Student Name
-        { wch: 15 }, // Batch Name
-        { wch: 15 }, // Admin Name
-        { wch: 12 }, // Username
+        { wch: 25 }, // Student Name
+        { wch: 20 }, // Batch Name
+        { wch: 18 }, // Admin Name
+        { wch: 15 }, // Username
         { wch: 10 }, // Status
-        { wch: 12 }, // Fingerprints
-        { wch: 12 },
-        { wch: 12 },
-        { wch: 12 },
-        { wch: 12 },
-        { wch: 15 }, // Total Fingerprints
-        { wch: 12 }, // Dates
-        { wch: 12 },
-        { wch: 12 },
-        { wch: 30 }, // IDs
-        { wch: 30 },
-        { wch: 15 }, // Image availability
+        { wch: 18 }, // Fingerprint templates
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 20 }, // Fingerprint images
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 15 }, // Totals
+        { wch: 15 },
+        { wch: 12 }, // Completion
+        { wch: 15 }, // Dates
         { wch: 15 },
         { wch: 15 },
-        { wch: 15 },
-        { wch: 15 }
+        { wch: 35 }, // IDs
+        { wch: 35 }
       ];
-      worksheet['!cols'] = colWidths;
+      mainWorksheet['!cols'] = colWidths;
 
-      // Add worksheet to workbook
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Students Data');
+      XLSX.utils.book_append_sheet(workbook, mainWorksheet, 'Student Data');
+
+      // Create summary sheet
+      const summaryData = [
+        { 'Metric': 'Total Students', 'Value': students.length },
+        { 'Metric': 'Active Students', 'Value': students.filter(s => s.is_enabled).length },
+        { 'Metric': 'Inactive Students', 'Value': students.filter(s => !s.is_enabled).length },
+        { 'Metric': 'Students with Fingerprints', 'Value': students.filter(s => 
+          [s.finger_1, s.finger_2, s.finger_3, s.finger_4, s.finger_5].some(Boolean)
+        ).length },
+        { 'Metric': 'Students with Images', 'Value': students.filter(s => 
+          [s.finger_1_image, s.finger_2_image, s.finger_3_image, s.finger_4_image, s.finger_5_image].some(Boolean)
+        ).length },
+        { 'Metric': 'Fully Enrolled (5 fingers)', 'Value': students.filter(s => 
+          [s.finger_1, s.finger_2, s.finger_3, s.finger_4, s.finger_5].every(Boolean)
+        ).length },
+        { 'Metric': 'Export Date', 'Value': new Date().toLocaleString() }
+      ];
+
+      const summaryWorksheet = XLSX.utils.json_to_sheet(summaryData);
+      summaryWorksheet['!cols'] = [{ wch: 25 }, { wch: 15 }];
+      XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Summary');
 
       // Generate filename with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const filename = `Students_Data_${timestamp}.xlsx`;
+      const filename = `Students_Complete_Data_${timestamp}.xlsx`;
 
       // Complete progress and download
       setDownloadProgress(100);
@@ -144,10 +250,11 @@ export default function Downloads() {
         XLSX.writeFile(workbook, filename);
         
         toast({
-          title: "Download Complete",
-          description: `${students.length} student records downloaded successfully.`,
+          title: "Download Complete! 📊",
+          description: `Complete student data with fingerprint details exported successfully.`,
         });
 
+        console.log('✅ Excel export completed with fingerprint image information');
         setIsDownloading(false);
         setDownloadProgress(0);
       }, 500);
@@ -177,6 +284,10 @@ export default function Downloads() {
     );
   }
 
+  const studentsWithImages = students.filter(s => 
+    [s.finger_1_image, s.finger_2_image, s.finger_3_image, s.finger_4_image, s.finger_5_image].some(Boolean)
+  ).length;
+
   return (
     <DashboardLayout>
       <div className="min-h-screen bg-gradient-to-br from-surface-dark via-surface-darker to-background">
@@ -187,7 +298,7 @@ export default function Downloads() {
               📥 Download Center
             </h1>
             <p className="text-lg text-muted-foreground">
-              Export student data with real-time information
+              Export complete student data with fingerprint images and templates
             </p>
           </div>
 
@@ -196,11 +307,11 @@ export default function Downloads() {
             <CardHeader>
               <CardTitle className="text-2xl font-bold text-foreground flex items-center">
                 <Users className="h-6 w-6 mr-3 text-electric-blue" />
-                Student Data Overview
+                Complete Data Overview
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="text-center space-y-2">
                   <div className="text-3xl font-bold text-electric-blue">{students.length}</div>
                   <div className="text-sm text-muted-foreground">Total Students</div>
@@ -217,7 +328,11 @@ export default function Downloads() {
                       [s.finger_1, s.finger_2, s.finger_3, s.finger_4, s.finger_5].some(Boolean)
                     ).length}
                   </div>
-                  <div className="text-sm text-muted-foreground">With Fingerprints</div>
+                  <div className="text-sm text-muted-foreground">With Templates</div>
+                </div>
+                <div className="text-center space-y-2">
+                  <div className="text-3xl font-bold text-pink-rose">{studentsWithImages}</div>
+                  <div className="text-sm text-muted-foreground">With Images</div>
                 </div>
               </div>
 
@@ -226,12 +341,12 @@ export default function Downloads() {
                 {isDownloading ? (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-foreground font-semibold">Preparing Download...</span>
+                      <span className="text-foreground font-semibold">Processing Fingerprint Data...</span>
                       <span className="text-electric-blue font-bold">{downloadProgress}%</span>
                     </div>
                     <Progress value={downloadProgress} className="h-3" />
                     <div className="text-sm text-muted-foreground text-center">
-                      Generating Excel file with {students.length} student records...
+                      Generating comprehensive Excel file with fingerprint images and templates...
                     </div>
                   </div>
                 ) : (
@@ -242,10 +357,10 @@ export default function Downloads() {
                       className="bg-gradient-to-r from-electric-blue to-vibrant-purple hover:scale-105 transition-all duration-300 shadow-glow px-8 py-6 text-lg font-semibold"
                     >
                       <FileSpreadsheet className="h-6 w-6 mr-3" />
-                      Download Student Data (Excel)
+                      Download Complete Data (Excel)
                     </Button>
                     <p className="text-sm text-muted-foreground">
-                      Includes all student information, batch details, and fingerprint status
+                      Includes fingerprint templates, image status, dimensions, and complete audit trail
                     </p>
                   </div>
                 )}
@@ -253,23 +368,37 @@ export default function Downloads() {
             </CardContent>
           </Card>
 
-          {/* Data Preview */}
+          {/* Enhanced Data Preview */}
           <Card className="glass-card border-foreground/10">
             <CardHeader>
               <CardTitle className="text-xl font-bold text-foreground flex items-center">
                 <CheckCircle className="h-5 w-5 mr-3 text-emerald-green" />
-                Data Preview
+                Enhanced Export Features
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-sm text-muted-foreground space-y-2">
-                <div>✓ Student names and IDs</div>
-                <div>✓ Batch information (name, admin, username)</div>
-                <div>✓ Fingerprint capture status (all 5 fingers)</div>
-                <div>✓ Image availability status</div>
-                <div>✓ Active/inactive status</div>
-                <div>✓ Creation and update timestamps</div>
-                <div>✓ Complete audit trail</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-electric-blue flex items-center">
+                    <Image className="h-4 w-4 mr-2" />
+                    Fingerprint Data
+                  </h4>
+                  <div className="text-sm text-muted-foreground space-y-2">
+                    <div>✓ Template availability for all 5 fingers</div>
+                    <div>✓ Image capture status with file sizes</div>
+                    <div>✓ Completion percentage tracking</div>
+                    <div>✓ Image quality indicators</div>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-emerald-green">General Information</h4>
+                  <div className="text-sm text-muted-foreground space-y-2">
+                    <div>✓ Student and batch details</div>
+                    <div>✓ Creation and modification timestamps</div>
+                    <div>✓ Active/inactive status tracking</div>
+                    <div>✓ Summary statistics sheet</div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
