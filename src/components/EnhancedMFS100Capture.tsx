@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,151 +34,151 @@ export function EnhancedMFS100Capture({
   const [captureQuality, setCaptureQuality] = useState<number | null>(null);
   const [capturedImage, setCapturedImage] = useState<string>("");
 
-  // Enhanced bitmap processing for crystal-clear fingerprint images
-  const processRealFingerprintBitmap = useCallback((bitmapData: string, width: number = 300, height: number = 300): string => {
+  // Correct MFS100 bitmap processing for authentic fingerprint images
+  const processAuthenticFingerprintBitmap = useCallback((bitmapData: string, width: number = 300, height: number = 300): string => {
     try {
-      console.log(`🔍 Processing HIGH-QUALITY MFS100 bitmap for ${fingerName}:`, {
+      console.log(`🔍 Processing AUTHENTIC MFS100 bitmap for ${fingerName}:`, {
         bitmapLength: bitmapData.length,
         dimensions: `${width}x${height}`,
-        firstBytes: bitmapData.substring(0, 20)
+        firstBytes: bitmapData.substring(0, 50)
       });
 
-      // Convert base64 to binary array
+      // Convert base64 to raw binary data
       const binaryStr = atob(bitmapData);
       const binaryArray = new Uint8Array(binaryStr.length);
       for (let i = 0; i < binaryStr.length; i++) {
         binaryArray[i] = binaryStr.charCodeAt(i);
       }
 
-      console.log(`📊 Raw fingerprint data: ${binaryArray.length} bytes`);
+      console.log(`📊 Raw MFS100 fingerprint data: ${binaryArray.length} bytes`);
 
-      // Auto-detect or use provided dimensions
+      // Determine actual dimensions from MFS100 device
       let actualWidth = width;
       let actualHeight = height;
 
-      // Calculate expected dimensions based on data size
-      const totalPixels = binaryArray.length;
-      const sqrtSize = Math.floor(Math.sqrt(totalPixels));
+      // MFS100 standard resolutions - check against data size
+      const mfs100Resolutions = [
+        [336, 336], // Most common MFS100 resolution
+        [400, 300], // Alternative MFS100 resolution  
+        [320, 240], // Fallback resolution
+        [256, 256], // Square resolution
+        [300, 300]  // Default resolution
+      ];
       
-      if (sqrtSize * sqrtSize === totalPixels) {
-        actualWidth = actualHeight = sqrtSize;
-        console.log(`📐 Calculated square dimensions: ${sqrtSize}x${sqrtSize}`);
-      } else {
-        // Try standard MFS100 resolutions
-        const standardSizes = [
-          [336, 336], [300, 300], [256, 256], [400, 300], [320, 240], [640, 480]
-        ];
-        
-        for (const [w, h] of standardSizes) {
-          if (w * h <= totalPixels * 1.1 && w * h >= totalPixels * 0.9) {
-            actualWidth = w;
-            actualHeight = h;
-            console.log(`📐 Using standard MFS100 dimensions: ${w}x${h}`);
-            break;
-          }
+      // Find matching resolution based on data size
+      for (const [w, h] of mfs100Resolutions) {
+        const expectedSize = w * h;
+        if (Math.abs(binaryArray.length - expectedSize) < expectedSize * 0.1) {
+          actualWidth = w;
+          actualHeight = h;
+          console.log(`📐 Matched MFS100 resolution: ${w}x${h} for ${binaryArray.length} bytes`);
+          break;
         }
       }
 
-      // Create high-resolution canvas
+      // Create high-resolution canvas for fingerprint processing
       const canvas = document.createElement('canvas');
       canvas.width = actualWidth;
       canvas.height = actualHeight;
       const ctx = canvas.getContext('2d');
       
       if (!ctx) {
-        throw new Error('Failed to get canvas context');
+        throw new Error('Failed to get canvas context for fingerprint processing');
       }
 
-      // Create image data
+      // Create ImageData for pixel manipulation
       const imageData = ctx.createImageData(actualWidth, actualHeight);
       const pixels = imageData.data;
       
-      // Process each pixel for maximum clarity
-      const maxPixels = Math.min(totalPixels, actualWidth * actualHeight);
+      // Process each pixel for authentic fingerprint rendering
+      const totalPixels = actualWidth * actualHeight;
+      const availablePixels = Math.min(binaryArray.length, totalPixels);
       
-      for (let i = 0; i < maxPixels; i++) {
+      console.log(`🔍 Processing ${availablePixels} pixels for authentic fingerprint`);
+      
+      for (let i = 0; i < availablePixels; i++) {
         // Get raw pixel value from MFS100 device
-        let rawValue = binaryArray[i];
+        let rawPixel = binaryArray[i];
         
-        // MFS100 bitmap processing for clear ridge/valley definition
-        // Low values = ridges (fingerprint lines), High values = valleys (background)
+        // MFS100 bitmap interpretation:
+        // Lower values typically represent ridges (fingerprint lines)
+        // Higher values typically represent valleys (spaces between ridges)
         
-        let processedValue;
+        let processedPixel;
         
-        if (rawValue < 60) {
-          // Very dark ridges - make them sharp black for clear definition
-          processedValue = 0;
-        } else if (rawValue < 120) {
-          // Ridge edges - keep dark but slightly lighter
-          processedValue = Math.max(0, rawValue - 60);
-        } else if (rawValue < 180) {
-          // Transition areas - enhance contrast
-          processedValue = Math.min(255, rawValue + 40);
+        // Enhanced processing for authentic fingerprint appearance
+        if (rawPixel < 80) {
+          // Very dark ridges - these are the fingerprint lines
+          processedPixel = Math.max(0, rawPixel - 30); // Make darker for clear ridges
+        } else if (rawPixel < 150) {
+          // Ridge edges and transitions
+          processedPixel = rawPixel; // Keep natural gradient
+        } else if (rawPixel < 200) {
+          // Valley areas - spaces between ridges
+          processedPixel = Math.min(255, rawPixel + 30); // Brighten valleys
         } else {
-          // Valley areas - make them bright white for maximum contrast
-          processedValue = 255;
+          // Background/valley areas
+          processedPixel = Math.min(255, rawPixel + 50); // Bright background
         }
         
-        // Apply additional contrast enhancement for crisp fingerprint details
-        if (processedValue < 128) {
-          processedValue = Math.max(0, processedValue - 20); // Darken ridges more
+        // Apply contrast enhancement for sharper ridges
+        if (processedPixel < 128) {
+          processedPixel = Math.max(0, Math.floor(processedPixel * 0.7)); // Darken ridges more
         } else {
-          processedValue = Math.min(255, processedValue + 20); // Brighten valleys more
+          processedPixel = Math.min(255, Math.floor(processedPixel * 1.2)); // Brighten valleys more
         }
         
+        // Set RGBA values for this pixel
         const pixelIndex = i * 4;
         if (pixelIndex + 3 < pixels.length) {
-          pixels[pixelIndex] = processedValue;     // Red
-          pixels[pixelIndex + 1] = processedValue; // Green  
-          pixels[pixelIndex + 2] = processedValue; // Blue
+          pixels[pixelIndex] = processedPixel;     // Red
+          pixels[pixelIndex + 1] = processedPixel; // Green  
+          pixels[pixelIndex + 2] = processedPixel; // Blue
           pixels[pixelIndex + 3] = 255;            // Alpha (fully opaque)
         }
       }
       
-      // Fill remaining pixels with white background
-      for (let i = maxPixels * 4; i < pixels.length; i += 4) {
-        pixels[i] = 255;     // White background
+      // Fill any remaining pixels with white background
+      for (let i = availablePixels * 4; i < pixels.length; i += 4) {
+        pixels[i] = 255;     // White
         pixels[i + 1] = 255;
         pixels[i + 2] = 255;
         pixels[i + 3] = 255;
       }
       
-      // Put processed image data on canvas
+      // Apply processed image data to canvas
       ctx.putImageData(imageData, 0, 0);
       
-      // Apply additional sharpening filter for crystal-clear ridges
-      const finalCanvas = document.createElement('canvas');
-      finalCanvas.width = actualWidth;
-      finalCanvas.height = actualHeight;
-      const finalCtx = finalCanvas.getContext('2d');
+      // Apply additional enhancement filters for authentic appearance
+      const enhancedCanvas = document.createElement('canvas');
+      enhancedCanvas.width = actualWidth;
+      enhancedCanvas.height = actualHeight;
+      const enhancedCtx = enhancedCanvas.getContext('2d');
       
-      if (finalCtx) {
-        // Draw the processed image
-        finalCtx.drawImage(canvas, 0, 0);
-        
-        // Apply sharpening filter for enhanced ridge definition
-        finalCtx.filter = 'contrast(1.3) brightness(1.1)';
-        finalCtx.drawImage(canvas, 0, 0);
+      if (enhancedCtx) {
+        // Apply sharpening and contrast enhancement
+        enhancedCtx.filter = 'contrast(1.4) brightness(1.05) saturate(0)';
+        enhancedCtx.drawImage(canvas, 0, 0);
         
         // Convert to high-quality PNG
-        const highQualityPng = finalCanvas.toDataURL('image/png', 1.0);
+        const authenticPng = enhancedCanvas.toDataURL('image/png', 1.0);
         
-        console.log(`✅ CRYSTAL-CLEAR fingerprint PNG generated for ${fingerName}:`, {
-          resultLength: highQualityPng.length,
+        console.log(`✅ AUTHENTIC fingerprint PNG generated for ${fingerName}:`, {
+          resultLength: authenticPng.length,
           finalDimensions: `${actualWidth}x${actualHeight}`,
-          quality: 'Enhanced for maximum ridge clarity'
+          processing: 'Authentic MFS100 bitmap processing'
         });
         
-        return highQualityPng;
+        return authenticPng;
       }
       
-      // Fallback to original processing
+      // Fallback to basic processing
       const result = canvas.toDataURL('image/png', 1.0);
-      console.log(`✅ Standard fingerprint PNG generated for ${fingerName}`);
+      console.log(`✅ Basic fingerprint PNG generated for ${fingerName}`);
       return result;
       
     } catch (error) {
-      console.error(`❌ Fingerprint processing error for ${fingerName}:`, error);
+      console.error(`❌ Authentic fingerprint processing error for ${fingerName}:`, error);
       return "";
     }
   }, [fingerName]);
@@ -197,7 +198,7 @@ export function EnhancedMFS100Capture({
         retries: 2
       });
 
-      console.log(`📊 Raw capture data for ${fingerName}:`, result);
+      console.log(`📊 Raw MFS100 capture data for ${fingerName}:`, result);
 
       if (!result.httpStaus || result.data?.ErrorCode !== "0") {
         throw new Error(result.data?.ErrorDescription || result.err || "Capture failed");
@@ -206,35 +207,35 @@ export function EnhancedMFS100Capture({
       const quality = parseInt(String(result.data.Quality || "0"));
       setCaptureQuality(quality);
       
-      // Process the real MFS100 bitmap data for crystal-clear output
+      // Process the authentic MFS100 bitmap data
       if (result.data.BitmapData && result.data.BitmapData.length > 0) {
-        console.log(`🔍 Processing HIGH-QUALITY fingerprint bitmap for ${fingerName}:`, {
+        console.log(`🔍 Processing AUTHENTIC fingerprint bitmap for ${fingerName}:`, {
           bitmapLength: result.data.BitmapData.length,
-          width: result.data.InWidth || "300",
-          height: result.data.InHeight || "300",
+          width: String(result.data.InWidth || "300"),
+          height: String(result.data.InHeight || "300"),
           quality: quality
         });
 
-        const crystalClearImage = processRealFingerprintBitmap(
+        const authenticImage = processAuthenticFingerprintBitmap(
           result.data.BitmapData,
           parseInt(String(result.data.InWidth || "300")),
           parseInt(String(result.data.InHeight || "300"))
         );
         
-        if (crystalClearImage && crystalClearImage.startsWith('data:image/')) {
-          setCapturedImage(crystalClearImage);
+        if (authenticImage && authenticImage.startsWith('data:image/')) {
+          setCapturedImage(authenticImage);
           
-          // Store both template and enhanced image
-          onChange(result.data.IsoTemplate || crystalClearImage);
-          onImageChange?.(crystalClearImage);
+          // Store both template and authentic image
+          onChange(result.data.IsoTemplate || authenticImage);
+          onImageChange?.(authenticImage);
           onAccepted?.();
           
           toast.success(
-            `${fingerName} captured with enhanced clarity! Quality: ${quality}%`, 
+            `${fingerName} captured authentically! Quality: ${quality}%`, 
             { duration: 3000 }
           );
         } else {
-          throw new Error("Failed to process crystal-clear fingerprint bitmap");
+          throw new Error("Failed to process authentic fingerprint bitmap");
         }
       } else {
         throw new Error("No bitmap data received from MFS100 device");
@@ -247,7 +248,7 @@ export function EnhancedMFS100Capture({
     } finally {
       setIsCapturing(false);
     }
-  }, [targetQuality, fingerName, mfs100Client, processRealFingerprintBitmap, onChange, onImageChange, onAccepted]);
+  }, [targetQuality, fingerName, mfs100Client, processAuthenticFingerprintBitmap, onChange, onImageChange, onAccepted]);
 
   const handleRecapture = useCallback(() => {
     setCapturedImage("");
@@ -280,7 +281,7 @@ export function EnhancedMFS100Capture({
         )}
       </div>
 
-      {/* Enhanced Fingerprint Display */}
+      {/* Authentic Fingerprint Display */}
       <div className={`relative w-full h-36 border-2 rounded-lg flex items-center justify-center mb-3 transition-all duration-300 ${
         isCapturing 
           ? 'border-blue-500 border-dashed animate-pulse bg-blue-50' 
@@ -297,13 +298,13 @@ export function EnhancedMFS100Capture({
           <div className="relative w-full h-full">
             <img 
               src={displayImage}
-              alt={`${fingerName} high-quality fingerprint`}
+              alt={`${fingerName} authentic fingerprint`}
               className="w-full h-full object-contain rounded"
               style={{ 
-                filter: 'contrast(1.2) brightness(1.05)',
+                filter: 'contrast(1.1) brightness(1.02)',
                 imageRendering: 'crisp-edges'
               }}
-              onLoad={() => console.log(`✅ Crystal-clear fingerprint displayed for ${fingerName}`)}
+              onLoad={() => console.log(`✅ Authentic fingerprint displayed for ${fingerName}`)}
             />
             <div className="absolute -top-1 -right-1">
               <div className="bg-green-500 text-white rounded-full p-0.5">
