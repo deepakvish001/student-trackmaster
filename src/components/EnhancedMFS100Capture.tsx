@@ -52,7 +52,7 @@ export function EnhancedMFS100Capture({
     resetCapture
   } = useFingerprintCaptureState();
 
-  // Enhanced bitmap processing to show real fingerprint data
+  // Enhanced bitmap processing to generate proper PNG images
   const processFingerprintBitmap = useCallback((bitmapData: string, width?: number | string, height?: number | string): string => {
     try {
       if (!bitmapData || bitmapData.length === 0) {
@@ -60,55 +60,69 @@ export function EnhancedMFS100Capture({
         return "";
       }
 
-      // Parse dimensions with robust fallbacks
+      // Parse dimensions with robust validation
       let validWidth = 256;
       let validHeight = 256;
 
-      if (typeof width === 'number' && width > 0) {
+      // Parse width
+      if (typeof width === 'number' && width > 0 && Number.isFinite(width)) {
         validWidth = Math.floor(width);
       } else if (typeof width === 'string') {
-        const parsed = parseInt(width, 10);
-        if (!isNaN(parsed) && parsed > 0) {
-          validWidth = parsed;
+        const parsed = parseFloat(width);
+        if (!isNaN(parsed) && parsed > 0 && Number.isFinite(parsed)) {
+          validWidth = Math.floor(parsed);
         }
       }
 
-      if (typeof height === 'number' && height > 0) {
+      // Parse height
+      if (typeof height === 'number' && height > 0 && Number.isFinite(height)) {
         validHeight = Math.floor(height);
       } else if (typeof height === 'string') {
-        const parsed = parseInt(height, 10);
-        if (!isNaN(parsed) && parsed > 0) {
-          validHeight = parsed;
+        const parsed = parseFloat(height);
+        if (!isNaN(parsed) && parsed > 0 && Number.isFinite(parsed)) {
+          validHeight = Math.floor(parsed);
         }
       }
 
+      // Convert base64 bitmap data
       const binaryData = atob(bitmapData);
+      const totalBytes = binaryData.length;
       
-      // Try to calculate dimensions from data if invalid
-      if (validWidth <= 0 || validHeight <= 0) {
-        const totalPixels = binaryData.length;
-        const possibleSize = Math.sqrt(totalPixels);
+      console.log(`🔍 Processing fingerprint bitmap for ${fingerName}:`, {
+        originalDataLength: binaryData.length,
+        proposedDimensions: `${validWidth}x${validHeight}`,
+        expectedPixels: validWidth * validHeight
+      });
+
+      // Smart dimension calculation from data if invalid
+      if (validWidth <= 0 || validHeight <= 0 || validWidth * validHeight > totalBytes * 2) {
+        const possibleSize = Math.floor(Math.sqrt(totalBytes));
         
-        if (possibleSize > 0 && Number.isInteger(possibleSize)) {
+        if (possibleSize >= 200 && possibleSize <= 500) {
           validWidth = validHeight = possibleSize;
+          console.log(`📐 Using calculated square dimensions: ${possibleSize}x${possibleSize}`);
         } else {
-          // Common MFS100 device sizes
-          const commonSizes = [[256, 256], [300, 300], [320, 240], [400, 400]];
+          // Try common MFS100 device sizes
+          const commonSizes = [
+            [256, 256], [300, 300], [320, 240], [400, 300], [256, 360]
+          ];
+          
           for (const [w, h] of commonSizes) {
-            if (w * h <= totalPixels) {
+            if (w * h <= totalBytes && totalBytes >= (w * h * 0.8)) {
               validWidth = w;
               validHeight = h;
+              console.log(`📐 Using fallback dimensions for ${fingerName}: ${w}x${h} (bitmap length: ${totalBytes})`);
               break;
             }
           }
         }
       }
 
-      console.log(`🔍 Processing fingerprint bitmap for ${fingerName}:`, {
-        dataLength: binaryData.length,
-        dimensions: `${validWidth}x${validHeight}`,
-        expectedPixels: validWidth * validHeight
-      });
+      // Final validation
+      if (validWidth <= 0 || validHeight <= 0 || !Number.isInteger(validWidth) || !Number.isInteger(validHeight)) {
+        console.error('❌ Invalid final dimensions:', { validWidth, validHeight });
+        return "";
+      }
       
       const canvas = document.createElement('canvas');
       canvas.width = validWidth;
@@ -123,17 +137,24 @@ export function EnhancedMFS100Capture({
       const data = imageData.data;
       
       // Process pixels to show actual fingerprint patterns
-      const maxPixels = Math.min(binaryData.length, validWidth * validHeight, data.length / 4);
+      const maxPixels = Math.min(totalBytes, validWidth * validHeight);
       
       for (let i = 0; i < maxPixels; i++) {
         // Get raw pixel value from MFS100 device
         let pixelValue = binaryData.charCodeAt(i);
         
-        // Invert pixel values (MFS100 devices typically return inverted images)
+        // MFS100 devices typically return inverted grayscale values
+        // Invert to show ridges as dark lines on light background
         pixelValue = 255 - pixelValue;
         
-        // Apply contrast enhancement to make ridges more visible
-        pixelValue = Math.min(255, Math.max(0, pixelValue * 1.4 + 15));
+        // Enhanced contrast and sharpening for better fingerprint visibility
+        // Apply gamma correction for better ridge definition
+        let normalized = pixelValue / 255;
+        normalized = Math.pow(normalized, 0.7); // Gamma correction
+        pixelValue = Math.floor(normalized * 255);
+        
+        // Additional contrast enhancement
+        pixelValue = Math.min(255, Math.max(0, pixelValue * 1.5 - 30));
         
         const pixelIndex = i * 4;
         if (pixelIndex + 3 < data.length) {
@@ -146,12 +167,13 @@ export function EnhancedMFS100Capture({
       
       ctx.putImageData(imageData, 0, 0);
       
-      // Convert to high-quality PNG
+      // Convert to high-quality PNG with maximum quality
       const result = canvas.toDataURL('image/png', 1.0);
       
-      console.log(`✅ Fingerprint image processed successfully for ${fingerName}:`, {
+      console.log(`✅ Fingerprint PNG image generated for ${fingerName}:`, {
         resultLength: result.length,
-        finalDimensions: `${validWidth}x${validHeight}`
+        finalDimensions: `${validWidth}x${validHeight}`,
+        format: 'PNG'
       });
       
       return result;
@@ -160,6 +182,20 @@ export function EnhancedMFS100Capture({
       console.error(`❌ Fingerprint bitmap processing error for ${fingerName}:`, error);
       return "";
     }
+  }, [fingerName]);
+
+  // Function to download the processed image
+  const downloadFingerprintImage = useCallback((imageData: string, filename?: string) => {
+    if (!imageData) return;
+    
+    const link = document.createElement('a');
+    link.href = imageData;
+    link.download = filename || `${fingerName.replace(/\s+/g, '_')}_fingerprint.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success(`${fingerName} image downloaded as PNG`);
   }, [fingerName]);
 
   const handleCapture = useCallback(async () => {
@@ -191,7 +227,7 @@ export function EnhancedMFS100Capture({
       
       let processedImage = "";
 
-      // Process the raw bitmap data to show real fingerprint
+      // Process the raw bitmap data to generate PNG image
       if (result.data.BitmapData) {
         console.log(`📊 Raw capture data for ${fingerName}:`, {
           bitmapLength: result.data.BitmapData.length,
@@ -213,10 +249,19 @@ export function EnhancedMFS100Capture({
             quality: quality
           });
 
-          toast.success(`${fingerName} captured successfully! Quality: ${quality}%`);
+          toast.success(
+            `${fingerName} captured successfully! Quality: ${quality}%`, 
+            {
+              description: "Click to download PNG image",
+              action: {
+                label: "Download PNG",
+                onClick: () => downloadFingerprintImage(processedImage)
+              }
+            }
+          );
           setCaptureProgress(prev => ({ ...prev, progress: 100 }));
         } else {
-          throw new Error("Failed to process fingerprint image - could not generate bitmap");
+          throw new Error("Failed to process fingerprint image - could not generate PNG");
         }
       } else {
         throw new Error("No fingerprint bitmap data received from device");
@@ -240,20 +285,26 @@ export function EnhancedMFS100Capture({
         });
       }, 2000);
     }
-  }, [targetQuality, fingerName, startCapture, showPreview, resetCapture, mfs100Client, processFingerprintBitmap]);
+  }, [targetQuality, fingerName, startCapture, showPreview, resetCapture, mfs100Client, processFingerprintBitmap, downloadFingerprintImage]);
 
   const handleAcceptCapture = useCallback(() => {
     if (!captureData) return;
 
-    // Save both the template and the image
+    // Save both the template and the processed PNG image
     onChange(captureData.template || captureData.imageData);
     onImageChange?.(captureData.imageData);
     
     acceptCapture();
     onAccepted?.();
     
-    toast.success(`${fingerName} accepted and saved!`);
-  }, [captureData, onChange, onImageChange, acceptCapture, onAccepted, fingerName]);
+    toast.success(`${fingerName} PNG image accepted and saved!`, {
+      description: "High-quality fingerprint image stored",
+      action: {
+        label: "Download",
+        onClick: () => downloadFingerprintImage(captureData.imageData)
+      }
+    });
+  }, [captureData, onChange, onImageChange, acceptCapture, onAccepted, fingerName, downloadFingerprintImage]);
 
   const handleRecapture = useCallback(() => {
     resetCapture();
@@ -308,12 +359,13 @@ export function EnhancedMFS100Capture({
           <div className="relative w-full h-full">
             <img 
               src={value}
-              alt={`${fingerName} fingerprint`}
+              alt={`${fingerName} fingerprint PNG`}
               className="w-full h-full object-contain rounded"
               style={{ 
-                filter: 'contrast(1.3) brightness(1.1)',
-                imageRendering: 'pixelated'
+                filter: 'contrast(1.2) brightness(1.05)',
+                imageRendering: 'crisp-edges'
               }}
+              onLoad={() => console.log(`✅ Fingerprint PNG loaded for ${fingerName}`)}
             />
             {captureState === 'accepted' && (
               <div className="absolute -top-1 -right-1">
@@ -351,7 +403,7 @@ export function EnhancedMFS100Capture({
           ? 'Capturing...' 
           : captureState === 'accepted' && value
             ? 'Recapture'
-            : 'Capture'
+            : 'Capture PNG'
         }
       </Button>
 
