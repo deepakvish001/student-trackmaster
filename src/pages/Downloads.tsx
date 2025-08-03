@@ -65,7 +65,7 @@ export default function Downloads() {
         return;
       }
 
-      const img = new Image();
+      const img = document.createElement('img');
       img.onload = () => {
         resolve(`${img.width}x${img.height}px`);
       };
