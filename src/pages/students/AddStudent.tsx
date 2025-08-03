@@ -1,8 +1,9 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { UserPlus, Users, GraduationCap, Fingerprint } from "lucide-react";
+import { UserPlus, Users, GraduationCap, Fingerprint, Save, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { GlobalRDServiceProvider } from '@/contexts/GlobalRDServiceContext';
 import { GlobalConnectionTestButton } from '@/components/rd/GlobalConnectionTestButton';
@@ -11,6 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { RealTimeStudentForm } from '@/components/forms/RealTimeStudentForm';
 import { RealTimeFingerprintCapture } from '@/components/fingerprint/RealTimeFingerprintCapture';
+import { supabase } from '@/integrations/supabase/client';
+import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 
 interface FingerprintData {
   index: number;
@@ -22,9 +25,12 @@ interface FingerprintData {
 
 export function AddStudent() {
   const navigate = useNavigate();
+  const { user } = useEnhancedAuth();
   const [studentId, setStudentId] = useState<string>("");
   const [capturedFingerprints, setCapturedFingerprints] = useState<number[]>([]);
   const [fingerprintData, setFingerprintData] = useState<FingerprintData[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
 
   // Updated to only 5 fingerprints
   const fingerNames = [
@@ -69,6 +75,73 @@ export function AddStudent() {
     });
   };
 
+  // Check if all required data is complete
+  const isDataComplete = studentId && capturedFingerprints.length === 5;
+
+  const handleFinalSave = async () => {
+    if (!studentId || !user?.id || capturedFingerprints.length !== 5) {
+      toast.error("Please complete all required information and capture all fingerprints");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      
+      // Final verification - check if student exists and has all data
+      const { data: student, error: studentError } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', studentId)
+        .single();
+
+      if (studentError || !student) {
+        toast.error("Student record not found. Please try again.");
+        return;
+      }
+
+      // Verify all fingerprints are saved
+      const { data: fingerprints, error: fpError } = await supabase
+        .from('student_fingerprints')
+        .select('finger_index')
+        .eq('student_id', studentId);
+
+      if (fpError) {
+        toast.error("Error verifying fingerprint data");
+        return;
+      }
+
+      const savedFingerprints = fingerprints?.map(fp => fp.finger_index) || [];
+      const expectedFingerprints = [0, 1, 2, 3, 4];
+      const allFingerprintsSaved = expectedFingerprints.every(index => 
+        savedFingerprints.includes(index)
+      );
+
+      if (!allFingerprintsSaved) {
+        toast.error("Some fingerprints are missing. Please capture all fingerprints.");
+        return;
+      }
+
+      // Mark as completed
+      setIsCompleted(true);
+      
+      toast.success("Student enrollment completed successfully!", {
+        description: `${student.student_name} has been fully enrolled with all fingerprints`,
+        duration: 5000
+      });
+
+      // Redirect after a delay
+      setTimeout(() => {
+        navigate('/students');
+      }, 2000);
+
+    } catch (error) {
+      console.error('Final save error:', error);
+      toast.error("Error completing enrollment. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <GlobalRDServiceProvider>
       <DashboardLayout>
@@ -100,6 +173,12 @@ export function AddStudent() {
                   <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                     🔴 Real-time Mode
                   </Badge>
+                  {isCompleted && (
+                    <Badge className="bg-green-500 text-white">
+                      <CheckCircle2 className="h-4 w-4 mr-1" />
+                      Completed
+                    </Badge>
+                  )}
                 </div>
               </div>
             </div>
@@ -186,6 +265,60 @@ export function AddStudent() {
               </CardContent>
             </Card>
 
+            {/* Save Button Section */}
+            {isDataComplete && !isCompleted && (
+              <Card className="shadow-lg border-0 bg-gradient-to-r from-green-50 to-emerald-50">
+                <CardContent className="p-6">
+                  <div className="text-center space-y-4">
+                    <div className="flex items-center justify-center space-x-2 text-green-700">
+                      <CheckCircle2 className="h-6 w-6" />
+                      <h3 className="text-xl font-semibold">Ready to Complete Enrollment</h3>
+                    </div>
+                    <p className="text-green-600 mb-6">
+                      All student information and fingerprints have been captured successfully.
+                      Click the button below to finalize the enrollment.
+                    </p>
+                    <Button 
+                      onClick={handleFinalSave}
+                      disabled={isSaving}
+                      size="lg"
+                      className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg font-medium"
+                    >
+                      {isSaving ? (
+                        <>
+                          <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
+                          Completing Enrollment...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-5 w-5" />
+                          Complete Student Enrollment
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Completion Message */}
+            {isCompleted && (
+              <Card className="shadow-lg border-0 bg-gradient-to-r from-green-100 to-emerald-100">
+                <CardContent className="p-6">
+                  <div className="text-center space-y-4">
+                    <div className="flex items-center justify-center space-x-2 text-green-700">
+                      <CheckCircle2 className="h-8 w-8" />
+                      <h3 className="text-2xl font-bold">Enrollment Completed!</h3>
+                    </div>
+                    <p className="text-green-700 text-lg">
+                      Student has been successfully enrolled with all biometric data.
+                      Redirecting to student list...
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Real-time Summary */}
             <Card className="shadow-lg border-0 bg-gradient-to-r from-blue-50 to-indigo-50">
               <CardContent className="p-6">
@@ -199,6 +332,10 @@ export function AddStudent() {
                     <div className="flex items-center space-x-2">
                       <div className={`w-3 h-3 rounded-full ${capturedFingerprints.length > 0 ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                       <span>Fingerprints: {capturedFingerprints.length}/5 Saved</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-3 h-3 rounded-full ${isDataComplete ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                      <span>Status: {isCompleted ? 'Completed' : isDataComplete ? 'Ready to Save' : 'In Progress'}</span>
                     </div>
                   </div>
                   <p className="text-xs text-slate-600 mt-3">
