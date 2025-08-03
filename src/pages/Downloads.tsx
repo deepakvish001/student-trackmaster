@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -46,30 +45,42 @@ export default function Downloads() {
     refetchInterval: 5000 // Refresh every 5 seconds for real-time data
   });
 
-  // Helper function to convert base64 image to blob for Excel embedding
+  // Helper function to validate and process image data
+  const isValidImageData = (imageData: string | null): boolean => {
+    if (!imageData || typeof imageData !== 'string') {
+      return false;
+    }
+    
+    // Check for valid data URL format
+    if (imageData.startsWith('data:image/')) {
+      return true;
+    }
+    
+    // Check for base64 data without prefix (length check for substantial data)
+    if (imageData.length > 10000) {
+      return true;
+    }
+    
+    return false;
+  };
+
+  // Helper function to convert base64 image data for Excel
   const processImageForExcel = (imageData: string | null): string => {
-    if (!imageData) {
-      return 'No Image Captured';
+    if (!isValidImageData(imageData)) {
+      return 'No Image Available';
     }
     
     try {
-      // Check if it's a valid data URL
-      if (imageData.startsWith('data:image/')) {
-        // Extract the base64 part and get image info
-        const base64Data = imageData.split(',')[1];
-        const mimeType = imageData.split(';')[0].split('/')[1]?.toUpperCase() || 'IMAGE';
-        const sizeInKB = Math.round((base64Data.length * 0.75) / 1024);
-        
-        // For Excel, we'll include the full base64 data URI
-        // Excel can display images from data URLs in newer versions
-        return imageData;
+      const validImageData = imageData as string;
+      
+      // If it's already a data URL, return it
+      if (validImageData.startsWith('data:image/')) {
+        return validImageData;
       }
       
-      // If it's a long string that might be base64 without data URL prefix
-      if (imageData.length > 10000) {
-        // Try to create a data URL
-        const dataUrl = `data:image/png;base64,${imageData}`;
-        return dataUrl;
+      // If it's raw base64, add the data URL prefix
+      if (validImageData.length > 10000) {
+        return `data:image/png;base64,${validImageData}`;
       }
       
       return 'Invalid Image Format';
@@ -104,9 +115,9 @@ export default function Downloads() {
         });
       }, 200);
 
-      console.log('📊 Processing student data with actual fingerprint images for Excel export...');
+      console.log('📊 Processing student data with fingerprint images for Excel export...');
 
-      // Prepare data for Excel export with processed images
+      // Prepare data for Excel export
       const exportData = students.map((student, index) => {
         const row: any = {
           'Sr. No.': index + 1,
@@ -117,67 +128,61 @@ export default function Downloads() {
         };
 
         // Process each fingerprint image
-        for (let i = 1; i <= 5; i++) {
-          const fingerKey = `finger_${i}_image` as keyof typeof student;
-          const imageData = student[fingerKey];
+        const fingerKeys = ['finger_1_image', 'finger_2_image', 'finger_3_image', 'finger_4_image', 'finger_5_image'];
+        
+        fingerKeys.forEach((key, i) => {
+          const imageData = student[key as keyof typeof student] as string | null;
+          const processedImage = processImageForExcel(imageData);
+          row[`Finger ${i + 1} Image`] = processedImage;
           
-          if (imageData && (imageData.startsWith('data:image/') || imageData.length > 10000)) {
-            // Store the actual image data for Excel
-            row[`Finger ${i} Image`] = processImageForExcel(imageData);
-            console.log(`✅ Processed image data for student ${student.student_name}, finger ${i}`);
+          if (isValidImageData(imageData)) {
+            console.log(`✅ Processed image data for student ${student.student_name}, finger ${i + 1}`);
           } else {
-            row[`Finger ${i} Image`] = 'No Image Captured';
-            console.log(`❌ No valid image data for student ${student.student_name}, finger ${i}`);
+            console.log(`❌ No valid image data for student ${student.student_name}, finger ${i + 1}`);
           }
-        }
+        });
 
         return row;
       });
 
-      // Create workbook with enhanced image handling
+      // Create workbook
       const workbook = XLSX.utils.book_new();
       
       // Create main worksheet
       const mainWorksheet = XLSX.utils.json_to_sheet(exportData);
 
-      // Auto-adjust column widths for better readability
+      // Auto-adjust column widths
       const colWidths = [
         { wch: 8 },  // Sr. No.
         { wch: 25 }, // Student Name
         { wch: 15 }, // Mobile Number
         { wch: 20 }, // Batch Name
         { wch: 30 }, // Address
-        { wch: 50 }, // Finger 1 Image
-        { wch: 50 }, // Finger 2 Image
-        { wch: 50 }, // Finger 3 Image
-        { wch: 50 }, // Finger 4 Image
-        { wch: 50 }  // Finger 5 Image
+        { wch: 30 }, // Finger 1 Image
+        { wch: 30 }, // Finger 2 Image
+        { wch: 30 }, // Finger 3 Image
+        { wch: 30 }, // Finger 4 Image
+        { wch: 30 }  // Finger 5 Image
       ];
       mainWorksheet['!cols'] = colWidths;
 
-      // Set row heights to accommodate images
-      const rowHeights = [];
-      for (let i = 0; i <= exportData.length; i++) {
-        rowHeights.push({ hpx: i === 0 ? 30 : 100 }); // Taller rows for images
-      }
-      mainWorksheet['!rows'] = rowHeights;
+      XLSX.utils.book_append_sheet(workbook, mainWorksheet, 'Students with Fingerprints');
 
-      XLSX.utils.book_append_sheet(workbook, mainWorksheet, 'Students with Fingerprint Images');
-
-      // Create summary sheet
-      const studentsWithImages = students.filter(s => 
-        [s.finger_1_image, s.finger_2_image, s.finger_3_image, s.finger_4_image, s.finger_5_image]
-        .some(img => img && (img.startsWith('data:image/') || img.length > 10000))
+      // Calculate statistics
+      const studentsWithImages = students.filter(student => 
+        ['finger_1_image', 'finger_2_image', 'finger_3_image', 'finger_4_image', 'finger_5_image']
+          .some(key => isValidImageData(student[key as keyof typeof student] as string | null))
       ).length;
 
       const totalImages = students.reduce((count, student) => {
-        return count + [student.finger_1_image, student.finger_2_image, student.finger_3_image, student.finger_4_image, student.finger_5_image]
-          .filter(img => img && (img.startsWith('data:image/') || img.length > 10000)).length;
+        return count + ['finger_1_image', 'finger_2_image', 'finger_3_image', 'finger_4_image', 'finger_5_image']
+          .filter(key => isValidImageData(student[key as keyof typeof student] as string | null)).length;
       }, 0);
 
       const studentsWithMobile = students.filter(s => s.mobile_number).length;
       const studentsWithAddress = students.filter(s => s.address).length;
 
+      // Create summary sheet
       const summaryData = [
         { 'Metric': 'Total Students', 'Value': students.length },
         { 'Metric': 'Students with Mobile Numbers', 'Value': studentsWithMobile },
@@ -185,8 +190,8 @@ export default function Downloads() {
         { 'Metric': 'Students with Fingerprint Images', 'Value': studentsWithImages },
         { 'Metric': 'Total Fingerprint Images', 'Value': totalImages },
         { 'Metric': 'Export Date', 'Value': new Date().toLocaleString() },
-        { 'Metric': 'Image Format', 'Value': 'PNG/JPEG Base64 Data URLs (Excel Compatible)' },
-        { 'Metric': 'Export Content', 'Value': 'Name, Mobile, Batch, Address, 5 Actual Fingerprint Images' }
+        { 'Metric': 'Image Format', 'Value': 'PNG/JPEG Base64 Data URLs' },
+        { 'Metric': 'Export Content', 'Value': 'Name, Mobile, Batch, Address, 5 Fingerprint Images' }
       ];
 
       const summaryWorksheet = XLSX.utils.json_to_sheet(summaryData);
@@ -206,10 +211,10 @@ export default function Downloads() {
         
         toast({
           title: "Download Complete! 📊",
-          description: `Downloaded ${students.length} students with ${totalImages} fingerprint images in Excel format.`,
+          description: `Downloaded ${students.length} students with ${totalImages} fingerprint images.`,
         });
 
-        console.log('✅ Complete Excel export with actual fingerprint images completed');
+        console.log('✅ Excel export with fingerprint images completed');
         console.log(`📈 Export stats: ${students.length} students, ${totalImages} images, ${studentsWithImages} students with images`);
         setIsDownloading(false);
         setDownloadProgress(0);
@@ -240,14 +245,14 @@ export default function Downloads() {
     );
   }
 
-  const studentsWithImages = students.filter(s => 
-    [s.finger_1_image, s.finger_2_image, s.finger_3_image, s.finger_4_image, s.finger_5_image]
-    .some(img => img && (img.startsWith('data:image/') || img.length > 10000))
+  const studentsWithImages = students.filter(student => 
+    ['finger_1_image', 'finger_2_image', 'finger_3_image', 'finger_4_image', 'finger_5_image']
+      .some(key => isValidImageData(student[key as keyof typeof student] as string | null))
   ).length;
 
   const totalImages = students.reduce((count, student) => {
-    return count + [student.finger_1_image, student.finger_2_image, student.finger_3_image, student.finger_4_image, student.finger_5_image]
-      .filter(img => img && (img.startsWith('data:image/') || img.length > 10000)).length;
+    return count + ['finger_1_image', 'finger_2_image', 'finger_3_image', 'finger_4_image', 'finger_5_image']
+      .filter(key => isValidImageData(student[key as keyof typeof student] as string | null)).length;
   }, 0);
 
   const studentsWithMobile = students.filter(s => s.mobile_number).length;
