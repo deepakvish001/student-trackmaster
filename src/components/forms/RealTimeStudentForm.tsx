@@ -4,7 +4,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { User, Phone, MapPin, GraduationCap } from 'lucide-react';
 
@@ -19,8 +18,8 @@ interface RealTimeStudentFormProps {
 }
 
 export function RealTimeStudentForm({ studentId, onStudentIdChange }: RealTimeStudentFormProps) {
-  const { user } = useAuth();
   const [batches, setBatches] = useState<Batch[]>([]);
+  const [user, setUser] = useState<any>(null);
   const [formData, setFormData] = useState({
     student_name: '',
     mobile_number: '',
@@ -28,6 +27,19 @@ export function RealTimeStudentForm({ studentId, onStudentIdChange }: RealTimeSt
     address: ''
   });
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Get user from supabase auth directly instead of context
+  useEffect(() => {
+    const getUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
+      } catch (error) {
+        console.error('Error getting user:', error);
+      }
+    };
+    getUser();
+  }, []);
 
   // Load batches on mount
   useEffect(() => {
@@ -112,6 +124,17 @@ export function RealTimeStudentForm({ studentId, onStudentIdChange }: RealTimeSt
 
     setSaveTimeout(timeout);
   };
+
+  // Don't render if no user (auth not available)
+  if (!user) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-8 text-slate-500">
+          <p>Loading authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -2,10 +2,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Fingerprint, RefreshCw, CheckCircle } from 'lucide-react';
+import { Fingerprint, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { useGlobalRDService } from '@/contexts/GlobalRDServiceContext';
 
 interface RealTimeFingerprintCaptureProps {
@@ -21,14 +20,27 @@ export function RealTimeFingerprintCapture({
   studentId,
   onCaptureSuccess 
 }: RealTimeFingerprintCaptureProps) {
-  const { user } = useAuth();
   const { isAvailable, captureFingerprint } = useGlobalRDService();
+  const [user, setUser] = useState<any>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [capturedData, setCapturedData] = useState<{
     template: string;
     image: string;
     quality: number;
   } | null>(null);
+
+  // Get user from supabase auth directly instead of context
+  useEffect(() => {
+    const getUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
+      } catch (error) {
+        console.error('Error getting user:', error);
+      }
+    };
+    getUser();
+  }, []);
 
   const saveToDatabase = async (template: string, image: string, quality: number) => {
     if (!studentId || !user?.id) return;
@@ -77,8 +89,9 @@ export function RealTimeFingerprintCapture({
   };
 
   const handleCapture = useCallback(async () => {
+    // Check if device is available - NO MOCK DATA
     if (!isAvailable) {
-      toast.error('Device not available. Please check connection.');
+      toast.error('Fingerprint device not connected. Please check your MFS100 device connection.');
       return;
     }
 
@@ -87,21 +100,23 @@ export function RealTimeFingerprintCapture({
       return;
     }
 
+    if (!user?.id) {
+      toast.error('Authentication required');
+      return;
+    }
+
     try {
       setIsCapturing(true);
       toast.info(`Place ${fingerName} on scanner...`);
 
-      // Simulate real fingerprint capture using Global RD Service
+      // Use REAL fingerprint capture - no mock data
       const result = await captureFingerprint(15000);
       
       if (result && result.template) {
-        const quality = Math.floor(Math.random() * 30) + 70; // Mock quality 70-100%
-        const mockImageData = `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==`;
-        
         const captureData = {
           template: result.template,
-          image: mockImageData,
-          quality: quality
+          image: result.imageData || '',
+          quality: result.quality || 0
         };
         
         setCapturedData(captureData);
@@ -113,21 +128,21 @@ export function RealTimeFingerprintCapture({
         onCaptureSuccess(index, captureData.template, captureData.image, captureData.quality);
         
         toast.success(`${fingerName} captured and saved!`, {
-          description: `Quality: ${quality}% - Saved to database`
+          description: `Quality: ${captureData.quality}% - Saved to database`
         });
       } else {
-        throw new Error('No fingerprint data received');
+        throw new Error('No fingerprint data received from device');
       }
       
     } catch (error) {
       console.error(`${fingerName} capture error:`, error);
       toast.error(`Failed to capture ${fingerName}`, {
-        description: error instanceof Error ? error.message : 'Unknown error'
+        description: error instanceof Error ? error.message : 'Device connection error'
       });
     } finally {
       setIsCapturing(false);
     }
-  }, [isAvailable, studentId, fingerName, index, captureFingerprint, onCaptureSuccess]);
+  }, [isAvailable, studentId, fingerName, index, captureFingerprint, onCaptureSuccess, user]);
 
   const handleRecapture = () => {
     setCapturedData(null);
@@ -166,8 +181,18 @@ export function RealTimeFingerprintCapture({
         {fingerName}
       </p>
 
+      {/* Device Status Warning */}
+      {!isAvailable && (
+        <div className="text-xs text-center mb-2">
+          <Badge variant="destructive" className="bg-red-50 text-red-700 border-red-200">
+            <AlertTriangle className="h-3 w-3 mr-1" />
+            Device not connected
+          </Badge>
+        </div>
+      )}
+
       {/* Real-time Status */}
-      {studentId && (
+      {studentId && isAvailable && (
         <div className="text-xs text-center mb-2">
           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
             Real-time enabled
@@ -179,7 +204,7 @@ export function RealTimeFingerprintCapture({
       <Button
         type="button"
         size="sm"
-        disabled={isCapturing || !isAvailable || !studentId}
+        disabled={isCapturing || !isAvailable || !studentId || !user}
         className={`w-full transition-all duration-200 ${
           capturedData
             ? "bg-green-500 hover:bg-green-600 text-white"
@@ -200,7 +225,7 @@ export function RealTimeFingerprintCapture({
         ) : (
           <>
             <Fingerprint className="mr-1 h-3 w-3" />
-            Capture
+            {!isAvailable ? 'Device Required' : 'Capture'}
           </>
         )}
       </Button>
@@ -210,6 +235,13 @@ export function RealTimeFingerprintCapture({
         <div className="flex items-center justify-center space-x-1 text-xs text-green-600 mt-2">
           <CheckCircle className="h-3 w-3" />
           <span>Saved to database</span>
+        </div>
+      )}
+
+      {/* Device Connection Warning */}
+      {!isAvailable && (
+        <div className="text-xs text-red-600 text-center mt-2">
+          MFS100 device required for capture
         </div>
       )}
     </div>
