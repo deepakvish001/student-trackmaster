@@ -19,10 +19,10 @@ export function FingerprintCaptureCard({ index, fingerName, onCaptureSuccess }: 
   const [capturedImage, setCapturedImage] = useState<string>('');
   const [quality, setQuality] = useState<number>(0);
   
-  const { captureFingerprint, isDeviceConnected } = useGlobalMFS100();
+  const { captureFingerprint, isConnected } = useGlobalMFS100();
 
   const handleCapture = async () => {
-    if (!isDeviceConnected) {
+    if (!isConnected) {
       toast.error('Device not connected. Please connect the fingerprint device.');
       return;
     }
@@ -109,7 +109,7 @@ export function FingerprintCaptureCard({ index, fingerName, onCaptureSuccess }: 
         {/* Capture Button */}
         <Button
           onClick={isCaptured ? handleRecapture : handleCapture}
-          disabled={isCapturing || !isDeviceConnected}
+          disabled={isCapturing || !isConnected}
           size="sm"
           variant={isCaptured ? "outline" : "default"}
           className="w-full"
@@ -132,7 +132,7 @@ export function FingerprintCaptureCard({ index, fingerName, onCaptureSuccess }: 
           )}
         </Button>
 
-        {!isDeviceConnected && (
+        {!isConnected && (
           <p className="text-xs text-red-500 text-center">Device not connected</p>
         )}
       </CardContent>
