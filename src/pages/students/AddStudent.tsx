@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { UserPlus, Users, GraduationCap, Fingerprint, Save, CheckCircle2 } from "lucide-react";
+import { UserPlus, Users, GraduationCap, Fingerprint, Save, CheckCircle2, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { GlobalRDServiceProvider } from '@/contexts/GlobalRDServiceContext';
 import { GlobalConnectionTestButton } from '@/components/rd/GlobalConnectionTestButton';
