@@ -21,6 +21,7 @@ import {
   Users,
   GraduationCap,
   Download,
+  TestTube,
   LogOut,
   User,
   Plus,
@@ -48,9 +49,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       bgClass: 'hover:bg-electric-blue/10'
     },
     { 
-      title: 'Add New Student', 
-      path: '/students/enhanced-add', 
-      icon: Plus, 
+      title: 'Student List', 
+      path: '/students/list', 
+      icon: Users, 
       colorClass: 'icon-vibrant-purple hover:text-vibrant-purple',
       bgClass: 'hover:bg-vibrant-purple/10'
     },
@@ -74,6 +75,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       icon: Download, 
       colorClass: 'icon-pink-rose hover:text-pink-rose',
       bgClass: 'hover:bg-pink-rose/10'
+    },
+    { 
+      title: 'Testing', 
+      path: '/testing', 
+      icon: TestTube, 
+      colorClass: 'icon-lime-green hover:text-lime-green',
+      bgClass: 'hover:bg-lime-green/10'
     },
   ];
 
@@ -140,6 +148,26 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {/* Add New Student Button */}
+            <SidebarGroup className="mt-8">
+              <SidebarGroupContent>
+                <div className="px-2">
+                  <Link to="/students/enhanced-add">
+                    <Button 
+                      className={`w-full justify-start gap-3 h-14 font-semibold transition-all duration-300 rounded-xl ${
+                        location.pathname === '/students/enhanced-add' 
+                          ? 'gradient-primary shadow-glow hover:shadow-glow-lg' 
+                          : 'glass-card border border-primary/20 text-primary hover:bg-primary/10 hover:shadow-purple-glow'
+                      }`}
+                    >
+                      <Plus className="w-5 h-5" />
+                      <span className="font-poppins">Add New Student</span>
+                    </Button>
+                  </Link>
+                </div>
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>

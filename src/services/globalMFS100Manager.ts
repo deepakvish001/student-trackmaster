@@ -55,8 +55,8 @@ class GlobalMFS100Manager {
   constructor() {
     console.log('🌐 Global MFS100 Manager initialized with enhanced stability');
     
-    // Don't auto-initialize since modern system already handles this
-    // this.autoInitialize();
+    // Auto-initialize on page load
+    this.autoInitialize();
     
     // Handle page visibility changes (system wake/sleep)
     document.addEventListener('visibilitychange', () => {
@@ -114,6 +114,25 @@ class GlobalMFS100Manager {
     }
   }
 
+  private async autoInitialize() {
+    // Wait for DOM to be ready
+    if (document.readyState !== 'complete') {
+      await new Promise(resolve => {
+        if (document.readyState === 'complete') {
+          resolve(void 0);
+        } else {
+          window.addEventListener('load', () => resolve(void 0), { once: true });
+        }
+      });
+    }
+
+    // Longer delay to ensure all scripts are loaded
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    console.log('🚀 Starting auto-initialization with enhanced stability...');
+    await this.initializeDevice();
+  }
+
   subscribe(callback: StateSubscriber): () => void {
     this.subscribers.add(callback);
     // Immediately call with current state
@@ -158,104 +177,198 @@ class GlobalMFS100Manager {
   }
 
   private async performInitialization(): Promise<boolean> {
-    const maxRetries = 3;
-    let attempt = 0;
-
     this.updateState({ 
       isInitializing: true, 
       error: null,
       reconnectAttempts: this.state.reconnectAttempts + 1
     });
 
-    while (attempt < maxRetries) {
-      attempt++;
-      console.log(`🔄 Initializing MFS100 (attempt ${attempt})...`);
-      
-      try {
-        // Check if modern MFS100 system is already initialized
-        if (typeof (window as any).GetMFS100Info === 'function') {
-          console.log('✅ MFS100 SDK already loaded by modern system');
-          
-          // Test device connection
-          const deviceInfo = (window as any).GetMFS100Info();
-          if (deviceInfo && deviceInfo.httpStaus && deviceInfo.data?.ErrorCode === "0") {
-            console.log('✅ MFS100 device connected and ready');
-            
-            this.updateState({
-              isConnected: true,
-              isInitializing: false,
-              error: null,
-              deviceInfo: deviceInfo.data.DeviceInfo,
-              lastConnectionTime: new Date()
-            });
-            
-            this.lastSuccessfulOperation = Date.now();
-            return true;
-          }
-        }
-        
+    try {
+      console.log(`🔄 Initializing MFS100 (attempt ${this.state.reconnectAttempts})...`);
+
+      // Check if MFS100 SDK is available
+      if (!this.isSDKAvailable()) {
         throw new Error('MFS100 SDK not loaded. Please refresh the page and ensure the device service is running.');
+      }
+
+      // Initialize the SDK with longer timeout
+      const initResult = await this.callSDKFunctionWithTimeout('InitMFS100', 10000);
+      if (!this.isValidResponse(initResult)) {
+        throw new Error(initResult?.data?.ErrorDescription || 'SDK initialization failed');
+      }
+
+      // Get device info to confirm connection
+      const deviceInfo = await this.getDeviceInfoWithRetry();
+      
+      this.updateState({
+        isInitializing: false,
+        isConnected: true,
+        deviceInfo,
+        error: null,
+        lastConnectionTime: new Date(),
+        reconnectAttempts: 0
+      });
+
+      // Mark successful operation
+      this.lastSuccessfulOperation = Date.now();
+      this.consecutiveSuccesses = 1;
+
+      console.log('✅ MFS100 Device initialized successfully!', deviceInfo);
+      
+      // Process any queued captures
+      this.processQueue();
+      
+      return true;
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Initialization failed';
+      console.error('❌ MFS100 initialization failed:', errorMessage);
+      
+      this.updateState({
+        isInitializing: false,
+        isConnected: false,
+        error: errorMessage
+      });
+
+      // More conservative retry logic
+      if (this.shouldRetryInitialization(errorMessage) && this.state.reconnectAttempts < 3) {
+        const retryDelay = Math.min(5000 * Math.pow(2, this.state.reconnectAttempts - 1), 60000);
+        console.log(`🔄 Retrying initialization in ${retryDelay}ms...`);
         
+        setTimeout(() => {
+          this.initializeDevice();
+        }, retryDelay);
+      }
+
+      return false;
+    }
+  }
+
+  private async callSDKFunctionWithTimeout(functionName: string, timeoutMs: number = 8000, ...args: any[]): Promise<any> {
+    return new Promise((resolve) => {
+      const sdkFunction = (window as any)[functionName];
+      if (typeof sdkFunction !== 'function') {
+        resolve({ httpStaus: false, err: `Function ${functionName} not available` });
+        return;
+      }
+
+      let completed = false;
+      const timeout = setTimeout(() => {
+        if (!completed) {
+          completed = true;
+          resolve({ httpStaus: false, err: `${functionName} timeout` });
+        }
+      }, timeoutMs);
+
+      try {
+        sdkFunction((result: any) => {
+          if (!completed) {
+            completed = true;
+            clearTimeout(timeout);
+            resolve(result);
+          }
+        }, ...args);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown initialization error';
-        console.error(`❌ MFS100 initialization failed: ${errorMessage}`);
-        
-        if (attempt < maxRetries) {
-          const delay = attempt * 5000; // Increasing delay: 5s, 10s
-          console.log(`🔄 Retrying initialization in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
+        if (!completed) {
+          completed = true;
+          clearTimeout(timeout);
+          resolve({ httpStaus: false, err: error instanceof Error ? error.message : 'SDK call failed' });
         }
       }
-    }
-
-    // All attempts failed
-    this.updateState({
-      isInitializing: false,
-      error: 'Failed to initialize MFS100 device after multiple attempts',
-      isConnected: false
     });
+  }
+
+  private async getDeviceInfoWithRetry(maxRetries: number = 2): Promise<any> {
+    let lastError;
     
-    return false;
+    for (let i = 0; i <= maxRetries; i++) {
+      try {
+        if (i > 0) {
+          // Small delay between retries
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          console.log(`🔄 Retrying device info (${i}/${maxRetries})...`);
+        }
+
+        const result = await this.callSDKFunctionWithTimeout('GetMFS100Info', 8000);
+        if (this.isValidResponse(result)) {
+          return result.data;
+        }
+        
+        lastError = new Error(result?.data?.ErrorDescription || 'Failed to get device info');
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    
+    throw lastError;
+  }
+
+  private isSDKAvailable(): boolean {
+    return typeof (window as any).InitMFS100 === 'function' &&
+           typeof (window as any).GetMFS100Info === 'function' &&
+           typeof (window as any).CaptureFinger === 'function';
+  }
+
+  private shouldRetryInitialization(error: string): boolean {
+    const retryableErrors = [
+      'SDK not loaded',
+      'initialization failed',
+      'device not found',
+      'timeout'
+    ];
+    
+    return retryableErrors.some(retryError => 
+      error.toLowerCase().includes(retryError.toLowerCase())
+    );
+  }
+
+  private isValidResponse(response: any): boolean {
+    return response?.httpStaus && response.data?.ErrorCode === "0";
   }
 
   async captureFingerprint(quality: number = 60, timeout: number = 15): Promise<CaptureResult> {
     return new Promise((resolve, reject) => {
-      if (this.state.isCapturing) {
-        resolve({
-          success: false,
-          template: '',
-          imageData: '',
-          quality: 0,
-          message: 'Another capture is already in progress'
-        });
-        return;
-      }
-
-      if (!this.state.isConnected) {
-        resolve({
-          success: false,
-          template: '',
-          imageData: '',
-          quality: 0,
-          message: 'Device not connected'
-        });
-        return;
-      }
-
+      const captureId = `capture_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
       this.captureQueue.push({
-        id: `capture_${Date.now()}`,
+        id: captureId,
         resolve,
         reject,
         quality,
         timeout
       });
 
-      this.processNextCapture();
+      // Smart connection handling - don't re-initialize if recently successful
+      const timeSinceSuccess = Date.now() - this.lastSuccessfulOperation;
+      
+      if (!this.state.isConnected && !this.state.isInitializing) {
+        // Only reinitialize if we haven't had success recently
+        if (timeSinceSuccess > 120000) { // 2 minutes
+          this.initializeDevice().then(() => {
+            this.processQueue();
+          });
+        } else {
+          // Try to process queue directly - device might still work
+          console.log('🎯 Attempting direct capture - device was working recently');
+          this.processQueue();
+        }
+      } else if (this.state.isConnected || timeSinceSuccess < 30000) {
+        // Process immediately if connected or recently successful
+        this.processQueue();
+      }
     });
   }
 
-  private async processNextCapture() {
+  private async processQueue() {
     if (this.state.isCapturing || this.captureQueue.length === 0) {
+      return;
+    }
+
+    // Allow processing even if marked as "disconnected" if we had recent success
+    const timeSinceSuccess = Date.now() - this.lastSuccessfulOperation;
+    const canProcess = this.state.isConnected || timeSinceSuccess < 60000; // 1 minute grace period
+
+    if (!canProcess) {
       return;
     }
 
@@ -265,105 +378,144 @@ class GlobalMFS100Manager {
     this.updateState({ isCapturing: true });
 
     try {
-      // Use the modern MFS100 system for capture
-      if (typeof (window as any).CaptureFinger === 'function') {
-        const result = (window as any).CaptureFinger(captureRequest.quality, captureRequest.timeout);
-        
-        if (result && result.httpStaus && result.data?.ErrorCode === "0") {
-          const quality = result.data.Quality || 0;
-          
-          // Process bitmap data if available
-          let imageData = "";
-          if (result.data.BitmapData) {
-            imageData = this.processBitmapData(result.data.BitmapData, result.data.InWidth || 256, result.data.InHeight || 256);
-          }
-          
-          this.lastSuccessfulOperation = Date.now();
-          
-          captureRequest.resolve({
-            success: true,
-            template: result.data.IsoTemplate || '',
-            imageData: imageData,
-            quality: quality,
-            message: `Fingerprint captured with quality ${quality}%`
-          });
-        } else {
-          throw new Error(result?.data?.ErrorDescription || result?.err || 'Capture failed');
-        }
-      } else {
-        throw new Error('MFS100 SDK not available');
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Capture failed';
-      captureRequest.resolve({
-        success: false,
-        template: '',
-        imageData: '',
-        quality: 0,
-        message: errorMessage
+      console.log(`📷 Processing capture request ${captureRequest.id}...`);
+      
+      const result = await this.performCaptureWithStability(captureRequest.quality, captureRequest.timeout);
+      captureRequest.resolve(result);
+      
+      console.log(`✅ Capture ${captureRequest.id} completed successfully`);
+      
+      // Mark successful operation and connection as stable
+      this.lastSuccessfulOperation = Date.now();
+      this.consecutiveSuccesses++;
+      
+      // Update connection state to connected on successful capture
+      this.updateState({ 
+        isConnected: true, 
+        error: null, 
+        reconnectAttempts: 0 
       });
+      
+    } catch (error) {
+      console.error(`❌ Capture ${captureRequest.id} failed:`, error);
+      captureRequest.reject(error instanceof Error ? error : new Error('Capture failed'));
+      
+      // Don't immediately mark as disconnected - could be temporary
+      const timeSinceLastSuccess = Date.now() - this.lastSuccessfulOperation;
+      if (timeSinceLastSuccess > 300000) { // Only mark disconnected after 5 minutes of no success
+        this.updateState({ 
+          isConnected: false, 
+          error: error instanceof Error ? error.message : 'Capture failed' 
+        });
+      }
+      
     } finally {
       this.updateState({ isCapturing: false });
       
-      // Process next capture if any
-      setTimeout(() => {
-        this.processNextCapture();
-      }, 1000);
+      // Process next item in queue with delay
+      setTimeout(() => this.processQueue(), 500);
     }
   }
 
-  private processBitmapData(bitmapData: string, width: number | string = 256, height: number | string = 256): string {
-    try {
-      // Ensure dimensions are valid numbers
-      const validWidth = typeof width === 'number' && width > 0 ? Math.floor(width) : 256;
-      const validHeight = typeof height === 'number' && height > 0 ? Math.floor(height) : 256;
+  private async performCaptureWithStability(quality: number, timeout: number): Promise<CaptureResult> {
+    // Use longer timeout and better error handling
+    const result = await this.callSDKFunctionWithTimeout('CaptureFinger', (timeout + 5) * 1000);
+    
+    if (!this.isValidResponse(result)) {
+      throw new Error(result?.data?.ErrorDescription || result?.err || 'Capture failed');
+    }
 
+    const capturedQuality = result.data.Quality || 0;
+    let imageData = '';
+    
+    if (result.data.BitmapData) {
+      imageData = this.processBitmapData(
+        result.data.BitmapData,
+        result.data.InWidth || 256,
+        result.data.InHeight || 256
+      );
+    }
+
+    return {
+      success: true,
+      template: result.data.ISOTemplate || '',
+      imageData,
+      quality: capturedQuality,
+      message: `Capture successful! Quality: ${capturedQuality}%`
+    };
+  }
+
+  private processBitmapData(bitmapData: string, width: number, height: number): string {
+    try {
       const canvas = document.createElement('canvas');
-      canvas.width = validWidth;
-      canvas.height = validHeight;
+      canvas.width = width;
+      canvas.height = height;
       const ctx = canvas.getContext('2d');
       
-      if (!ctx) {
-        throw new Error('Failed to get canvas context');
-      }
-
+      if (!ctx) return '';
+      
       const binaryData = atob(bitmapData);
-      const imageData = ctx.createImageData(validWidth, validHeight);
+      const imageData = ctx.createImageData(width, height);
       const data = imageData.data;
       
-      const totalPixels = Math.min(binaryData.length, validWidth * validHeight);
-      
-      for (let i = 0; i < totalPixels; i++) {
-        let pixelValue = 255 - binaryData.charCodeAt(i); // Invert
-        pixelValue = Math.min(255, Math.max(0, pixelValue * 1.3 + 20)); // Enhance
-        
+      for (let i = 0; i < Math.min(binaryData.length, width * height); i++) {
+        const pixelValue = Math.min(255, Math.max(0, (255 - binaryData.charCodeAt(i)) * 1.3 + 20));
         const pixelIndex = i * 4;
-        if (pixelIndex + 3 < data.length) {
-          data[pixelIndex] = pixelValue;
-          data[pixelIndex + 1] = pixelValue;
-          data[pixelIndex + 2] = pixelValue;
-          data[pixelIndex + 3] = 255;
-        }
+        data[pixelIndex] = pixelValue;     // R
+        data[pixelIndex + 1] = pixelValue; // G
+        data[pixelIndex + 2] = pixelValue; // B
+        data[pixelIndex + 3] = 255;        // A
       }
       
       ctx.putImageData(imageData, 0, 0);
       return canvas.toDataURL('image/png', 1.0);
     } catch (error) {
       console.error('Bitmap processing error:', error);
-      return "";
+      return '';
     }
   }
 
   async reconnectDevice(): Promise<boolean> {
     console.log('🔄 Attempting device reconnection...');
+    
+    // Don't mark as disconnected immediately - could be temporary issue
+    this.updateState({ error: 'Reconnecting...' });
+    
+    // Clear any existing initialization promise
+    this.initPromise = null;
+    
     return await this.initializeDevice();
   }
 
-  async forceReset() {
-    console.log('🔄 Force resetting MFS100 manager...');
+  getState(): DeviceState {
+    return { ...this.state };
+  }
+
+  clearQueue() {
+    console.log(`🗑️ Clearing ${this.captureQueue.length} queued captures`);
     
-    this.captureQueue.length = 0;
+    this.captureQueue.forEach(request => {
+      request.reject(new Error('Queue cleared'));
+    });
+    
+    this.captureQueue = [];
+  }
+
+  async forceReset() {
+    console.log('🔄 Forcing complete device reset...');
+    
+    // Clear health monitoring
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+    }
+    
+    this.clearQueue();
     this.initPromise = null;
+    
+    // Reset all tracking variables
+    this.lastSuccessfulOperation = 0;
+    this.connectionStable = false;
+    this.consecutiveSuccesses = 0;
     
     this.updateState({
       isConnected: false,
@@ -375,43 +527,15 @@ class GlobalMFS100Manager {
       reconnectAttempts: 0
     });
     
-    this.lastSuccessfulOperation = 0;
-    this.connectionStable = false;
-    this.consecutiveSuccesses = 0;
+    // Restart health monitoring
+    this.startHealthMonitoring();
     
-    // Try to reinitialize after reset
+    // Wait a moment then reinitialize
     setTimeout(() => {
       this.initializeDevice();
     }, 2000);
   }
-
-  clearQueue() {
-    console.log('🗑️ Clearing capture queue...');
-    this.captureQueue.forEach(request => {
-      request.resolve({
-        success: false,
-        template: '',
-        imageData: '',
-        quality: 0,
-        message: 'Capture cancelled due to queue clear'
-      });
-    });
-    this.captureQueue.length = 0;
-  }
-
-  getState(): DeviceState {
-    return { ...this.state };
-  }
-
-  destroy() {
-    if (this.healthCheckInterval) {
-      clearInterval(this.healthCheckInterval);
-      this.healthCheckInterval = null;
-    }
-    
-    this.clearQueue();
-    this.subscribers.clear();
-  }
 }
 
+// Export singleton instance
 export const globalMFS100Manager = new GlobalMFS100Manager();

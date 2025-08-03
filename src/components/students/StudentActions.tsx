@@ -1,6 +1,5 @@
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu, 
@@ -18,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { MoreHorizontal, Edit, Trash2, Eye, Power, PowerOff } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Eye } from 'lucide-react';
 import { Student } from '@/types';
 
 interface StudentActionsProps {
@@ -26,22 +25,14 @@ interface StudentActionsProps {
   onEdit: (student: Student) => void;
   onDelete: (studentId: string) => void;
   onView: (student: Student) => void;
-  onToggleStatus: (student: Student) => void;
 }
 
-export function StudentActions({ student, onEdit, onDelete, onView, onToggleStatus }: StudentActionsProps) {
+export function StudentActions({ student, onEdit, onDelete, onView }: StudentActionsProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const navigate = useNavigate();
 
   const handleDelete = () => {
     onDelete(student.id);
     setShowDeleteDialog(false);
-  };
-
-  const handleView = () => {
-    // Use the student ID as the fingerprint ID for the URL
-    // This way we can find the student reliably
-    navigate(`/students/${student.id}`);
   };
 
   return (
@@ -54,26 +45,13 @@ export function StudentActions({ student, onEdit, onDelete, onView, onToggleStat
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={handleView}>
+          <DropdownMenuItem onClick={() => onView(student)}>
             <Eye className="mr-2 h-4 w-4" />
             View Details
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => onEdit(student)}>
             <Edit className="mr-2 h-4 w-4" />
             Edit Student
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onToggleStatus(student)}>
-            {student.is_enabled ? (
-              <>
-                <PowerOff className="mr-2 h-4 w-4" />
-                Disable Student
-              </>
-            ) : (
-              <>
-                <Power className="mr-2 h-4 w-4" />
-                Enable Student
-              </>
-            )}
           </DropdownMenuItem>
           <DropdownMenuItem 
             onClick={() => setShowDeleteDialog(true)}
