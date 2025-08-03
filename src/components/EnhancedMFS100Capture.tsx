@@ -34,64 +34,51 @@ export function EnhancedMFS100Capture({
   const [captureQuality, setCaptureQuality] = useState<number | null>(null);
   const [capturedImage, setCapturedImage] = useState<string>("");
 
-  // Process raw MFS100 bitmap to show actual fingerprint ridges
-  const processFingerprintBitmap = useCallback((bitmapData: string, width?: number | string, height?: number | string): string => {
+  // Process MFS100 raw bitmap data to display real fingerprint ridges
+  const processRealFingerprintBitmap = useCallback((bitmapData: string, width: number = 300, height: number = 300): string => {
     try {
-      if (!bitmapData || bitmapData.length === 0) {
-        console.warn('No bitmap data provided for processing');
-        return "";
-      }
-
-      // Parse dimensions with defaults for MFS100
-      let actualWidth = 300;
-      let actualHeight = 300;
-
-      if (typeof width === 'number' && width > 0) {
-        actualWidth = Math.floor(width);
-      } else if (typeof width === 'string') {
-        const parsed = parseFloat(width);
-        if (!isNaN(parsed) && parsed > 0) {
-          actualWidth = Math.floor(parsed);
-        }
-      }
-
-      if (typeof height === 'number' && height > 0) {
-        actualHeight = Math.floor(height);
-      } else if (typeof height === 'string') {
-        const parsed = parseFloat(height);
-        if (!isNaN(parsed) && parsed > 0) {
-          actualHeight = Math.floor(parsed);
-        }
-      }
-
-      // Convert base64 bitmap data to binary
-      const binaryData = atob(bitmapData);
-      const totalPixels = binaryData.length;
-      
-      console.log(`🔍 Processing real fingerprint bitmap for ${fingerName}:`, {
-        bitmapDataLength: totalPixels,
-        proposedDimensions: `${actualWidth}x${actualHeight}`
+      console.log(`🔍 Processing REAL MFS100 bitmap for ${fingerName}:`, {
+        bitmapLength: bitmapData.length,
+        dimensions: `${width}x${height}`,
+        firstBytes: bitmapData.substring(0, 20)
       });
 
-      // Auto-detect correct dimensions from data length
-      const possibleSize = Math.floor(Math.sqrt(totalPixels));
-      if (possibleSize * possibleSize === totalPixels) {
-        actualWidth = actualHeight = possibleSize;
-        console.log(`📐 Auto-detected square dimensions: ${possibleSize}x${possibleSize}`);
+      // Convert base64 to binary array
+      const binaryStr = atob(bitmapData);
+      const binaryArray = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) {
+        binaryArray[i] = binaryStr.charCodeAt(i);
+      }
+
+      console.log(`📊 Binary data processed: ${binaryArray.length} bytes`);
+
+      // Auto-detect dimensions from data size
+      const totalPixels = binaryArray.length;
+      let actualWidth = width;
+      let actualHeight = height;
+
+      // Try to find square dimensions that match data length
+      const sqrtSize = Math.floor(Math.sqrt(totalPixels));
+      if (sqrtSize * sqrtSize === totalPixels) {
+        actualWidth = actualHeight = sqrtSize;
+        console.log(`📐 Auto-detected square dimensions: ${sqrtSize}x${sqrtSize}`);
       } else {
-        // Try common MFS100 dimensions
-        const commonSizes = [[256, 256], [300, 300], [320, 240], [400, 300]];
+        // Try common MFS100 resolutions
+        const commonSizes = [
+          [336, 336], [300, 300], [256, 256], [320, 240], [400, 300]
+        ];
         
         for (const [w, h] of commonSizes) {
           if (w * h <= totalPixels * 1.1 && w * h >= totalPixels * 0.9) {
             actualWidth = w;
             actualHeight = h;
-            console.log(`📐 Using standard MFS100 dimensions: ${w}x${h}`);
+            console.log(`📐 Using standard dimensions: ${w}x${h}`);
             break;
           }
         }
       }
 
+      // Create canvas
       const canvas = document.createElement('canvas');
       canvas.width = actualWidth;
       canvas.height = actualHeight;
@@ -101,49 +88,60 @@ export function EnhancedMFS100Capture({
         throw new Error('Failed to get canvas context');
       }
 
+      // Create image data
       const imageData = ctx.createImageData(actualWidth, actualHeight);
-      const data = imageData.data;
+      const pixels = imageData.data;
       
-      // Process pixels to show REAL fingerprint ridges (minimal processing)
+      // Process each pixel from MFS100 bitmap
       const maxPixels = Math.min(totalPixels, actualWidth * actualHeight);
       
       for (let i = 0; i < maxPixels; i++) {
-        // Get raw 8-bit grayscale value from MFS100
-        const rawPixelValue = binaryData.charCodeAt(i);
+        // Get raw grayscale value from MFS100 device
+        let pixelValue = binaryArray[i];
         
-        // MFS100 typically provides inverted data - ridges are dark (low values)
-        // Simply invert to show ridges as dark lines on light background
-        const finalPixelValue = 255 - rawPixelValue;
+        // MFS100 devices typically provide inverted data
+        // Ridges are dark (low values), valleys are light (high values)
+        // Invert to show ridges as dark lines on light background
+        pixelValue = 255 - pixelValue;
+        
+        // Apply minimal contrast enhancement to make ridges more visible
+        if (pixelValue < 128) {
+          // Darken the ridge lines
+          pixelValue = Math.max(0, pixelValue - 20);
+        } else {
+          // Lighten the background/valleys
+          pixelValue = Math.min(255, pixelValue + 15);
+        }
         
         const pixelIndex = i * 4;
-        if (pixelIndex + 3 < data.length) {
-          data[pixelIndex] = finalPixelValue;     // Red
-          data[pixelIndex + 1] = finalPixelValue; // Green  
-          data[pixelIndex + 2] = finalPixelValue; // Blue
-          data[pixelIndex + 3] = 255;             // Alpha
+        if (pixelIndex + 3 < pixels.length) {
+          pixels[pixelIndex] = pixelValue;     // Red
+          pixels[pixelIndex + 1] = pixelValue; // Green  
+          pixels[pixelIndex + 2] = pixelValue; // Blue
+          pixels[pixelIndex + 3] = 255;        // Alpha
         }
       }
       
-      // Fill any remaining pixels with white
-      for (let i = maxPixels * 4; i < data.length; i += 4) {
-        data[i] = 255;     // White background
-        data[i + 1] = 255;
-        data[i + 2] = 255;
-        data[i + 3] = 255;
+      // Fill remaining pixels with white background
+      for (let i = maxPixels * 4; i < pixels.length; i += 4) {
+        pixels[i] = 255;     // White
+        pixels[i + 1] = 255;
+        pixels[i + 2] = 255;
+        pixels[i + 3] = 255;
       }
       
+      // Put processed image data on canvas
       ctx.putImageData(imageData, 0, 0);
       
-      // Generate high-quality PNG
-      const pngResult = canvas.toDataURL('image/png', 1.0);
+      // Convert to PNG data URL
+      const pngDataUrl = canvas.toDataURL('image/png', 1.0);
       
-      console.log(`✅ Real fingerprint PNG generated for ${fingerName}:`, {
-        resultLength: pngResult.length,
-        dimensions: `${actualWidth}x${actualHeight}`,
-        format: 'PNG - Real Fingerprint Data'
+      console.log(`✅ REAL fingerprint PNG generated for ${fingerName}:`, {
+        resultLength: pngDataUrl.length,
+        finalDimensions: `${actualWidth}x${actualHeight}`
       });
       
-      return pngResult;
+      return pngDataUrl;
       
     } catch (error) {
       console.error(`❌ Real fingerprint processing error for ${fingerName}:`, error);
@@ -157,68 +155,66 @@ export function EnhancedMFS100Capture({
       setCaptureQuality(null);
       setCapturedImage("");
 
-      toast.info(`Place ${fingerName} on MFS100 scanner`, { duration: 4000 });
+      toast.info(`Place ${fingerName} on scanner`, { duration: 3000 });
       
+      // Capture fingerprint with MFS100 device
       const result = await mfs100Client.captureFingerprint({
         quality: targetQuality,
         timeout: 15,
-        retries: 3
+        retries: 2
       });
+
+      console.log(`📊 Raw capture data for ${fingerName}:`, result);
 
       if (!result.httpStaus || result.data?.ErrorCode !== "0") {
         throw new Error(result.data?.ErrorDescription || result.err || "Capture failed");
       }
       
-      const quality = result.data.Quality || 0;
+      const quality = parseInt(result.data.Quality) || 0;
       setCaptureQuality(quality);
       
-      let realFingerprintImage = "";
-
-      // Process the raw MFS100 bitmap to get real fingerprint
-      if (result.data.BitmapData) {
-        console.log(`📊 Raw MFS100 data for ${fingerName}:`, {
+      // Process the real MFS100 bitmap data
+      if (result.data.BitmapData && result.data.BitmapData.length > 0) {
+        console.log(`🔍 Processing fingerprint bitmap for ${fingerName}:`, {
           bitmapLength: result.data.BitmapData.length,
           width: result.data.InWidth,
           height: result.data.InHeight,
           quality: quality
         });
 
-        realFingerprintImage = processFingerprintBitmap(
+        const realFingerprintImage = processRealFingerprintBitmap(
           result.data.BitmapData,
-          result.data.InWidth,
-          result.data.InHeight
+          parseInt(result.data.InWidth) || 300,
+          parseInt(result.data.InHeight) || 300
         );
         
-        if (realFingerprintImage) {
+        if (realFingerprintImage && realFingerprintImage.startsWith('data:image/')) {
           setCapturedImage(realFingerprintImage);
           
-          // Store both template and image
+          // Store both template and real image
           onChange(result.data.IsoTemplate || realFingerprintImage);
           onImageChange?.(realFingerprintImage);
           onAccepted?.();
           
           toast.success(
             `${fingerName} captured! Quality: ${quality}%`, 
-            {
-              description: "Real fingerprint image saved",
-              duration: 4000
-            }
+            { duration: 3000 }
           );
         } else {
-          throw new Error("Failed to process real fingerprint data");
+          throw new Error("Failed to process real fingerprint bitmap");
         }
       } else {
-        throw new Error("No fingerprint data received from MFS100");
+        throw new Error("No bitmap data received from MFS100 device");
       }
 
     } catch (error) {
       console.error(`❌ MFS100 capture error for ${fingerName}:`, error);
       const errorMessage = error instanceof Error ? error.message : 'Capture failed';
-      toast.error(errorMessage, { duration: 5000 });
+      toast.error(`${fingerName}: ${errorMessage}`, { duration: 4000 });
     } finally {
       setIsCapturing(false);
     }
-  }, [targetQuality, fingerName, mfs100Client, processFingerprintBitmap, onChange, onImageChange, onAccepted]);
+  }, [targetQuality, fingerName, mfs100Client, processRealFingerprintBitmap, onChange, onImageChange, onAccepted]);
 
   const handleRecapture = useCallback(() => {
     setCapturedImage("");
@@ -230,14 +226,6 @@ export function EnhancedMFS100Capture({
 
   const displayImage = capturedImage || value;
   const hasImage = displayImage && displayImage.startsWith('data:image/');
-
-  const getQualityStatus = () => {
-    if (captureQuality === null) return null;
-    if (captureQuality >= 70) return "Excellent";
-    if (captureQuality >= 60) return "Good";
-    if (captureQuality >= 50) return "Fair";
-    return "Poor - Recapture recommended";
-  };
 
   const getQualityColor = () => {
     if (captureQuality === null) return "text-gray-600";
@@ -259,7 +247,7 @@ export function EnhancedMFS100Capture({
         )}
       </div>
 
-      {/* Fingerprint Display Area */}
+      {/* Fingerprint Display */}
       <div className={`relative w-full h-36 border-2 rounded-lg flex items-center justify-center mb-3 transition-all duration-300 ${
         isCapturing 
           ? 'border-blue-500 border-dashed animate-pulse bg-blue-50' 
@@ -271,30 +259,24 @@ export function EnhancedMFS100Capture({
           <div className="flex flex-col items-center space-y-2 text-blue-600">
             <Fingerprint className="h-6 w-6 animate-pulse" />
             <span className="text-xs font-medium">Scanning...</span>
-            <div className="flex space-x-1">
-              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></div>
-              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-            </div>
           </div>
         ) : hasImage ? (
           <div className="relative w-full h-full">
             <img 
               src={displayImage}
-              alt={`${fingerName} real fingerprint`}
+              alt={`${fingerName} fingerprint`}
               className="w-full h-full object-contain rounded"
               style={{ 
+                filter: 'contrast(1.1)',
                 imageRendering: 'pixelated'
               }}
               onLoad={() => console.log(`✅ Real fingerprint displayed for ${fingerName}`)}
             />
-            {hasImage && (
-              <div className="absolute -top-1 -right-1">
-                <div className="bg-green-500 text-white rounded-full p-0.5">
-                  <CheckCircle className="h-3 w-3" />
-                </div>
+            <div className="absolute -top-1 -right-1">
+              <div className="bg-green-500 text-white rounded-full p-0.5">
+                <CheckCircle className="h-3 w-3" />
               </div>
-            )}
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center space-y-1 text-gray-400">
@@ -309,7 +291,7 @@ export function EnhancedMFS100Capture({
         <div className={`text-center text-xs font-medium mb-2 ${getQualityColor()}`}>
           Quality: {captureQuality}%
           <div className="text-xs text-gray-500 mt-1">
-            {getQualityStatus()}
+            {captureQuality >= 70 ? 'Excellent' : captureQuality >= 60 ? 'Good' : captureQuality >= 50 ? 'Fair' : 'Poor'}
           </div>
         </div>
       )}
@@ -317,10 +299,10 @@ export function EnhancedMFS100Capture({
       {/* Action Button */}
       <Button
         onClick={hasImage ? handleRecapture : handleCapture}
-        disabled={isCapturing}
-        className={`w-full text-white transition-all duration-300 text-xs py-1.5 h-8 ${
+        disabled={isCapturing || !isConnected}
+        className={`w-full text-white text-xs py-1.5 h-8 ${
           isCapturing 
-            ? 'bg-blue-500 hover:bg-blue-600 animate-pulse' 
+            ? 'bg-blue-500 animate-pulse' 
             : hasImage
               ? 'bg-orange-500 hover:bg-orange-600'
               : isConnected 
@@ -339,7 +321,7 @@ export function EnhancedMFS100Capture({
       </Button>
 
       {/* Connection Status */}
-      {!isConnected && !isCapturing && (
+      {!isConnected && (
         <div className="text-xs text-orange-600 text-center mt-1 flex items-center justify-center">
           <AlertCircle className="h-2.5 w-2.5 mr-1" />
           Device offline
