@@ -11,7 +11,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { StudentRegistrationForm } from '@/components/forms/StudentRegistrationForm';
-import { FingerprintGuidanceSystem } from '@/components/FingerprintGuidanceSystem';
+import { SimpleFingerprintCapture } from '@/components/fingerprint/SimpleFingerprintCapture';
 import { supabase } from '@/integrations/supabase/client';
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 
@@ -269,12 +269,13 @@ export function AddStudent() {
               </CardHeader>
 
               <CardContent className="p-8">
-                <FingerprintGuidanceSystem
-                  fingerprints={fingerprintTemplates}
-                  onFingerprintChange={handleFingerprintChange}
-                  onImageChange={handleImageChange}
-                  targetQuality={70}
-                />
+                <div className="bg-slate-50/50 rounded-xl p-6 border border-slate-200/60">
+                  <SimpleFingerprintCapture
+                    fingerNames={fingerNames}
+                    onFingerprintChange={handleFingerprintChange}
+                    onImageChange={handleImageChange}
+                  />
+                </div>
               </CardContent>
             </Card>
 
