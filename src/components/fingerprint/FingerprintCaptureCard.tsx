@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Fingerprint, RefreshCw, CheckCircle2, Camera } from 'lucide-react';
 import { toast } from 'sonner';
-import { useGlobalMFS100 } from '@/hooks/useGlobalMFS100';
+import { useGlobalRDService } from '@/contexts/GlobalRDServiceContext';
 
 interface FingerprintCaptureCardProps {
   index: number;
@@ -19,10 +19,10 @@ export function FingerprintCaptureCard({ index, fingerName, onCaptureSuccess }: 
   const [capturedImage, setCapturedImage] = useState<string>('');
   const [quality, setQuality] = useState<number>(0);
   
-  const { captureFingerprint, isConnected } = useGlobalMFS100();
+  const { captureFingerprint, isAvailable } = useGlobalRDService();
 
   const handleCapture = async () => {
-    if (!isConnected) {
+    if (!isAvailable) {
       toast.error('Device not connected. Please connect the fingerprint device.');
       return;
     }
@@ -32,12 +32,12 @@ export function FingerprintCaptureCard({ index, fingerName, onCaptureSuccess }: 
       
       const result = await captureFingerprint();
       
-      if (result && result.template && result.imageData) {
+      if (result && result.pidData && result.imageData) {
         setCapturedImage(result.imageData);
         setQuality(result.quality || 0);
         setIsCaptured(true);
         
-        onCaptureSuccess(index, result.template, result.imageData, result.quality || 0);
+        onCaptureSuccess(index, result.pidData, result.imageData, result.quality || 0);
         
         toast.success(`${fingerName} captured successfully!`, {
           description: `Quality: ${result.quality || 0}%`
@@ -109,7 +109,7 @@ export function FingerprintCaptureCard({ index, fingerName, onCaptureSuccess }: 
         {/* Capture Button */}
         <Button
           onClick={isCaptured ? handleRecapture : handleCapture}
-          disabled={isCapturing || !isConnected}
+          disabled={isCapturing || !isAvailable}
           size="sm"
           variant={isCaptured ? "outline" : "default"}
           className="w-full"
@@ -132,7 +132,7 @@ export function FingerprintCaptureCard({ index, fingerName, onCaptureSuccess }: 
           )}
         </Button>
 
-        {!isConnected && (
+        {!isAvailable && (
           <p className="text-xs text-red-500 text-center">Device not connected</p>
         )}
       </CardContent>
