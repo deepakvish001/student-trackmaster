@@ -3,10 +3,9 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { UserPlus, Users, GraduationCap, Fingerprint, Save, CheckCircle2, RefreshCw } from "lucide-react";
+import { UserPlus, Users, GraduationCap, Fingerprint, Save, CheckCircle2, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { GlobalRDServiceProvider } from '@/contexts/GlobalRDServiceContext';
-import { GlobalConnectionTestButton } from '@/components/rd/GlobalConnectionTestButton';
+import { GlobalRDServiceProvider, useGlobalRDService } from '@/contexts/GlobalRDServiceContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -30,9 +29,10 @@ interface StudentFormData {
   address: string;
 }
 
-export function AddStudent() {
+function AddStudentContent() {
   const navigate = useNavigate();
   const { user } = useEnhancedAuth();
+  const { isAvailable, checkConnection, resetConnection } = useGlobalRDService();
   const [studentFormData, setStudentFormData] = useState<StudentFormData>({
     student_name: '',
     mobile_number: '',
@@ -175,11 +175,10 @@ export function AddStudent() {
   };
 
   return (
-    <GlobalRDServiceProvider>
-      <DashboardLayout>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
-            {/* Enhanced Header Section */}
+    <DashboardLayout>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+            {/* Header Section */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200/60 p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
@@ -187,43 +186,34 @@ export function AddStudent() {
                     <UserPlus className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-3xl font-bold text-slate-800">Register New Student</h1>
-                    <div className="flex items-center text-sm text-slate-500 mt-2">
-                      <span className="text-blue-600 hover:underline cursor-pointer">Dashboard</span>
-                      <span className="mx-2">/</span>
-                      <span className="text-blue-600 hover:underline cursor-pointer">Students</span>
-                      <span className="mx-2">/</span>
-                      <span className="text-slate-700 font-medium">Register Student</span>
-                    </div>
+                    <h1 className="text-2xl font-bold text-slate-800">Add Student</h1>
                   </div>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                    <GraduationCap className="h-4 w-4 mr-1" />
-                    Student Registration
+                <div className="flex items-center space-x-2">
+                  <Button
+                    onClick={checkConnection}
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                  >
+                    <Wifi className="h-3 w-3 mr-1" />
+                    Test
+                  </Button>
+                  <Button
+                    onClick={resetConnection}
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                  >
+                    <WifiOff className="h-3 w-3 mr-1" />
+                    Reset
+                  </Button>
+                  <Badge variant={isAvailable ? "default" : "secondary"}>
+                    {isAvailable ? "Connected" : "Disconnected"}
                   </Badge>
-                  {isCompleted && (
-                    <Badge className="bg-green-500 text-white">
-                      <CheckCircle2 className="h-4 w-4 mr-1" />
-                      Completed
-                    </Badge>
-                  )}
                 </div>
               </div>
             </div>
-
-            {/* Instructions */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/60 rounded-xl p-4">
-              <div className="text-center">
-                <p className="text-blue-800 font-medium">
-                  Fill out student information and capture all fingerprints in any order. 
-                  Click "Register Student" when everything is complete.
-                </p>
-              </div>
-            </div>
-
-            {/* RD Service Connection */}
-            <GlobalConnectionTestButton />
 
             {/* Student Information Card */}
             <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
@@ -370,6 +360,13 @@ export function AddStudent() {
           </div>
         </div>
       </DashboardLayout>
+  );
+}
+
+export function AddStudent() {
+  return (
+    <GlobalRDServiceProvider>
+      <AddStudentContent />
     </GlobalRDServiceProvider>
   );
 }
