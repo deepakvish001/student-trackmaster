@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 
-import { AuthProvider as EnhancedAuthProvider } from '@/contexts/AuthContext';
+import { EnhancedAuthProvider } from '@/contexts/EnhancedAuthContext';
 import Dashboard from '@/pages/Dashboard';
 import { AddStudent } from '@/pages/students/AddStudent';
 import Login from '@/pages/Login';
