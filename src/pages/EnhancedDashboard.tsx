@@ -218,21 +218,6 @@ export default function EnhancedDashboard() {
           <span>•</span>
           <span>Last updated: {new Date().toLocaleTimeString()}</span>
         </div>
-
-        {/* Debug Information (only in development) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-8 p-4 bg-gray-100 rounded-lg">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">Debug Info:</h3>
-            <pre className="text-xs text-gray-600">
-              {JSON.stringify(stats, null, 2)}
-            </pre>
-            <div className="mt-2 text-xs text-gray-500">
-              <p>Query Status: {isLoading ? 'Loading' : 'Loaded'}</p>
-              <p>Real-time: Active</p>
-              <p>Refresh Interval: 3s</p>
-            </div>
-          </div>
-        )}
       </div>
     </DashboardLayout>
   );
