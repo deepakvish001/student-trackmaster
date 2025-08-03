@@ -11,7 +11,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { StudentRegistrationForm } from '@/components/forms/StudentRegistrationForm';
-import { BatchFingerprintCapture } from '@/components/fingerprint/BatchFingerprintCapture';
+import { FingerprintGuidanceSystem } from '@/components/FingerprintGuidanceSystem';
 import { supabase } from '@/integrations/supabase/client';
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 
@@ -39,6 +39,8 @@ export function AddStudent() {
     batch_id: '',
     address: ''
   });
+  const [fingerprintTemplates, setFingerprintTemplates] = useState<string[]>(['', '', '', '', '']);
+  const [fingerprintImages, setFingerprintImages] = useState<string[]>(['', '', '', '', '']);
   const [capturedFingerprints, setCapturedFingerprints] = useState<number[]>([]);
   const [fingerprintData, setFingerprintData] = useState<FingerprintData[]>([]);
   const [isRegistering, setIsRegistering] = useState(false);
@@ -57,31 +59,47 @@ export function AddStudent() {
     setStudentFormData(formData);
   };
 
-  const handleFingerprintCapture = (
-    index: number,
-    template: string,
-    image: string,
-    quality: number
-  ) => {
-    const fingerData: FingerprintData = {
-      index,
-      name: fingerNames[index],
-      template,
-      image,
-      quality,
-    };
-
-    setFingerprintData(prev => {
-      const filtered = prev.filter(f => f.index !== index);
-      return [...filtered, fingerData];
+  const handleFingerprintChange = (index: number, value: string) => {
+    setFingerprintTemplates(prev => {
+      const updated = [...prev];
+      updated[index] = value;
+      return updated;
     });
 
+    // Update captured fingerprints list
     setCapturedFingerprints(prev => {
-      if (!prev.includes(index)) {
+      if (value && !prev.includes(index)) {
         return [...prev, index].sort((a, b) => a - b);
+      } else if (!value && prev.includes(index)) {
+        return prev.filter(i => i !== index);
       }
       return prev;
     });
+  };
+
+  const handleImageChange = (index: number, imageData: string) => {
+    setFingerprintImages(prev => {
+      const updated = [...prev];
+      updated[index] = imageData;
+      return updated;
+    });
+
+    // Create fingerprint data when we have both template and image
+    const template = fingerprintTemplates[index];
+    if (template && imageData) {
+      const fingerData: FingerprintData = {
+        index,
+        name: fingerNames[index],
+        template,
+        image: imageData,
+        quality: 75, // Default quality, this should come from the capture system
+      };
+
+      setFingerprintData(prev => {
+        const filtered = prev.filter(f => f.index !== index);
+        return [...filtered, fingerData];
+      });
+    }
   };
 
   // Check if all required data is complete
@@ -251,12 +269,12 @@ export function AddStudent() {
               </CardHeader>
 
               <CardContent className="p-8">
-                <div className="bg-slate-50/50 rounded-xl p-6 border border-slate-200/60">
-                  <BatchFingerprintCapture
-                    fingerNames={fingerNames}
-                    onCaptureSuccess={handleFingerprintCapture}
-                  />
-                </div>
+                <FingerprintGuidanceSystem
+                  fingerprints={fingerprintTemplates}
+                  onFingerprintChange={handleFingerprintChange}
+                  onImageChange={handleImageChange}
+                  targetQuality={70}
+                />
               </CardContent>
             </Card>
 
