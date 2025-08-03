@@ -13,6 +13,7 @@ import Batches from "./pages/Batches";
 import ViewStudents from "./pages/students/ViewStudents";
 import StudentDetails from "./pages/students/StudentDetails";
 import SuperFastAddStudent from "./pages/students/SuperFastAddStudent";
+import EnhancedAddStudent from "./pages/students/EnhancedAddStudent";
 import Downloads from "./pages/Downloads";
 
 const queryClient = new QueryClient({
@@ -62,6 +63,12 @@ function App() {
               <Route path="/add-student" element={
                 <ProtectedRoute>
                   <SuperFastAddStudent />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/students/enhanced-add" element={
+                <ProtectedRoute>
+                  <EnhancedAddStudent />
                 </ProtectedRoute>
               } />
               
