@@ -1,10 +1,11 @@
+
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Fingerprint, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { FingerprintPreview } from "./FingerprintPreview";
+import { FingerprintCapturePreview } from "./FingerprintCapturePreview";
 import { useFingerprintCaptureState } from "@/hooks/useFingerprintCaptureState";
 import { useModernDeviceConnection } from "@/hooks/useModernDeviceConnection";
 
@@ -24,7 +25,7 @@ export function EnhancedMFS100Capture({
   onChange, 
   onImageChange,
   onAccepted,
-  targetQuality = 70,
+  targetQuality = 60,
   fingerName
 }: EnhancedMFS100CaptureProps) {
   const {
@@ -51,7 +52,7 @@ export function EnhancedMFS100Capture({
     resetCapture
   } = useFingerprintCaptureState();
 
-  // Enhanced bitmap processing with proper dimension validation and fallbacks
+  // Enhanced bitmap processing to show real fingerprint data
   const processFingerprintBitmap = useCallback((bitmapData: string, width?: number | string, height?: number | string): string => {
     try {
       if (!bitmapData || bitmapData.length === 0) {
@@ -59,11 +60,10 @@ export function EnhancedMFS100Capture({
         return "";
       }
 
-      // Enhanced dimension validation with multiple fallback strategies
-      let validWidth = 256; // Default fallback
-      let validHeight = 256; // Default fallback
+      // Parse dimensions with robust fallbacks
+      let validWidth = 256;
+      let validHeight = 256;
 
-      // Try to parse width
       if (typeof width === 'number' && width > 0) {
         validWidth = Math.floor(width);
       } else if (typeof width === 'string') {
@@ -73,7 +73,6 @@ export function EnhancedMFS100Capture({
         }
       }
 
-      // Try to parse height
       if (typeof height === 'number' && height > 0) {
         validHeight = Math.floor(height);
       } else if (typeof height === 'string') {
@@ -83,22 +82,18 @@ export function EnhancedMFS100Capture({
         }
       }
 
-      // Calculate dimensions from bitmap data length if dimensions are still invalid
       const binaryData = atob(bitmapData);
-      const totalPixels = binaryData.length;
       
+      // Try to calculate dimensions from data if invalid
       if (validWidth <= 0 || validHeight <= 0) {
-        // Try to determine square dimensions from total pixels
+        const totalPixels = binaryData.length;
         const possibleSize = Math.sqrt(totalPixels);
+        
         if (possibleSize > 0 && Number.isInteger(possibleSize)) {
           validWidth = validHeight = possibleSize;
-          console.log(`📐 Calculated square dimensions from bitmap data: ${validWidth}x${validHeight}`);
         } else {
-          // Common MFS100 dimensions fallbacks
-          const commonSizes = [
-            [256, 256], [300, 300], [320, 240], [256, 360], [400, 400]
-          ];
-          
+          // Common MFS100 device sizes
+          const commonSizes = [[256, 256], [300, 300], [320, 240], [400, 400]];
           for (const [w, h] of commonSizes) {
             if (w * h <= totalPixels) {
               validWidth = w;
@@ -106,14 +101,7 @@ export function EnhancedMFS100Capture({
               break;
             }
           }
-          console.log(`📐 Using fallback dimensions for ${fingerName}: ${validWidth}x${validHeight} (bitmap length: ${totalPixels})`);
         }
-      }
-
-      // Final validation - ensure dimensions are positive
-      if (validWidth <= 0 || validHeight <= 0) {
-        console.error(`❌ Invalid dimensions for ${fingerName}: ${validWidth}x${validHeight}`);
-        return "";
       }
 
       console.log(`🔍 Processing fingerprint bitmap for ${fingerName}:`, {
@@ -131,22 +119,21 @@ export function EnhancedMFS100Capture({
         throw new Error('Failed to get canvas context');
       }
 
-      // Create image data with validated dimensions
       const imageData = ctx.createImageData(validWidth, validHeight);
       const data = imageData.data;
       
-      // Process pixels - ensure we don't exceed array bounds
+      // Process pixels to show actual fingerprint patterns
       const maxPixels = Math.min(binaryData.length, validWidth * validHeight, data.length / 4);
       
       for (let i = 0; i < maxPixels; i++) {
-        // Get pixel value and invert (MFS100 typically returns inverted images)
+        // Get raw pixel value from MFS100 device
         let pixelValue = binaryData.charCodeAt(i);
         
-        // Invert the pixel values
+        // Invert pixel values (MFS100 devices typically return inverted images)
         pixelValue = 255 - pixelValue;
         
-        // Apply contrast and brightness enhancement
-        pixelValue = Math.min(255, Math.max(0, pixelValue * 1.3 + 20));
+        // Apply contrast enhancement to make ridges more visible
+        pixelValue = Math.min(255, Math.max(0, pixelValue * 1.4 + 15));
         
         const pixelIndex = i * 4;
         if (pixelIndex + 3 < data.length) {
@@ -157,11 +144,11 @@ export function EnhancedMFS100Capture({
         }
       }
       
-      // Put the processed image data onto the canvas
       ctx.putImageData(imageData, 0, 0);
       
-      // Convert to high-quality PNG data URI
+      // Convert to high-quality PNG
       const result = canvas.toDataURL('image/png', 1.0);
+      
       console.log(`✅ Fingerprint image processed successfully for ${fingerName}:`, {
         resultLength: result.length,
         finalDimensions: `${validWidth}x${validHeight}`
@@ -204,7 +191,7 @@ export function EnhancedMFS100Capture({
       
       let processedImage = "";
 
-      // Process the raw bitmap data with enhanced error handling
+      // Process the raw bitmap data to show real fingerprint
       if (result.data.BitmapData) {
         console.log(`📊 Raw capture data for ${fingerName}:`, {
           bitmapLength: result.data.BitmapData.length,
@@ -226,13 +213,13 @@ export function EnhancedMFS100Capture({
             quality: quality
           });
 
-          toast.success(`${fingerName} captured successfully!`);
+          toast.success(`${fingerName} captured successfully! Quality: ${quality}%`);
           setCaptureProgress(prev => ({ ...prev, progress: 100 }));
         } else {
-          throw new Error("Failed to process fingerprint image - invalid dimensions or data");
+          throw new Error("Failed to process fingerprint image - could not generate bitmap");
         }
       } else {
-        throw new Error("No fingerprint image data received from device");
+        throw new Error("No fingerprint bitmap data received from device");
       }
 
     } catch (error) {
@@ -258,8 +245,8 @@ export function EnhancedMFS100Capture({
   const handleAcceptCapture = useCallback(() => {
     if (!captureData) return;
 
-    // Save the processed image as the main value
-    onChange(captureData.imageData);
+    // Save both the template and the image
+    onChange(captureData.template || captureData.imageData);
     onImageChange?.(captureData.imageData);
     
     acceptCapture();
@@ -277,7 +264,7 @@ export function EnhancedMFS100Capture({
   // Show preview if in previewing state
   if (captureState === 'previewing' && captureData) {
     return (
-      <FingerprintPreview
+      <FingerprintCapturePreview
         fingerIndex={index}
         imageData={captureData.imageData}
         quality={captureData.quality}
@@ -288,20 +275,20 @@ export function EnhancedMFS100Capture({
     );
   }
 
-  // Clean grid layout matching the screenshot
+  // Regular capture interface
   return (
     <div className="bg-white border rounded-lg p-3 shadow-sm w-full max-w-[180px] mx-auto">
       {/* Header */}
       <div className="text-center mb-2">
         <h3 className="font-medium text-sm text-gray-800">{fingerName}</h3>
         {captureQuality && (
-          <Badge variant={captureQuality >= 70 ? "default" : "secondary"} className="text-xs mt-1">
-            {captureQuality}%
+          <Badge variant={captureQuality >= 60 ? "default" : "secondary"} className="text-xs mt-1">
+            Quality: {captureQuality}%
           </Badge>
         )}
       </div>
 
-      {/* Fingerprint Display Area - Fixed dimensions to match screenshot */}
+      {/* Fingerprint Display Area */}
       <div className={`relative w-full h-32 border-2 rounded-lg flex items-center justify-center mb-3 transition-all duration-300 ${
         captureState === 'capturing' 
           ? 'border-blue-500 border-dashed animate-pulse bg-blue-50' 
@@ -324,8 +311,8 @@ export function EnhancedMFS100Capture({
               alt={`${fingerName} fingerprint`}
               className="w-full h-full object-contain rounded"
               style={{ 
-                filter: 'contrast(1.2) brightness(1.1)',
-                imageRendering: 'crisp-edges'
+                filter: 'contrast(1.3) brightness(1.1)',
+                imageRendering: 'pixelated'
               }}
             />
             {captureState === 'accepted' && (
@@ -344,7 +331,7 @@ export function EnhancedMFS100Capture({
         )}
       </div>
 
-      {/* Always-Available Capture Button */}
+      {/* Capture Button */}
       <Button
         onClick={captureState === 'accepted' && value ? handleRecapture : handleCapture}
         disabled={captureState === 'capturing'}
@@ -368,7 +355,7 @@ export function EnhancedMFS100Capture({
         }
       </Button>
 
-      {/* Connection Warning - Only show when disconnected and not capturing */}
+      {/* Connection Warning */}
       {!isConnected && captureState !== 'capturing' && (
         <div className="text-xs text-orange-600 text-center mt-1 flex items-center justify-center">
           <AlertCircle className="h-2.5 w-2.5 mr-1" />
