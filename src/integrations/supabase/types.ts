@@ -102,6 +102,7 @@ export type Database = {
       }
       students: {
         Row: {
+          address: string | null
           batch_id: string
           created_at: string
           finger_1: string | null
@@ -116,11 +117,13 @@ export type Database = {
           finger_5_image: string | null
           id: string
           is_enabled: boolean
+          mobile_number: string | null
           student_name: string
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          address?: string | null
           batch_id: string
           created_at?: string
           finger_1?: string | null
@@ -135,11 +138,13 @@ export type Database = {
           finger_5_image?: string | null
           id?: string
           is_enabled?: boolean
+          mobile_number?: string | null
           student_name: string
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          address?: string | null
           batch_id?: string
           created_at?: string
           finger_1?: string | null
@@ -154,6 +159,7 @@ export type Database = {
           finger_5_image?: string | null
           id?: string
           is_enabled?: boolean
+          mobile_number?: string | null
           student_name?: string
           updated_at?: string
           user_id?: string | null
