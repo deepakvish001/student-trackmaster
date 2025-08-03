@@ -52,19 +52,23 @@ export function EnhancedMFS100Capture({
     resetCapture
   } = useFingerprintCaptureState();
 
-  // Enhanced bitmap processing for crystal-clear fingerprint images
-  const processFingerprintBitmap = useCallback((bitmapData: string, width: number = 256, height: number = 256): string => {
+  // Fixed bitmap processing with proper dimension validation
+  const processFingerprintBitmap = useCallback((bitmapData: string, width: number | string = 256, height: number | string = 256): string => {
     try {
       if (!bitmapData || bitmapData.length === 0) {
         console.warn('No bitmap data provided for processing');
         return "";
       }
 
-      console.log(`Processing fingerprint bitmap for ${fingerName}: ${bitmapData.length} bytes, dimensions: ${width}x${height}`);
+      // Ensure dimensions are valid numbers
+      const validWidth = typeof width === 'number' && width > 0 ? Math.floor(width) : 256;
+      const validHeight = typeof height === 'number' && height > 0 ? Math.floor(height) : 256;
+
+      console.log(`Processing fingerprint bitmap for ${fingerName}: ${bitmapData.length} bytes, dimensions: ${validWidth}x${validHeight}`);
       
       const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = validWidth;
+      canvas.height = validHeight;
       const ctx = canvas.getContext('2d');
       
       if (!ctx) {
@@ -73,11 +77,11 @@ export function EnhancedMFS100Capture({
 
       // Convert base64 bitmap data to binary
       const binaryData = atob(bitmapData);
-      const imageData = ctx.createImageData(width, height);
+      const imageData = ctx.createImageData(validWidth, validHeight);
       const data = imageData.data;
       
       // Process each pixel - MFS100 provides raw grayscale bitmap data
-      const totalPixels = Math.min(binaryData.length, width * height);
+      const totalPixels = Math.min(binaryData.length, validWidth * validHeight);
       
       for (let i = 0; i < totalPixels; i++) {
         let pixelValue = binaryData.charCodeAt(i);
@@ -141,12 +145,15 @@ export function EnhancedMFS100Capture({
       
       let processedImage = "";
 
-      // Process the raw bitmap data into a displayable image
+      // Process the raw bitmap data into a displayable image with proper validation
       if (result.data.BitmapData) {
+        const width = result.data.InWidth || 256;
+        const height = result.data.InHeight || 256;
+        
         processedImage = processFingerprintBitmap(
           result.data.BitmapData,
-          result.data.InWidth || 256,
-          result.data.InHeight || 256
+          width,
+          height
         );
         
         if (processedImage) {
