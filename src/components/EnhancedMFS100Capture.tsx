@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -61,7 +60,7 @@ export function EnhancedMFS100Capture({
       const sqrtSize = Math.floor(Math.sqrt(totalPixels));
       if (sqrtSize * sqrtSize === totalPixels) {
         actualWidth = actualHeight = sqrtSize;
-        console.log(`📐 Auto-detected square dimensions: ${sqrtSize}x${sqrtSize}`);
+        console.log(`📐 Using calculated square dimensions: ${sqrtSize}x${sqrtSize}`);
       } else {
         // Try common MFS100 resolutions
         const commonSizes = [
@@ -96,21 +95,23 @@ export function EnhancedMFS100Capture({
       const maxPixels = Math.min(totalPixels, actualWidth * actualHeight);
       
       for (let i = 0; i < maxPixels; i++) {
-        // Get raw grayscale value from MFS100 device
+        // Get raw grayscale value from MFS100 device (0-255)
         let pixelValue = binaryArray[i];
         
-        // MFS100 devices typically provide inverted data
-        // Ridges are dark (low values), valleys are light (high values)
-        // Invert to show ridges as dark lines on light background
-        pixelValue = 255 - pixelValue;
+        // MFS100 devices provide data where:
+        // - Low values (0-127) = ridge areas (dark fingerprint lines)
+        // - High values (128-255) = valley areas (light background)
         
-        // Apply minimal contrast enhancement to make ridges more visible
-        if (pixelValue < 128) {
-          // Darken the ridge lines
-          pixelValue = Math.max(0, pixelValue - 20);
+        // Apply contrast enhancement to make ridges more visible
+        if (pixelValue < 100) {
+          // Darken ridge areas significantly
+          pixelValue = Math.max(0, pixelValue - 40);
+        } else if (pixelValue < 180) {
+          // Medium contrast adjustment for transition areas
+          pixelValue = Math.min(255, pixelValue + 20);
         } else {
-          // Lighten the background/valleys
-          pixelValue = Math.min(255, pixelValue + 15);
+          // Keep valley areas bright
+          pixelValue = Math.min(255, pixelValue + 10);
         }
         
         const pixelIndex = i * 4;
@@ -118,13 +119,13 @@ export function EnhancedMFS100Capture({
           pixels[pixelIndex] = pixelValue;     // Red
           pixels[pixelIndex + 1] = pixelValue; // Green  
           pixels[pixelIndex + 2] = pixelValue; // Blue
-          pixels[pixelIndex + 3] = 255;        // Alpha
+          pixels[pixelIndex + 3] = 255;        // Alpha (fully opaque)
         }
       }
       
       // Fill remaining pixels with white background
       for (let i = maxPixels * 4; i < pixels.length; i += 4) {
-        pixels[i] = 255;     // White
+        pixels[i] = 255;     // White background
         pixels[i + 1] = 255;
         pixels[i + 2] = 255;
         pixels[i + 3] = 255;
@@ -133,10 +134,10 @@ export function EnhancedMFS100Capture({
       // Put processed image data on canvas
       ctx.putImageData(imageData, 0, 0);
       
-      // Convert to PNG data URL
+      // Convert to high-quality PNG data URL
       const pngDataUrl = canvas.toDataURL('image/png', 1.0);
       
-      console.log(`✅ REAL fingerprint PNG generated for ${fingerName}:`, {
+      console.log(`✅ Fingerprint PNG generated for ${fingerName}:`, {
         resultLength: pngDataUrl.length,
         finalDimensions: `${actualWidth}x${actualHeight}`
       });
@@ -170,22 +171,22 @@ export function EnhancedMFS100Capture({
         throw new Error(result.data?.ErrorDescription || result.err || "Capture failed");
       }
       
-      const quality = parseInt(result.data.Quality) || 0;
+      const quality = parseInt(result.data.Quality || "0");
       setCaptureQuality(quality);
       
       // Process the real MFS100 bitmap data
       if (result.data.BitmapData && result.data.BitmapData.length > 0) {
         console.log(`🔍 Processing fingerprint bitmap for ${fingerName}:`, {
           bitmapLength: result.data.BitmapData.length,
-          width: result.data.InWidth,
-          height: result.data.InHeight,
+          width: result.data.InWidth || "300",
+          height: result.data.InHeight || "300",
           quality: quality
         });
 
         const realFingerprintImage = processRealFingerprintBitmap(
           result.data.BitmapData,
-          parseInt(result.data.InWidth) || 300,
-          parseInt(result.data.InHeight) || 300
+          parseInt(result.data.InWidth || "300"),
+          parseInt(result.data.InHeight || "300")
         );
         
         if (realFingerprintImage && realFingerprintImage.startsWith('data:image/')) {
@@ -270,7 +271,7 @@ export function EnhancedMFS100Capture({
                 filter: 'contrast(1.1)',
                 imageRendering: 'pixelated'
               }}
-              onLoad={() => console.log(`✅ Real fingerprint displayed for ${fingerName}`)}
+              onLoad={() => console.log(`✅ Fingerprint PNG displayed for ${fingerName}`)}
             />
             <div className="absolute -top-1 -right-1">
               <div className="bg-green-500 text-white rounded-full p-0.5">
