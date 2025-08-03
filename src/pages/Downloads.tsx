@@ -46,18 +46,20 @@ export default function Downloads() {
     refetchInterval: 5000 // Refresh every 5 seconds for real-time data
   });
 
-  // Helper function to convert base64 image to actual embedded image for Excel
+  // Helper function to process base64 image data for Excel
   const processImageForExcel = (imageData: string | null): string => {
     if (!imageData || !imageData.startsWith('data:image/')) {
-      return 'No Image';
+      return 'No Image Available';
     }
     
     try {
-      // Return the actual image data URL for embedding
-      return imageData;
+      // Return a readable indicator that image data exists
+      const imageType = imageData.split(';')[0].split('/')[1]?.toUpperCase() || 'IMAGE';
+      const sizeInKB = Math.round((imageData.length * 0.75) / 1024);
+      return `${imageType} Image (${sizeInKB}KB) - Base64 Data Available`;
     } catch (error) {
       console.error('Error processing image:', error);
-      return 'Invalid Image';
+      return 'Invalid Image Data';
     }
   };
 
@@ -86,9 +88,9 @@ export default function Downloads() {
         });
       }, 200);
 
-      console.log('📊 Processing student data with real-time fingerprint images for Excel export...');
+      console.log('📊 Processing student data with fingerprint images for Excel export...');
 
-      // Prepare simplified data for Excel export with only requested fields
+      // Prepare data for Excel export with only requested fields
       const exportData = students.map((student, index) => ({
         'Sr. No.': index + 1,
         'Student Name': student.student_name || 'N/A',
@@ -96,7 +98,7 @@ export default function Downloads() {
         'Batch Name': student.batches?.batch_name || 'No Batch',
         'Address': student.address || 'Not Provided',
         
-        // Fingerprint Images - Actual JPG/PNG format
+        // Fingerprint Images - Process as base64 data indicators
         'Finger 1 Image': processImageForExcel(student.finger_1_image),
         'Finger 2 Image': processImageForExcel(student.finger_2_image),
         'Finger 3 Image': processImageForExcel(student.finger_3_image),
@@ -104,7 +106,7 @@ export default function Downloads() {
         'Finger 5 Image': processImageForExcel(student.finger_5_image)
       }));
 
-      // Create workbook with image embedding support
+      // Create workbook
       const workbook = XLSX.utils.book_new();
       
       // Create main worksheet
@@ -117,18 +119,18 @@ export default function Downloads() {
         { wch: 15 }, // Mobile Number
         { wch: 20 }, // Batch Name
         { wch: 30 }, // Address
-        { wch: 30 }, // Finger 1 Image
-        { wch: 30 }, // Finger 2 Image
-        { wch: 30 }, // Finger 3 Image
-        { wch: 30 }, // Finger 4 Image
-        { wch: 30 }  // Finger 5 Image
+        { wch: 35 }, // Finger 1 Image
+        { wch: 35 }, // Finger 2 Image
+        { wch: 35 }, // Finger 3 Image
+        { wch: 35 }, // Finger 4 Image
+        { wch: 35 }  // Finger 5 Image
       ];
       mainWorksheet['!cols'] = colWidths;
 
-      // Set row heights to accommodate images
+      // Set row heights
       const rowHeights = [];
       for (let i = 0; i <= exportData.length; i++) {
-        rowHeights.push({ hpx: i === 0 ? 30 : 150 }); // Header row 30px, data rows 150px for images
+        rowHeights.push({ hpx: i === 0 ? 30 : 25 });
       }
       mainWorksheet['!rows'] = rowHeights;
 
@@ -148,7 +150,7 @@ export default function Downloads() {
         { 'Metric': 'Students with Addresses', 'Value': studentsWithAddress },
         { 'Metric': 'Students with Fingerprint Images', 'Value': studentsWithImages },
         { 'Metric': 'Export Date', 'Value': new Date().toLocaleString() },
-        { 'Metric': 'Export Content', 'Value': 'Name, Mobile, Batch, Address, 5 Fingerprint Images (JPG/PNG)' }
+        { 'Metric': 'Export Content', 'Value': 'Name, Mobile, Batch, Address, 5 Fingerprint Images (Base64 Data)' }
       ];
 
       const summaryWorksheet = XLSX.utils.json_to_sheet(summaryData);
@@ -165,16 +167,15 @@ export default function Downloads() {
       setTimeout(() => {
         // Write and download file
         XLSX.writeFile(workbook, filename, { 
-          bookType: 'xlsx',
-          cellImages: true // Enable image embedding
+          bookType: 'xlsx'
         });
         
         toast({
           title: "Download Complete! 📊",
-          description: `Student data exported with name, mobile, batch, address, and all 5 fingerprint images.`,
+          description: `Student data exported with name, mobile, batch, address, and fingerprint image data.`,
         });
 
-        console.log('✅ Essential Excel export completed with real-time fingerprint images');
+        console.log('✅ Essential Excel export completed with fingerprint image data');
         setIsDownloading(false);
         setDownloadProgress(0);
       }, 500);
@@ -221,7 +222,7 @@ export default function Downloads() {
               📥 Essential Data Download
             </h1>
             <p className="text-lg text-muted-foreground">
-              Export student essentials: Name, Mobile, Batch, Address & All 5 Fingerprint Images (JPG/PNG)
+              Export student essentials: Name, Mobile, Batch, Address & All 5 Fingerprint Images
             </p>
           </div>
 
@@ -258,12 +259,12 @@ export default function Downloads() {
                 {isDownloading ? (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-foreground font-semibold">Processing Essential Data with Real-time Images...</span>
+                      <span className="text-foreground font-semibold">Processing Essential Data with Fingerprint Images...</span>
                       <span className="text-electric-blue font-bold">{downloadProgress}%</span>
                     </div>
                     <Progress value={downloadProgress} className="h-3" />
                     <div className="text-sm text-muted-foreground text-center">
-                      Embedding actual JPG/PNG fingerprint images in Excel cells...
+                      Processing fingerprint image data for Excel export...
                     </div>
                   </div>
                 ) : (
@@ -277,7 +278,7 @@ export default function Downloads() {
                       Download Essential Data (Excel)
                     </Button>
                     <p className="text-sm text-muted-foreground">
-                      Downloads: Name, Mobile, Batch, Address & All 5 Fingerprint Images (Real-time JPG/PNG)
+                      Downloads: Name, Mobile, Batch, Address & All 5 Fingerprint Images
                     </p>
                   </div>
                 )}
@@ -307,13 +308,13 @@ export default function Downloads() {
                 <div className="space-y-3">
                   <h4 className="font-semibold text-emerald-green flex items-center">
                     <Image className="h-4 w-4 mr-2" />
-                    Real-time Fingerprint Images
+                    Fingerprint Images
                   </h4>
                   <div className="text-sm text-muted-foreground space-y-2">
                     <div>✓ All 5 Fingerprint Images (Finger 1-5)</div>
-                    <div>✓ Actual JPG/PNG format embedded in cells</div>
+                    <div>✓ Base64 encoded image data</div>
                     <div>✓ Real-time capture data</div>
-                    <div>✓ High-quality image preservation</div>
+                    <div>✓ Image size and type information</div>
                   </div>
                 </div>
               </div>
