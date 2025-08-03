@@ -1,11 +1,12 @@
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Fingerprint, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useGlobalRDService } from '@/contexts/GlobalRDServiceContext';
+import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 
 interface RealTimeFingerprintCaptureProps {
   index: number;
@@ -21,26 +22,13 @@ export function RealTimeFingerprintCapture({
   onCaptureSuccess 
 }: RealTimeFingerprintCaptureProps) {
   const { isAvailable, captureFingerprint } = useGlobalRDService();
-  const [user, setUser] = useState<any>(null);
+  const { user } = useEnhancedAuth();
   const [isCapturing, setIsCapturing] = useState(false);
   const [capturedData, setCapturedData] = useState<{
     template: string;
     image: string;
     quality: number;
   } | null>(null);
-
-  // Get user from supabase auth directly instead of context
-  useEffect(() => {
-    const getUser = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
-      } catch (error) {
-        console.error('Error getting user:', error);
-      }
-    };
-    getUser();
-  }, []);
 
   const saveToDatabase = async (template: string, image: string, quality: number) => {
     if (!studentId || !user?.id) return;

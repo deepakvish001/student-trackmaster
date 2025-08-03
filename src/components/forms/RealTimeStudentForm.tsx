@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { User, Phone, MapPin, GraduationCap } from 'lucide-react';
+import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 
 interface Batch {
   id: string;
@@ -19,7 +20,7 @@ interface RealTimeStudentFormProps {
 
 export function RealTimeStudentForm({ studentId, onStudentIdChange }: RealTimeStudentFormProps) {
   const [batches, setBatches] = useState<Batch[]>([]);
-  const [user, setUser] = useState<any>(null);
+  const { user } = useEnhancedAuth();
   const [formData, setFormData] = useState({
     student_name: '',
     mobile_number: '',
@@ -27,19 +28,6 @@ export function RealTimeStudentForm({ studentId, onStudentIdChange }: RealTimeSt
     address: ''
   });
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
-
-  // Get user from supabase auth directly instead of context
-  useEffect(() => {
-    const getUser = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
-      } catch (error) {
-        console.error('Error getting user:', error);
-      }
-    };
-    getUser();
-  }, []);
 
   // Load batches on mount
   useEffect(() => {
