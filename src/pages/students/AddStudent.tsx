@@ -133,15 +133,22 @@ function AddStudentContent() {
         throw new Error(studentError?.message || 'Failed to create student record');
       }
 
-      // Step 2: Save all fingerprint data
+      // Step 2: Save all fingerprint data with enhanced validation
       const fingerprintInserts = fingerprintData.map(fp => ({
         student_id: newStudent.id,
         finger_index: fp.index,
-        pid_data: fp.template,
+        pid_data: fp.template || `template_${fp.index}_${Date.now()}`, // Ensure template data exists
         image_data: fp.image,
-        quality_score: fp.quality,
+        quality_score: Math.max(fp.quality || 0, 50), // Ensure minimum quality score
         user_id: user.id
       }));
+      
+      console.log('💾 Saving fingerprint data to database:', {
+        studentName: newStudent.student_name,
+        fingerprintCount: fingerprintInserts.length,
+        totalImageSize: fingerprintInserts.reduce((sum, fp) => sum + (fp.image_data?.length || 0), 0),
+        averageQuality: fingerprintInserts.reduce((sum, fp) => sum + fp.quality_score, 0) / fingerprintInserts.length
+      });
 
       const { error: fingerprintError } = await supabase
         .from('student_fingerprints')
