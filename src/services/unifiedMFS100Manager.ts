@@ -38,7 +38,7 @@ export interface MFS100ConnectionState {
 
 class UnifiedMFS100Manager {
   private static instance: UnifiedMFS100Manager;
-  private baseUrl = 'https://localhost:8003/mfs100';
+  private baseUrl = 'http://localhost:8003/mfs100';
   private connectionState: MFS100ConnectionState = {
     isConnected: false,
     lastCheckTime: null,

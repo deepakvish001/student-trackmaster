@@ -27,7 +27,7 @@ export interface DeviceInfo {
 }
 
 export class StableMFS100Client {
-  private baseUrl = 'https://localhost:8003/mfs100';
+  private baseUrl = 'http://localhost:8003/mfs100';
   private isConnecting = false;
   private lastSuccessfulCheck = 0;
   private consecutiveFailures = 0;

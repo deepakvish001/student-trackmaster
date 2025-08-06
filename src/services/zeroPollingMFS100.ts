@@ -14,7 +14,7 @@ export interface ZeroPollingMFS100Result {
 
 class ZeroPollingMFS100Service {
   private static instance: ZeroPollingMFS100Service;
-  private baseUrl = 'https://localhost:8003/mfs100';
+  private baseUrl = 'http://localhost:8003/mfs100';
 
   private constructor() {
     console.log('🔵 Zero Polling MFS100 Service initialized - NO background processes');

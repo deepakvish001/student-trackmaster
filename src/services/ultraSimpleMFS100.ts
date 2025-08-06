@@ -14,7 +14,7 @@ export interface UltraSimpleMFS100Result {
 
 class UltraSimpleMFS100Service {
   private static instance: UltraSimpleMFS100Service;
-  private baseUrl = 'https://localhost:8003/mfs100';
+  private baseUrl = 'http://localhost:8003/mfs100';
 
   private constructor() {}
 

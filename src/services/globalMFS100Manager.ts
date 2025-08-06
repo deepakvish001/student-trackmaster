@@ -92,7 +92,7 @@ class GlobalMFS100Manager {
       const controller = new AbortController();
       setTimeout(() => controller.abort(), 3000); // Short timeout
 
-      const response = await fetch('https://localhost:8003/mfs100/info', {
+      const response = await fetch('http://localhost:8003/mfs100/info', {
         method: 'GET',
         signal: controller.signal,
         headers: { 'Content-Type': 'application/json' }

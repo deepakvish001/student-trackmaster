@@ -34,7 +34,7 @@ export interface MFS100DeviceState {
 
 class UnifiedMFS100Service {
   private static instance: UnifiedMFS100Service;
-  private baseUrl = 'https://localhost:8003/mfs100';
+  private baseUrl = 'http://localhost:8003/mfs100';
   private deviceState: MFS100DeviceState = {
     isConnected: false,
     isCapturing: false,
