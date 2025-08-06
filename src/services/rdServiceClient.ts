@@ -33,7 +33,7 @@ export interface DeviceInfo {
 let clientInitialized = false;
 
 export class RDServiceClient {
-  private baseUrl = 'https://localhost:8003/mfs100';
+  private baseUrl = 'http://localhost:8003/mfs100';
   private deviceInfo: DeviceInfo | null = null;
   private isResetting = false;
 

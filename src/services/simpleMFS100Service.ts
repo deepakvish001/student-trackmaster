@@ -14,7 +14,7 @@ export interface SimpleMFS100Result {
 
 class SimpleMFS100Service {
   private static instance: SimpleMFS100Service;
-  private baseUrl = 'https://localhost:8003/mfs100';
+  private baseUrl = 'http://localhost:8003/mfs100';
   private isCurrentlyCapturing = false;
 
   private constructor() {}
