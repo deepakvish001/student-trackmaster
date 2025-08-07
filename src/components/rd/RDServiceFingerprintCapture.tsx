@@ -16,6 +16,8 @@ interface RDServiceFingerprintCaptureProps {
   disabled?: boolean;
   fingerName?: string;
   targetQuality?: number;
+  onCaptureStart?: () => void;
+  onCaptureEnd?: () => void;
 }
 
 export function RDServiceFingerprintCapture({ 
@@ -24,7 +26,9 @@ export function RDServiceFingerprintCapture({
   onCaptureError,
   disabled = false,
   fingerName = `Finger ${index + 1}`,
-  targetQuality = 60
+  targetQuality = 60,
+  onCaptureStart,
+  onCaptureEnd
 }: RDServiceFingerprintCaptureProps) {
   const [isCapturing, setIsCapturing] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string>("");
@@ -42,60 +46,90 @@ export function RDServiceFingerprintCapture({
     resetConnection
   } = useRDService();
 
+  // Convert various RD image formats to data URI
+  const toDataUri = useCallback((imageData: string): string => {
+    if (!imageData) return '';
+    if (imageData.startsWith('data:image/')) return imageData;
+    const base64 = imageData.match(/(?:data:image\/[^;]+;base64,)?([A-Za-z0-9+/=]+)/)?.[1];
+    return base64 ? `data:image/png;base64,${base64}` : '';
+  }, []);
+
+  // Enhance image quality: scale 2x + contrast + unsharp mask
+  const enhanceImageQuality = useCallback(async (dataUri: string): Promise<string> => {
+    return await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(dataUri);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const d = imageData.data;
+        // simple contrast and sharpen
+        const contrast = 1.25; // 25%
+        for (let i = 0; i < d.length; i += 4) {
+          const gray = d[i];
+          let v = gray / 255;
+          v = (v - 0.5) * contrast + 0.5; // contrast
+          const val = Math.max(0, Math.min(255, Math.round(v * 255)));
+          d[i] = d[i+1] = d[i+2] = val;
+        }
+        ctx.putImageData(imageData, 0, 0);
+        resolve(canvas.toDataURL('image/png', 1.0));
+      };
+      img.onerror = () => resolve(dataUri);
+      img.src = dataUri;
+    });
+  }, []);
+
   const handleCapture = useCallback(async () => {
     if (!isAvailable) {
-      const errorMsg = "RD Service is not available. Please check your connection.";
+      const errorMsg = "MFS100 service is not available. Please check your connection.";
       toast.error(errorMsg);
       onCaptureError(errorMsg);
       return;
     }
 
     try {
+      onCaptureStart?.();
       setIsCapturing(true);
-      
+
       toast.info(`Place ${fingerName} on the scanner and wait...`, { 
         duration: 5000,
         description: "Keep finger steady on the scanner"
       });
 
       const result = await captureFingerprint();
-      
-      // Check if capture was successful based on errCode
+
       if (result.errCode !== "0") {
         throw new Error(result.errInfo || "Capture failed");
       }
 
-      // Store the PID data (encrypted biometric data)
-      if (result.pidData) {
-        setPidData(result.pidData);
-      }
+      if (result.pidData) setPidData(result.pidData);
 
-      // Store the image data separately
+      let processedImage = '';
       if (result.imageData) {
-        setCapturedImage(result.imageData);
+        const dataUri = toDataUri(result.imageData);
+        processedImage = dataUri ? await enhanceImageQuality(dataUri) : '';
+        if (processedImage) setCapturedImage(processedImage);
       }
 
-      // Store quality
-      if (result.quality) {
-        setCaptureQuality(result.quality);
-      }
+      if (typeof result.quality === 'number') setCaptureQuality(result.quality);
 
       const qualityText = result.quality ? `Quality: ${result.quality}%` : "";
       toast.success(`${fingerName} captured successfully! ${qualityText}`, {
         description: "Biometric data has been securely captured"
       });
 
-      console.log(`✅ ${fingerName} captured:`, {
-        quality: result.quality,
-        hasImage: !!result.imageData,
-        hasPidData: !!result.pidData
-      });
-
-      // Call the success callback
       onCaptureSuccess(
         result.pidData || '',
         result.quality || 0,
-        result.imageData
+        processedImage || undefined
       );
 
     } catch (error) {
@@ -105,8 +139,9 @@ export function RDServiceFingerprintCapture({
       onCaptureError(errorMessage);
     } finally {
       setIsCapturing(false);
+      onCaptureEnd?.();
     }
-  }, [isAvailable, fingerName, captureFingerprint, onCaptureSuccess, onCaptureError]);
+  }, [isAvailable, fingerName, captureFingerprint, onCaptureSuccess, onCaptureError, onCaptureStart, onCaptureEnd, toDataUri, enhanceImageQuality]);
 
   const handleDownloadPidData = useCallback(() => {
     if (!pidData) return;

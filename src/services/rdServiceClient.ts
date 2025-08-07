@@ -30,8 +30,9 @@ export interface DeviceInfo {
 }
 
 export class RDServiceClient {
-  private baseUrl = 'https://localhost:8003/mfs100';
-  private fallbackUrl = 'http://127.0.0.1:11100/rd';
+  private baseUrl = 'http://localhost:8003/mfs100';
+  // RD fallback disabled per requirements to use only one service (MFS100 on port 8003)
+  private fallbackUrl = '' as unknown as string;
   private deviceInfo: DeviceInfo | null = null;
   private lastAvailabilityCheck = 0;
   private availabilityCache: { result: boolean; timestamp: number; service?: string } | null = null;
@@ -85,36 +86,14 @@ export class RDServiceClient {
         console.log('✅ MFS100 service is available');
         return true;
       }
-
-      // Try standard RD Service as fallback
-      const rdServiceAvailable = await this.checkRDService();
-      if (rdServiceAvailable) {
-        this.activeServiceUrl = this.fallbackUrl;
-        this.availabilityCache = {
-          result: true,
-          timestamp: now,
-          service: this.fallbackUrl
-        };
-        this.consecutiveFailures = 0;
-        this.backoffDelay = 1000; // Reset backoff
-        console.log('✅ RD Service is available');
-        return true;
-      }
-
-      // Both services failed
+      // MFS100 service only (no RD fallback)
+      // Service not available
       this.consecutiveFailures++;
       this.availabilityCache = {
         result: false,
         timestamp: now
       };
-      
-      // Only log detailed error message occasionally to reduce console noise
-      if (this.consecutiveFailures <= 3 || this.consecutiveFailures % 10 === 0) {
-        console.warn('❌ No fingerprint service available. Please ensure one of the following is running:');
-        console.warn('   1. MFS100 service at https://localhost:8003');
-        console.warn('   2. Standard RD Service at http://127.0.0.1:11100');
-      }
-      
+
       return false;
 
     } catch (error) {
@@ -195,14 +174,11 @@ export class RDServiceClient {
    */
   async getDeviceInfo(): Promise<DeviceInfo> {
     if (!await this.isServiceAvailable()) {
-      throw new Error('No fingerprint service is available. Please start MFS100 service or RD Service.');
+      throw new Error('No fingerprint service is available. Please start MFS100 service at http://localhost:8003');
     }
 
-    if (this.activeServiceUrl === this.baseUrl) {
-      return this.getMFS100DeviceInfo();
-    } else {
-      return this.getRDServiceDeviceInfo();
-    }
+    // Always use MFS100 service
+    return this.getMFS100DeviceInfo();
   }
 
   private async getMFS100DeviceInfo(): Promise<DeviceInfo> {
@@ -386,11 +362,11 @@ export class RDServiceClient {
     
     let message: string;
     if (available) {
-      message = `Connected to ${this.activeServiceUrl.includes('8003') ? 'MFS100' : 'RD Service'}`;
+      message = 'Connected to MFS100';
     } else if (this.consecutiveFailures >= this.MAX_CONSECUTIVE_FAILURES) {
       message = `Service unavailable (${this.consecutiveFailures} failures). Next check in ${Math.round(this.backoffDelay / 1000)}s`;
     } else {
-      message = 'No fingerprint service found. Please start MFS100 service or RD Service';
+      message = 'No fingerprint service found. Please start MFS100 service at http://localhost:8003';
     }
     
     return {

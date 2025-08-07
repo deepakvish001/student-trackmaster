@@ -5,7 +5,7 @@
  */
 
 // Device service URL - Updated to use HTTPS port 8003
-const MFS100_SERVICE_URL = "https://localhost:8003/mfs100/";
+const MFS100_SERVICE_URL = "http://localhost:8003/mfs100/";
 
 let sdkLoaded = false;
 let deviceConnected = false;

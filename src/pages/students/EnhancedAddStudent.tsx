@@ -98,7 +98,7 @@ export default function EnhancedAddStudent() {
     { pidData: "", quality: 0 },
     { pidData: "", quality: 0 }
   ]);
-
+  const [capturingIndex, setCapturingIndex] = useState<number | null>(null);
   // Real-time clock update
   useEffect(() => {
     const timer = setInterval(() => {
@@ -389,7 +389,7 @@ export default function EnhancedAddStudent() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="space-y-2">
               <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                🏛️ RD Service Registration
+                🏛️ Student Registration
               </h1>
               <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                 <div className="flex items-center space-x-1">
@@ -438,9 +438,9 @@ export default function EnhancedAddStudent() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <p className="text-xs text-emerald-green font-semibold uppercase tracking-wide">RD Service</p>
+                    <p className="text-xs text-emerald-green font-semibold uppercase tracking-wide">MFS100 Service</p>
                     <p className="text-lg font-bold text-emerald-green">
-                      localhost:11100
+                      localhost:8003
                     </p>
                   </div>
                   <Lock className="h-8 w-8 text-emerald-green" />
@@ -664,7 +664,7 @@ export default function EnhancedAddStudent() {
                       </div>
                       <h3 className="text-xl font-bold text-blue-500">UIDAI-Compliant PidData Capture with Images</h3>
                       <Badge className="bg-blue-500/20 text-blue-500 border-blue-500/30">
-                        RD Service
+                        MFS100
                       </Badge>
                       {biometricSummary?.imagesCount > 0 && (
                         <Badge className="bg-emerald-green/20 text-emerald-green border-emerald-green/30">
@@ -677,7 +677,7 @@ export default function EnhancedAddStudent() {
                     <Alert className="glass border-blue-500/20 bg-blue-500/5">
                       <Shield className="h-4 w-4 text-blue-500" />
                       <AlertDescription className="text-blue-500 font-medium">
-                        🏛️ Using official RD Service at localhost:11100 for UIDAI-compliant PidData capture with fingerprint image extraction. Ensure MFS100 RD Service is running.
+                        🏛️ Using Mantra MFS100 service at http://localhost:8003 for PidData capture with fingerprint image extraction. Ensure the MFS100 service is running.
                       </AlertDescription>
                     </Alert>
                     
@@ -695,7 +695,9 @@ export default function EnhancedAddStudent() {
                                     index={index}
                                     onCaptureSuccess={(pidData, quality, imageData) => handleRDServiceCapture(index, pidData, quality, imageData)}
                                     onCaptureError={(error) => handleRDServiceError(index, error)}
-                                    disabled={isSubmitting}
+                                    disabled={isSubmitting || (capturingIndex !== null && capturingIndex !== index)}
+                                    onCaptureStart={() => setCapturingIndex(index)}
+                                    onCaptureEnd={() => setCapturingIndex(null)}
                                   />
                                 </div>
                               </FormControl>
