@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient as TanstackQueryClient, QueryClientProvider as TanstackQueryClientProvider } from "@tanstack/react-query";
@@ -104,7 +104,7 @@ function App() {
 }
 
 const QueryClient = ({ children }: { children: React.ReactNode }) => {
-  const [queryClient] = React.useState(
+  const [queryClient] = useState(
     () =>
       new TanstackQueryClient({
         defaultOptions: {
