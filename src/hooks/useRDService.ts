@@ -1,47 +1,38 @@
-
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { rdServiceClient, DeviceInfo } from '@/services/rdServiceClient';
-
-// Global flag to prevent multiple hook initializations
-let globalHookCount = 0;
-const MAX_HOOKS = 5;
 
 export function useRDService() {
   const [isAvailable, setIsAvailable] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
+  const [retryCount, setRetryCount] = useState<number>(0);
   const [serviceStatus, setServiceStatus] = useState<{
     service: string;
     message: string;
   }>({
     service: '',
-    message: 'Passive mode: Ready for capture'
+    message: 'Checking services...'
   });
   
+  const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
-  const hookIdRef = useRef<number>(0);
 
-  // Only log initialization for the first few hooks to prevent spam
+  // Configuration - Reduced frequency to prevent spam
+  const CHECK_INTERVAL = 30000; // Check every 30 seconds instead of 10
+  const INITIAL_DELAY = 2000; // Slightly longer initial delay
+
+  // Clean up on unmount
   useEffect(() => {
-    globalHookCount++;
-    hookIdRef.current = globalHookCount;
-    
-    if (globalHookCount <= MAX_HOOKS) {
-      console.log(`🔵 Passive RD Service hook #${globalHookCount} initialized - NO background monitoring`);
-    } else if (globalHookCount === MAX_HOOKS + 1) {
-      console.warn(`⚠️ RD Service hook created ${globalHookCount} times - suppressing further logs to prevent spam`);
-    }
-
     return () => {
-      if (globalHookCount <= MAX_HOOKS) {
-        console.log(`🔵 RD Service hook #${hookIdRef.current} cleanup`);
+      mountedRef.current = false;
+      if (checkIntervalRef.current) {
+        clearInterval(checkIntervalRef.current);
       }
     };
   }, []);
 
-  // Manual availability check only
+  // Check service availability with improved error handling
   const checkAvailability = async (showLogs = false) => {
     if (!mountedRef.current || isChecking) return;
 
@@ -62,30 +53,34 @@ export function useRDService() {
         setError(null);
         setRetryCount(0);
         
-        // Try to get device info only if we don't have it
-        if (!deviceInfo) {
-          try {
-            const info = await rdServiceClient.getDeviceInfo();
-            setDeviceInfo(info);
-            
-            if (showLogs) {
-              console.log('✅ Passive: MFS100 device ready:', info);
-            }
-          } catch (err) {
-            if (showLogs) {
-              console.warn('Passive: Could not get device info:', err);
-            }
+        // Try to get device info
+        try {
+          const info = await rdServiceClient.getDeviceInfo();
+          setDeviceInfo(info);
+          
+          if (showLogs) {
+            console.log('✅ Fingerprint service connected:', {
+              service: status.service,
+              deviceInfo: info
+            });
           }
+        } catch (err) {
+          if (showLogs) {
+            console.warn('Could not get device info:', err);
+          }
+          setDeviceInfo(null);
         }
       } else {
         setError(status.message);
+        setDeviceInfo(null);
         setRetryCount(prev => prev + 1);
       }
     } catch (err) {
       if (!mountedRef.current) return;
       
-      const errorMessage = err instanceof Error ? err.message : 'Passive: Connection failed';
+      const errorMessage = err instanceof Error ? err.message : 'Service check failed';
       setIsAvailable(false);
+      setDeviceInfo(null);
       setError(errorMessage);
       setRetryCount(prev => prev + 1);
       setServiceStatus({
@@ -99,8 +94,36 @@ export function useRDService() {
     }
   };
 
-  // Direct fingerprint capture
-  const captureFingerprint = async (timeout: number = 15000) => {
+  // Initialize and start periodic checking
+  useEffect(() => {
+    // Initial check with delay
+    const initTimeout = setTimeout(() => {
+      if (mountedRef.current) {
+        checkAvailability(true);
+      }
+    }, INITIAL_DELAY);
+
+    // Start periodic checking with reduced frequency
+    checkIntervalRef.current = setInterval(() => {
+      if (mountedRef.current) {
+        checkAvailability(false); // Don't show logs for periodic checks
+      }
+    }, CHECK_INTERVAL);
+
+    return () => {
+      clearTimeout(initTimeout);
+      if (checkIntervalRef.current) {
+        clearInterval(checkIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // Capture fingerprint
+  const captureFingerprint = async (timeout: number = 10000) => {
+    if (!isAvailable) {
+      throw new Error(error || 'No fingerprint service is available');
+    }
+
     try {
       const result = await rdServiceClient.captureFingerprint(timeout);
       
@@ -114,6 +137,11 @@ export function useRDService() {
     } catch (err) {
       if (mountedRef.current) {
         setRetryCount(prev => prev + 1);
+        setTimeout(() => {
+          if (mountedRef.current) {
+            checkAvailability(true);
+          }
+        }, 1000);
       }
       
       throw err;
@@ -122,36 +150,40 @@ export function useRDService() {
 
   // Get device info
   const getDeviceInfo = async () => {
+    if (!isAvailable) {
+      throw new Error('No fingerprint service is available');
+    }
+    
     const info = await rdServiceClient.getDeviceInfo();
     setDeviceInfo(info);
     return info;
   };
 
   // Manual retry
-  const retry = async () => {
+  const retry = () => {
     setError(null);
     setRetryCount(0);
+    rdServiceClient.clearCache();
     checkAvailability(true);
   };
 
   // Reset connection
-  const resetConnection = async () => {
+  const resetConnection = () => {
     setIsAvailable(false);
     setDeviceInfo(null);
     setError(null);
     setRetryCount(0);
     setServiceStatus({
       service: '',
-      message: 'Passive: Resetting connection...'
+      message: 'Resetting...'
     });
-    
-    await rdServiceClient.forceSessionReset();
+    rdServiceClient.clearCache();
     
     setTimeout(() => {
       if (mountedRef.current) {
         checkAvailability(true);
       }
-    }, 2000);
+    }, 500);
   };
 
   return {
@@ -161,7 +193,6 @@ export function useRDService() {
     error,
     deviceInfo,
     serviceStatus,
-    sessionActive: false,
     retryCount,
     
     // Actions
@@ -169,7 +200,6 @@ export function useRDService() {
     getDeviceInfo,
     retry,
     resetConnection,
-    checkAvailability: () => checkAvailability(true),
-    forceSessionReset: () => rdServiceClient.forceSessionReset()
+    checkAvailability: () => checkAvailability(true)
   };
 }

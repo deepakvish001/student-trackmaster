@@ -155,10 +155,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <SidebarGroup className="mt-8">
               <SidebarGroupContent>
                 <div className="px-2">
-                  <Link to="/students/add">
+                  <Link to="/students/enhanced-add">
                     <Button 
                       className={`w-full justify-start gap-3 h-14 font-semibold transition-all duration-300 rounded-xl ${
-                        location.pathname === '/students/add' 
+                        location.pathname === '/students/enhanced-add' 
                           ? 'gradient-primary shadow-glow hover:shadow-glow-lg' 
                           : 'glass-card border border-primary/20 text-primary hover:bg-primary/10 hover:shadow-purple-glow'
                       }`}
