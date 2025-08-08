@@ -57,11 +57,30 @@ export const processHighQualityFingerprint = (
       return "";
     }
 
-    console.log(`Processing fingerprint bitmap: ${bitmapData.length} bytes, dimensions: ${width}x${height}`);
+    // Handle physical dimensions vs pixel dimensions
+    // If width/height are less than 10, they're likely physical dimensions (inches)
+    // Convert to reasonable pixel dimensions for fingerprint images
+    let pixelWidth = width;
+    let pixelHeight = height;
+    
+    if (width < 10 || height < 10) {
+      console.log(`Detected physical dimensions: ${width}" x ${height}". Converting to pixel dimensions.`);
+      // Standard fingerprint image dimensions
+      pixelWidth = 320;
+      pixelHeight = 480;
+    }
+
+    console.log(`Processing fingerprint bitmap: ${bitmapData.length} bytes, using dimensions: ${pixelWidth}x${pixelHeight}`);
+    
+    // Check if bitmap data is BMP format (starts with 'BM' which becomes 'Qk' in base64)
+    if (bitmapData.startsWith('Qk')) {
+      console.log('Detected BMP format data, creating image directly...');
+      return `data:image/bmp;base64,${bitmapData}`;
+    }
     
     const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = pixelWidth;
+    canvas.height = pixelHeight;
     const ctx = canvas.getContext('2d');
     
     if (!ctx) {
