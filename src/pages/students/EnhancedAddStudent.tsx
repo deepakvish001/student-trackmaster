@@ -677,14 +677,13 @@ export default function EnhancedAddStudent() {
                       </AlertDescription>
                     </Alert>
                     
-                     {/* Replaced with MultiFingerCaptureInterface */}
-                     <div className="text-center p-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                       <p className="text-blue-800 font-medium">
-                         The enhanced multi-fingerprint capture system is now integrated above. 
-                         Please use the new interface for better quality and persistent previews.
-                       </p>
-                     </div>
-                  </div>
+                     {/* Multi-Fingerprint Capture Interface */}
+                     <MultiFingerCaptureInterface
+                       onAllCaptured={handleAllFingerprintsCaptured}
+                       disabled={isSubmitting}
+                       targetQuality={75}
+                     />
+                   </div>
 
                   {/* Submit Button */}
                   <div className="flex justify-center pt-8">
