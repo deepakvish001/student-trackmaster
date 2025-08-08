@@ -133,7 +133,6 @@ export function EnhancedMFS100Capture({
   const handleCapture = useCallback(async () => {
     if (!isConnected || !isInitialized) {
       toast.error(`Device not ready: Please check MFS100 connection`);
-      return;
     }
 
     try {
@@ -273,6 +272,9 @@ export function EnhancedMFS100Capture({
           quality={displayQuality}
           isCapturing={captureState === 'capturing'}
           showQuality={true}
+          isConnected={isConnected}
+          onCapture={handleCapture}
+          onRecapture={handleRecapture}
         />
         
         {captureState === 'capturing' && (
@@ -352,31 +354,12 @@ export function EnhancedMFS100Capture({
         </div>
       )}
 
-      <Button
-        type="button"
-        onClick={handleCapture}
-        disabled={captureState === 'capturing' || captureState === 'accepted' || !isConnected || !isInitialized}
-        className={`w-full transition-all duration-300 ${
-          captureState === 'capturing' 
-            ? 'bg-blue-500 hover:bg-blue-600 animate-pulse' 
-            : captureState === 'accepted'
-              ? 'bg-green-500 hover:bg-green-600'
-            : isConnected && isInitialized
-              ? 'bg-primary hover:bg-primary/90' 
-              : 'bg-gray-400 cursor-not-allowed'
-        }`}
-        size="lg"
-      >
-        <Fingerprint className="mr-2 h-5 w-5" />
-        {captureState === 'capturing' 
-          ? `Capturing ${fingerName}...` 
-          : captureState === 'accepted'
-            ? `${fingerName} Image Saved ✓`
-          : isConnected && isInitialized
-            ? `Capture ${fingerName}` 
-            : 'Device Not Ready'
-        }
-      </Button>
+      {/* Connection Warning - Show when device is disconnected */}
+      {!isConnected && (
+        <div className="text-xs text-orange-600 text-center bg-orange-50 p-2 rounded border">
+          Device disconnected - capture may fail
+        </div>
+      )}
 
       {captureState === 'accepted' && (
         <div className="flex items-center space-x-2 text-sm text-green-600">
