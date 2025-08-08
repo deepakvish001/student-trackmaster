@@ -98,9 +98,7 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Mobile</TableHead>
-              <TableHead>Address</TableHead>
+              <TableHead>Name & Mobile</TableHead>
               <TableHead>Batch</TableHead>
               <TableHead className="text-center">Fingerprint Images</TableHead>
               <TableHead>Status</TableHead>
@@ -110,7 +108,7 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
           <TableBody>
             {students.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                   No students found. Add your first student to get started.
                 </TableCell>
               </TableRow>
@@ -118,17 +116,12 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
               students.map((student) => (
                 <TableRow key={student.id} className="hover:bg-gray-50">
                   <TableCell className="font-medium">
-                    {student.student_name}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {student.mobile_number || (
-                      <span className="text-gray-500">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-sm max-w-[200px] truncate">
-                    {student.address || (
-                      <span className="text-gray-500">-</span>
-                    )}
+                    <div>
+                      <div className="font-medium">{student.student_name}</div>
+                      <div className="text-sm text-gray-500">
+                        {student.mobile_number || '-'}
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell>
                     {student.batches?.batch_name || (
