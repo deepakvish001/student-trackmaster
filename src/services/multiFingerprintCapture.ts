@@ -277,7 +277,7 @@ class MultiFingerprintCaptureService {
     }
   }
 
-  // Capture fingerprint with enhanced quality
+  // Capture fingerprint with enhanced quality and device reset handling
   async captureFingerprint(index: number, quality: number = 70, timeout: number = 20): Promise<boolean> {
     if (this.isCapturing) {
       throw new Error('Another capture is in progress');
@@ -293,6 +293,9 @@ class MultiFingerprintCaptureService {
 
     try {
       console.log(`🔵 Capturing ${this.fingerprints[index].name} with enhanced quality...`);
+
+      // First, try to reset device state if needed
+      await this.resetDeviceState();
 
       this.currentController = new AbortController();
       const requestTimeout = setTimeout(() => {
@@ -347,12 +350,58 @@ class MultiFingerprintCaptureService {
       
       const errorMessage = error instanceof Error ? error.message : 'Capture failed';
       console.error(`❌ ${this.fingerprints[index].name} capture failed:`, errorMessage);
+      
+      // If device state error, try to reset for next capture
+      if (errorMessage.includes('already started') || errorMessage.includes('already stopped')) {
+        console.log('🔄 Device state error detected, resetting for next capture...');
+        await this.resetDeviceState();
+      }
+      
       throw new Error(errorMessage);
 
     } finally {
       this.isCapturing = false;
       this.currentController = null;
       this.notifySubscribers();
+    }
+  }
+
+  // Reset device state to handle MFS100 conflicts
+  private async resetDeviceState(): Promise<void> {
+    try {
+      console.log('🔄 Resetting MFS100 device state...');
+      
+      // Try to uninit first
+      const uninitResponse = await fetch(`${this.baseUrl}/uninit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (uninitResponse.ok) {
+        console.log('✅ Device uninit successful');
+      }
+      
+      // Small delay before reinit
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Try to init
+      const initResponse = await fetch(`${this.baseUrl}/init`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (initResponse.ok) {
+        console.log('✅ Device init successful');
+      }
+      
+    } catch (error) {
+      console.warn('⚠️ Device reset failed, continuing anyway:', error);
     }
   }
 
@@ -383,9 +432,9 @@ class MultiFingerprintCaptureService {
     return { ...this.fingerprints[index] };
   }
 
-  // Reset all fingerprints
+  // Reset all fingerprints and device state
   resetAll(): void {
-    console.log('🔄 Resetting all fingerprints...');
+    console.log('🔄 Resetting all fingerprints and device state...');
     
     this.fingerprints = this.fingerprints.map((fp, index) => ({
       index,
@@ -402,6 +451,11 @@ class MultiFingerprintCaptureService {
       this.currentController.abort();
       this.currentController = null;
     }
+    
+    // Reset device state asynchronously
+    this.resetDeviceState().catch(err => 
+      console.warn('Device reset during resetAll failed:', err)
+    );
     
     this.notifySubscribers();
   }

@@ -219,16 +219,32 @@ export function MultiFingerCaptureInterface({
                 Multi-Fingerprint Capture System
               </span>
             </span>
-            <Button 
-              variant="outline" 
-              size="lg" 
-              onClick={resetAll}
-              disabled={disabled || completedCount === 0}
-              className="hover:bg-red-50 hover:border-red-200 hover:text-red-700 transition-all duration-300 font-semibold px-6 py-3 text-base"
-            >
-              <RotateCcw className="h-5 w-5 mr-2" />
-              Reset All
-            </Button>
+            <div className="flex space-x-3">
+              <Button 
+                variant="outline" 
+                size="lg" 
+                onClick={resetAll}
+                disabled={disabled || completedCount === 0}
+                className="hover:bg-red-50 hover:border-red-200 hover:text-red-700 transition-all duration-300 font-semibold px-6 py-3 text-base"
+              >
+                <RotateCcw className="h-5 w-5 mr-2" />
+                Reset All
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg" 
+                onClick={() => {
+                  toast.info("Resetting MFS100 device state...");
+                  // Force device reset through service
+                  resetAll();
+                }}
+                disabled={disabled}
+                className="hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 transition-all duration-300 font-semibold px-6 py-3 text-base"
+              >
+                <Zap className="h-5 w-5 mr-2" />
+                Reset Device
+              </Button>
+            </div>
           </CardTitle>
         </CardHeader>
         
