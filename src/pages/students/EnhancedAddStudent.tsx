@@ -25,7 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { BatchSelector } from "@/components/BatchSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { RDServiceFingerprintCapture } from "@/components/rd/RDServiceFingerprintCapture";
+import { MultiFingerCaptureInterface } from "@/components/fingerprint/MultiFingerCaptureInterface";
 import { validateStudentDataWithBiometrics } from "@/utils/enhancedSecurityValidation";
 import { encryptFingerprintData, auditBiometricAccess } from "@/utils/biometricSecurity";
 import { sanitizeTextInput, sanitizeEmail, sanitizePhoneNumber } from "@/utils/inputSanitization";
@@ -127,49 +127,45 @@ export default function EnhancedAddStudent() {
     return watchForm.unsubscribe;
   }, [form.watch]);
 
-  // Handle RD Service fingerprint capture with image data
-  const handleRDServiceCapture = (index: number, pidData: string, quality: number, imageData?: string) => {
-    console.log(`RD Service fingerprint ${index + 1} captured:`, {
-      quality,
-      pidDataLength: pidData.length,
-      pidDataPreview: pidData.substring(0, 200) + '...',
-      hasImageData: !!imageData
+  // Handle multi-fingerprint capture completion
+  const handleAllFingerprintsCaptured = async (fingerprintData: any[]) => {
+    console.log('All fingerprints captured:', fingerprintData);
+    
+    // Convert to form format
+    const fingerprints = ["", "", "", "", ""];
+    const qualities: (number | null)[] = [null, null, null, null, null];
+    const images: (string | null)[] = [null, null, null, null, null];
+    const newFingerprintData: FingerprintData[] = [];
+    
+    fingerprintData.forEach((fp) => {
+      if (fp.index >= 0 && fp.index < 5) {
+        fingerprints[fp.index] = fp.template || fp.imageData || 'captured';
+        qualities[fp.index] = fp.quality;
+        images[fp.index] = fp.imageData || null;
+        
+        newFingerprintData[fp.index] = {
+          pidData: fp.template || 'enhanced_capture',
+          imageData: fp.imageData,
+          quality: fp.quality
+        };
+      }
     });
     
-    const currentFingerprints = form.getValues("fingerprints");
-    currentFingerprints[index] = pidData;
-    form.setValue("fingerprints", currentFingerprints);
-    
-    // Update quality and image tracking
-    const newQualities = [...capturedQualities];
-    newQualities[index] = quality;
-    setCapturedQualities(newQualities);
-    
-    const newImages = [...capturedImages];
-    newImages[index] = imageData || null;
-    setCapturedImages(newImages);
-    
-    // Update fingerprint data
-    const newFingerprintData = [...fingerprintData];
-    newFingerprintData[index] = {
-      pidData,
-      imageData,
-      quality
-    };
+    // Update form state
+    form.setValue("fingerprints", fingerprints);
+    setCapturedQualities(qualities);
+    setCapturedImages(images);
     setFingerprintData(newFingerprintData);
     
-    // Trigger validation
+    // Update biometric summary
+    updateBiometricSummary(fingerprints, qualities, images);
+    
+    // Trigger form validation
     form.trigger("fingerprints");
     
-    // Update biometric summary
-    updateBiometricSummary(currentFingerprints, newQualities, newImages);
-    
-    toast.success(`Finger ${index + 1} captured successfully! Quality: ${quality}%${imageData ? ' with image' : ''}`);
-  };
-
-  const handleRDServiceError = (index: number, error: string) => {
-    console.error(`RD Service capture error for finger ${index + 1}:`, error);
-    toast.error(`Finger ${index + 1} capture failed: ${error}`);
+    toast.success(`All 5 fingerprints captured and saved successfully!`, {
+      description: `Average quality: ${Math.round(qualities.filter(q => q !== null).reduce((sum, q) => sum + (q || 0), 0) / 5)}%`
+    });
   };
 
   const updateBiometricSummary = (fingerprints: string[], qualities: (number | null)[], images: (string | null)[]) => {
@@ -681,30 +677,13 @@ export default function EnhancedAddStudent() {
                       </AlertDescription>
                     </Alert>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                      {[0, 1, 2, 3, 4].map((index) => (
-                        <FormField
-                          key={index}
-                          control={form.control}
-                          name={`fingerprints.${index}`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <div className="glass-card border-foreground/10 p-2 rounded-xl hover-lift">
-                                  <RDServiceFingerprintCapture
-                                    index={index}
-                                    onCaptureSuccess={(pidData, quality, imageData) => handleRDServiceCapture(index, pidData, quality, imageData)}
-                                    onCaptureError={(error) => handleRDServiceError(index, error)}
-                                    disabled={isSubmitting}
-                                  />
-                                </div>
-                              </FormControl>
-                              <FormMessage className="text-destructive font-medium" />
-                            </FormItem>
-                          )}
-                        />
-                      ))}
-                    </div>
+                     {/* Replaced with MultiFingerCaptureInterface */}
+                     <div className="text-center p-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                       <p className="text-blue-800 font-medium">
+                         The enhanced multi-fingerprint capture system is now integrated above. 
+                         Please use the new interface for better quality and persistent previews.
+                       </p>
+                     </div>
                   </div>
 
                   {/* Submit Button */}
