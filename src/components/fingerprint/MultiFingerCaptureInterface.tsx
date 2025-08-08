@@ -173,6 +173,21 @@ export function MultiFingerCaptureInterface({
         description: `${completedCount} fingerprints uploaded to secure database`
       });
 
+      // Auto-reset after successful save for new capture
+      setTimeout(() => {
+        resetAll();
+        setPreviewState({
+          isVisible: false,
+          fingerIndex: -1,
+          fingerName: '',
+          imageData: '',
+          quality: 0
+        });
+        toast.info("System ready for new fingerprint capture", {
+          description: "All data cleared - ready for next student"
+        });
+      }, 2000);
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Save failed';
       toast.error("Failed to save fingerprints", {
@@ -181,7 +196,7 @@ export function MultiFingerCaptureInterface({
     } finally {
       setSavingToSupabase(false);
     }
-  }, [allCaptured, getAllCapturedData, onAllCaptured, completedCount]);
+  }, [allCaptured, getAllCapturedData, onAllCaptured, completedCount, resetAll]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
