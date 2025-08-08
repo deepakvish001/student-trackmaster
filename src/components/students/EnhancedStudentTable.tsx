@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Student } from '@/types';
 import { StudentActions } from './StudentActions';
 import { StudentDetailsDialog } from './StudentDetailsDialog';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { CheckCircle, XCircle, Fingerprint } from 'lucide-react';
 
 interface EnhancedStudentTableProps {
   students: Student[];
@@ -39,6 +39,48 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
     return fingerprints.filter(Boolean).length;
   };
 
+  const getFingerprintImageUrl = (fingerprintData: string | null) => {
+    if (!fingerprintData) return null;
+    
+    // Check if it's already a data URL
+    if (fingerprintData.startsWith('data:image/')) {
+      return fingerprintData;
+    }
+    
+    // If it's a very long string (image data), treat it as base64
+    if (fingerprintData.length > 50000) {
+      return `data:image/png;base64,${fingerprintData}`;
+    }
+    
+    return null;
+  };
+
+  const renderFingerprintPreview = (fingerprintData: string | null, index: number) => {
+    const imageUrl = getFingerprintImageUrl(fingerprintData);
+    
+    if (imageUrl) {
+      return (
+        <div className="w-12 h-16 border rounded overflow-hidden bg-gray-50">
+          <img 
+            src={imageUrl}
+            alt={`Finger ${index + 1}`}
+            className="w-full h-full object-contain"
+            style={{
+              filter: 'contrast(1.2) brightness(1.1)',
+              imageRendering: 'crisp-edges'
+            }}
+          />
+        </div>
+      );
+    }
+    
+    return (
+      <div className="w-12 h-16 border rounded flex items-center justify-center bg-gray-100">
+        <Fingerprint className="h-4 w-4 text-gray-400" />
+      </div>
+    );
+  };
+
   return (
     <>
       <div className="rounded-md border">
@@ -46,17 +88,18 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
+              <TableHead>Mobile</TableHead>
+              <TableHead>Address</TableHead>
               <TableHead>Batch</TableHead>
-              <TableHead>Fingerprints</TableHead>
+              <TableHead className="text-center">Fingerprint Images</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
               <TableHead className="w-[70px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {students.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                   No students found. Add your first student to get started.
                 </TableCell>
               </TableRow>
@@ -66,30 +109,39 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
                   <TableCell className="font-medium">
                     {student.student_name}
                   </TableCell>
+                  <TableCell className="text-sm">
+                    {student.mobile_number || (
+                      <span className="text-gray-500">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm max-w-[200px] truncate">
+                    {student.address || (
+                      <span className="text-gray-500">-</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     {student.batches?.batch_name || (
                       <span className="text-gray-500 text-sm">No Batch</span>
                     )}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-medium">
-                        {getFingerprintCount(student)}/5
+                    <div className="flex space-x-1 justify-center">
+                      {renderFingerprintPreview(student.finger_1, 0)}
+                      {renderFingerprintPreview(student.finger_2, 1)}
+                      {renderFingerprintPreview(student.finger_3, 2)}
+                      {renderFingerprintPreview(student.finger_4, 3)}
+                      {renderFingerprintPreview(student.finger_5, 4)}
+                    </div>
+                    <div className="text-center mt-1">
+                      <span className="text-xs text-gray-500">
+                        {getFingerprintCount(student)}/5 captured
                       </span>
-                      {getFingerprintCount(student) > 0 ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <XCircle className="h-4 w-4 text-red-500" />
-                      )}
                     </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant={student.is_enabled ? "default" : "secondary"}>
                       {student.is_enabled ? "Active" : "Inactive"}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-600">
-                    {new Date(student.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
                     <StudentActions

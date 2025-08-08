@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/components/DashboardLayout';
 import { EnhancedStudentTable } from '@/components/students/EnhancedStudentTable';
@@ -35,6 +35,29 @@ export default function ViewStudents() {
       return data || [];
     }
   });
+
+  // Real-time subscription for students data
+  useEffect(() => {
+    const channel = supabase
+      .channel('students-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'students'
+        },
+        (payload) => {
+          console.log('Real-time student update:', payload);
+          queryClient.invalidateQueries({ queryKey: ['students-view'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   // Delete mutation
   const deleteMutation = useMutation({
