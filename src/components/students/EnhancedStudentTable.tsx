@@ -55,18 +55,28 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
     return null;
   };
 
-  const renderFingerprintPreview = (fingerprintData: string | null, index: number) => {
+  const renderFingerprintPreview = (student: Student, index: number) => {
+    // Use the specific image field for each finger
+    const imageFields = [
+      student.finger_1_image,
+      student.finger_2_image, 
+      student.finger_3_image,
+      student.finger_4_image,
+      student.finger_5_image
+    ];
+    
+    const fingerprintData = imageFields[index];
     const imageUrl = getFingerprintImageUrl(fingerprintData);
     
     if (imageUrl) {
       return (
-        <div className="w-12 h-16 border rounded overflow-hidden bg-gray-50">
+        <div className="w-16 h-20 border rounded overflow-hidden bg-gray-50 shadow-sm">
           <img 
             src={imageUrl}
             alt={`Finger ${index + 1}`}
             className="w-full h-full object-contain"
             style={{
-              filter: 'contrast(1.2) brightness(1.1)',
+              filter: 'contrast(1.3) brightness(1.15) saturate(1.1)',
               imageRendering: 'crisp-edges'
             }}
           />
@@ -75,8 +85,9 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
     }
     
     return (
-      <div className="w-12 h-16 border rounded flex items-center justify-center bg-gray-100">
-        <Fingerprint className="h-4 w-4 text-gray-400" />
+      <div className="w-16 h-20 border rounded flex items-center justify-center bg-gray-100">
+        <Fingerprint className="h-5 w-5 text-gray-400" />
+        <span className="sr-only">No fingerprint {index + 1}</span>
       </div>
     );
   };
@@ -125,15 +136,15 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
                     )}
                   </TableCell>
                   <TableCell>
-                    <div className="flex space-x-1 justify-center">
-                      {renderFingerprintPreview(student.finger_1, 0)}
-                      {renderFingerprintPreview(student.finger_2, 1)}
-                      {renderFingerprintPreview(student.finger_3, 2)}
-                      {renderFingerprintPreview(student.finger_4, 3)}
-                      {renderFingerprintPreview(student.finger_5, 4)}
+                    <div className="flex space-x-2 justify-center items-center">
+                      {renderFingerprintPreview(student, 0)}
+                      {renderFingerprintPreview(student, 1)}
+                      {renderFingerprintPreview(student, 2)}
+                      {renderFingerprintPreview(student, 3)}
+                      {renderFingerprintPreview(student, 4)}
                     </div>
-                    <div className="text-center mt-1">
-                      <span className="text-xs text-gray-500">
+                    <div className="text-center mt-2">
+                      <span className="text-xs text-gray-500 font-medium">
                         {getFingerprintCount(student)}/5 captured
                       </span>
                     </div>
