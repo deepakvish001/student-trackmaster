@@ -1,6 +1,19 @@
 
 /// <reference types="vite/client" />
 
+// MFS100 SDK Global Functions
+declare global {
+  interface Window {
+    GetMFS100Info: () => any;
+    CaptureFinger: (quality: number, timeout: number) => any;
+    VerifyFinger: (template1: string, template2: string) => any;
+    GetMFS100List: () => any;
+    DemoCapture: () => any;
+    uninit: () => any;
+    init: () => any;
+  }
+}
+
 // jQuery type declarations
 interface JQueryStatic {
   (selector: string): any;

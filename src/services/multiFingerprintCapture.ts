@@ -73,6 +73,23 @@ class MultiFingerprintCaptureService {
     };
   }
 
+  // Wait for SDK to be available
+  private async waitForSDK(maxWait: number = 5000): Promise<boolean> {
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < maxWait) {
+      if (window.GetMFS100Info && window.CaptureFinger) {
+        console.log('✅ MFS100 SDK is available');
+        return true;
+      }
+      console.log('⏳ Waiting for MFS100 SDK to load...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    console.error('❌ MFS100 SDK failed to load within timeout');
+    return false;
+  }
+
   // Enhanced image processing with 4x quality improvement
   private enhanceImageQuality(bitmapData: string): string {
     try {
@@ -293,6 +310,12 @@ class MultiFingerprintCaptureService {
 
     try {
       console.log(`🔵 Capturing ${this.fingerprints[index].name} with enhanced quality...`);
+
+      // Wait for SDK to be available first
+      const sdkReady = await this.waitForSDK();
+      if (!sdkReady) {
+        throw new Error('MFS100 SDK not available. Please ensure the device is connected and drivers are installed.');
+      }
 
       // Use the enhanced MFS100 capture function
       const result = await captureHighQualityFingerprint(
