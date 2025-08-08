@@ -294,8 +294,8 @@ export function MultiFingerCaptureInterface({
               <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-200">
                 <Zap className="h-5 w-5 text-emerald-600" />
                 <div>
-                  <div className="text-sm font-medium text-emerald-800">Enhancement</div>
-                  <div className="text-lg font-bold text-emerald-900">4x Ultra HD</div>
+                  <div className="text-sm font-medium text-emerald-800">AI Enhancement</div>
+                  <div className="text-lg font-bold text-emerald-900">Ultra HD + AI</div>
                 </div>
               </div>
               

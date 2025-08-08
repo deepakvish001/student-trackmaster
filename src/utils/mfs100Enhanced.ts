@@ -1,6 +1,7 @@
 
 // Enhanced MFS100 utilities for real-time fingerprint capture
 import { toast } from "sonner";
+import { maxQualityEnhanceFingerprint, quickEnhanceFingerprint } from "./fingerprintImageEnhancer";
 
 // Enhanced type definitions
 export interface MFS100DeviceStatus {
@@ -46,11 +47,12 @@ export const monitorDeviceStatus = (): MFS100DeviceStatus => {
 };
 
 // Enhanced bitmap processing for crystal-clear fingerprint images
-export const processHighQualityFingerprint = (
+export const processHighQualityFingerprint = async (
   bitmapData: string, 
   width: number = 256, 
-  height: number = 256
-): string => {
+  height: number = 256,
+  enableAIEnhancement: boolean = true
+): Promise<string> => {
   try {
     if (!bitmapData || bitmapData.length === 0) {
       console.warn('No bitmap data provided for processing');
@@ -75,7 +77,21 @@ export const processHighQualityFingerprint = (
     // Check if bitmap data is BMP format (starts with 'BM' which becomes 'Qk' in base64)
     if (bitmapData.startsWith('Qk')) {
       console.log('Detected BMP format data, creating image directly...');
-      return `data:image/bmp;base64,${bitmapData}`;
+      const baseImage = `data:image/bmp;base64,${bitmapData}`;
+      
+      if (enableAIEnhancement) {
+        console.log('🚀 Applying AI enhancement to BMP image...');
+        try {
+          const enhanced = await maxQualityEnhanceFingerprint(baseImage);
+          console.log('✅ AI enhancement completed successfully');
+          return enhanced;
+        } catch (error) {
+          console.warn('⚠️ AI enhancement failed, using original:', error);
+          return baseImage;
+        }
+      }
+      
+      return baseImage;
     }
     
     const canvas = document.createElement('canvas');
@@ -97,7 +113,7 @@ export const processHighQualityFingerprint = (
       return "";
     }
 
-    const imageData = ctx.createImageData(width, height);
+    const imageData = ctx.createImageData(pixelWidth, pixelHeight);
     const data = imageData.data;
     
     // Clear the canvas with white background first
@@ -109,7 +125,7 @@ export const processHighQualityFingerprint = (
     }
     
     // Process each pixel - MFS100 provides raw grayscale bitmap data
-    const expectedPixels = width * height;
+    const expectedPixels = pixelWidth * pixelHeight;
     const actualDataLength = Math.min(binaryData.length, expectedPixels);
     
     console.log(`Processing ${actualDataLength} pixels out of expected ${expectedPixels}`);
@@ -120,8 +136,8 @@ export const processHighQualityFingerprint = (
       // Invert the pixel values - MFS100 typically returns inverted images
       pixelValue = 255 - pixelValue;
       
-      // Apply contrast and brightness enhancement
-      pixelValue = Math.min(255, Math.max(0, pixelValue * 1.3 + 20));
+      // Apply enhanced contrast and brightness for better ridge visibility
+      pixelValue = Math.min(255, Math.max(0, pixelValue * 1.5 + 30));
       
       const pixelIndex = i * 4;
       if (pixelIndex + 3 < data.length) {
@@ -138,6 +154,19 @@ export const processHighQualityFingerprint = (
     // Convert to high-quality PNG data URI
     const result = canvas.toDataURL('image/png', 1.0);
     console.log(`Fingerprint image processed successfully, result length: ${result.length}`);
+    
+    // Apply AI enhancement if enabled
+    if (enableAIEnhancement && result.length > 0) {
+      console.log('🚀 Applying AI enhancement to processed image...');
+      try {
+        const enhanced = await maxQualityEnhanceFingerprint(result);
+        console.log('✅ AI enhancement completed successfully');
+        return enhanced;
+      } catch (error) {
+        console.warn('⚠️ AI enhancement failed, using standard processing:', error);
+        return result;
+      }
+    }
     
     return result;
     
@@ -291,10 +320,11 @@ export const captureHighQualityFingerprint = async (
     if (result.data.BitmapData && result.data.BitmapData.length > 0) {
       console.log('Found bitmap data, processing...');
       
-      imageData = processHighQualityFingerprint(
+      imageData = await processHighQualityFingerprint(
         result.data.BitmapData,
         result.data.InWidth || 256,
-        result.data.InHeight || 256
+        result.data.InHeight || 256,
+        true // Enable AI enhancement
       );
       
       if (imageData) {
