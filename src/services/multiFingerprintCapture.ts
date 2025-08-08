@@ -2,6 +2,7 @@
  * Multi-Fingerprint Capture Service
  * Unified service for capturing 5 fingerprints with enhanced quality and coordination
  */
+import { captureHighQualityFingerprint, checkDeviceConnectionHealth } from '@/utils/mfs100Enhanced';
 
 export interface FingerprintCaptureState {
   index: number;
@@ -23,7 +24,6 @@ export interface MultiFingerprintResult {
 
 class MultiFingerprintCaptureService {
   private static instance: MultiFingerprintCaptureService;
-  private baseUrl = 'https://localhost:8003/mfs100';
   
   private fingerprints: FingerprintCaptureState[] = [
     { index: 0, name: 'Right Thumb', status: 'pending', imageData: '', template: '', quality: 0, retryCount: 0 },
@@ -277,7 +277,7 @@ class MultiFingerprintCaptureService {
     }
   }
 
-  // Capture fingerprint with enhanced quality and device reset handling
+  // Capture fingerprint with enhanced quality using MFS100 SDK
   async captureFingerprint(index: number, quality: number = 70, timeout: number = 20): Promise<boolean> {
     if (this.isCapturing) {
       throw new Error('Another capture is in progress');
@@ -294,54 +294,35 @@ class MultiFingerprintCaptureService {
     try {
       console.log(`🔵 Capturing ${this.fingerprints[index].name} with enhanced quality...`);
 
-      // First, try to reset device state if needed
-      await this.resetDeviceState();
+      // Use the enhanced MFS100 capture function
+      const result = await captureHighQualityFingerprint(
+        quality, 
+        timeout, 
+        (status) => console.log(`📍 ${this.fingerprints[index].name}: ${status}`)
+      );
 
-      this.currentController = new AbortController();
-      const requestTimeout = setTimeout(() => {
-        this.currentController?.abort();
-      }, (timeout * 1000) + 3000);
-
-      const response = await fetch(`${this.baseUrl}/capture`, {
-        method: 'POST',
-        signal: this.currentController.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          Quality: quality,
-          TimeOut: timeout
-        })
-      });
-
-      clearTimeout(requestTimeout);
-
-      if (!response.ok) {
-        throw new Error('MFS100 service not available - please ensure the service is running');
-      }
-
-      const data = await response.json();
-
-      if (data.ErrorCode === "0") {
-        // Apply ultimate image enhancement
-        const enhancedImage = this.enhanceImageQuality(data.BitmapData || '');
+      if (result.success && result.imageData) {
+  // The imageData from mfs100Enhanced is already processed, so we can use it directly
+        // Apply additional ultimate image enhancement only if it's raw bitmap data
+        const finalImageData = result.imageData.startsWith('data:image') 
+          ? result.imageData 
+          : this.enhanceImageQuality(result.imageData);
         
         this.fingerprints[index] = {
           ...this.fingerprints[index],
           status: 'captured',
-          imageData: enhancedImage,
-          template: data.IsoTemplate || '',
-          quality: data.Quality || 0,
+          imageData: finalImageData || result.imageData, // fallback to original if enhancement fails
+          template: result.template || '',
+          quality: result.quality || 0,
           timestamp: new Date(),
           retryCount: 0
         };
 
-        console.log(`✅ ${this.fingerprints[index].name} captured successfully! Quality: ${data.Quality}% (Enhanced)`);
+        console.log(`✅ ${this.fingerprints[index].name} captured successfully! Quality: ${result.quality}% (Ultra Enhanced)`);
         return true;
 
       } else {
-        throw new Error(data.ErrorDescription || 'Capture failed - please try again');
+        throw new Error(result.error || 'Capture failed - please try again');
       }
 
     } catch (error) {
@@ -350,12 +331,6 @@ class MultiFingerprintCaptureService {
       
       const errorMessage = error instanceof Error ? error.message : 'Capture failed';
       console.error(`❌ ${this.fingerprints[index].name} capture failed:`, errorMessage);
-      
-      // If device state error, try to reset for next capture
-      if (errorMessage.includes('already started') || errorMessage.includes('already stopped')) {
-        console.log('🔄 Device state error detected, resetting for next capture...');
-        await this.resetDeviceState();
-      }
       
       throw new Error(errorMessage);
 
@@ -366,42 +341,11 @@ class MultiFingerprintCaptureService {
     }
   }
 
-  // Reset device state to handle MFS100 conflicts
-  private async resetDeviceState(): Promise<void> {
-    try {
-      console.log('🔄 Resetting MFS100 device state...');
-      
-      // Try to uninit first
-      const uninitResponse = await fetch(`${this.baseUrl}/uninit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      
-      if (uninitResponse.ok) {
-        console.log('✅ Device uninit successful');
-      }
-      
-      // Small delay before reinit
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Try to init
-      const initResponse = await fetch(`${this.baseUrl}/init`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      
-      if (initResponse.ok) {
-        console.log('✅ Device init successful');
-      }
-      
-    } catch (error) {
-      console.warn('⚠️ Device reset failed, continuing anyway:', error);
+  // Check device health before capture
+  private async checkDeviceHealth(): Promise<void> {
+    const deviceStatus = await checkDeviceConnectionHealth();
+    if (!deviceStatus.isConnected) {
+      throw new Error(`Device not connected: ${deviceStatus.error || 'Unknown connection issue'}`);
     }
   }
 
@@ -432,9 +376,9 @@ class MultiFingerprintCaptureService {
     return { ...this.fingerprints[index] };
   }
 
-  // Reset all fingerprints and device state
+  // Reset all fingerprints
   resetAll(): void {
-    console.log('🔄 Resetting all fingerprints and device state...');
+    console.log('🔄 Resetting all fingerprints...');
     
     this.fingerprints = this.fingerprints.map((fp, index) => ({
       index,
@@ -451,11 +395,6 @@ class MultiFingerprintCaptureService {
       this.currentController.abort();
       this.currentController = null;
     }
-    
-    // Reset device state asynchronously
-    this.resetDeviceState().catch(err => 
-      console.warn('Device reset during resetAll failed:', err)
-    );
     
     this.notifySubscribers();
   }
