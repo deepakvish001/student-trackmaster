@@ -136,7 +136,7 @@ export function FingerprintDisplay({
       </div>
 
       {/* Fingerprint Display Area */}
-      <div className={`relative w-full h-48 border-2 rounded-lg flex items-center justify-center bg-gray-50 transition-all duration-300 ${
+      <div className={`relative w-full h-56 border-2 rounded-lg flex items-center justify-center bg-gray-50 transition-all duration-300 ${
         isCapturing 
           ? 'border-blue-500 border-dashed animate-pulse' 
           : hasFingerprint
@@ -168,7 +168,7 @@ export function FingerprintDisplay({
                   onError={handleImageError}
                   onLoad={handleImageLoad}
                   style={{ 
-                    filter: 'contrast(1.2) brightness(1.1)',
+                    filter: 'contrast(1.3) brightness(1.15) saturate(1.1)',
                     imageRendering: 'crisp-edges'
                   }}
                 />

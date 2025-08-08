@@ -99,21 +99,21 @@ export function PersistentFingerprintPreview({
                 </div>
 
                 <div className={`flex justify-center transition-all duration-500 ${
-                  isZoomed ? 'scale-150' : 'scale-100'
+                  isZoomed ? 'scale-125' : 'scale-100'
                 }`}>
-                  <div className="relative bg-white p-4 rounded-xl shadow-inner border-2 border-gray-200/50">
+                  <div className="relative bg-white p-6 rounded-xl shadow-inner border-2 border-gray-200/50">
                     {imageData ? (
                       <img
                         src={imageData}
                         alt={`${fingerName} fingerprint`}
-                        className="w-64 h-64 object-contain rounded-lg shadow-lg border border-gray-200"
+                        className="w-80 h-80 object-contain rounded-lg shadow-lg border border-gray-200"
                         style={{
                           imageRendering: 'crisp-edges',
-                          filter: 'contrast(1.1) brightness(1.05)'
+                          filter: 'contrast(1.2) brightness(1.1) saturate(1.1)'
                         }}
                       />
                     ) : (
-                      <div className="w-64 h-64 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center border border-gray-300">
+                      <div className="w-80 h-80 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center border border-gray-300">
                         <span className="text-gray-500 font-medium">No image data</span>
                       </div>
                     )}
