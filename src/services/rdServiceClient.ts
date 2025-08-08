@@ -127,8 +127,13 @@ export class RDServiceClient {
 
   private async checkMFS100Service(): Promise<boolean> {
     try {
+      console.log('🔍 Checking MFS100 service at:', this.baseUrl);
+      
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000); // Increased timeout for stability
+      const timeout = setTimeout(() => {
+        console.log('⏰ MFS100 service check timeout after 5 seconds');
+        controller.abort();
+      }, 5000);
 
       const response = await fetch(`${this.baseUrl}/info`, {
         method: 'GET',
@@ -143,26 +148,38 @@ export class RDServiceClient {
 
       clearTimeout(timeout);
       
+      console.log('📡 MFS100 service response status:', response.status);
+      
       if (!response.ok) {
-        console.warn(`MFS100 service responded with status: ${response.status}`);
+        console.warn(`❌ MFS100 service responded with status: ${response.status}`);
         return false;
       }
 
       const data = await response.json();
+      console.log('📊 MFS100 service response data:', data);
+      
       const isAvailable = data.ErrorCode === "0";
       
       if (isAvailable) {
         console.log('✅ MFS100 service health check passed');
+      } else {
+        console.warn('❌ MFS100 service returned error:', data.ErrorDescription || 'Unknown error');
       }
       
       return isAvailable;
     } catch (error) {
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          console.warn('MFS100 service check timed out');
+          console.error('❌ MFS100 service check timed out - service likely not running');
+        } else if (error.message.includes('ERR_CONNECTION_REFUSED')) {
+          console.error('❌ MFS100 service connection refused - service not running on port 8003');
+        } else if (error.message.includes('ERR_CONNECTION_RESET')) {
+          console.error('❌ MFS100 service connection reset - service may be restarting or unstable');
         } else {
-          console.warn(`MFS100 service check failed: ${error.message}`);
+          console.error(`❌ MFS100 service check failed: ${error.message}`);
         }
+      } else {
+        console.error('❌ MFS100 service check failed with unknown error:', error);
       }
       return false;
     }
@@ -383,16 +400,22 @@ export class RDServiceClient {
     service: string;
     message: string;
   }> {
+    console.log('🔍 Getting service status...');
     const available = await this.isServiceAvailable();
     
     let message: string;
     if (available) {
-      message = 'Connected to MFS100';
+      message = 'Connected to MFS100 service';
+      console.log('✅ Service status: Connected');
     } else if (this.consecutiveFailures >= this.MAX_CONSECUTIVE_FAILURES) {
       message = `Service unavailable (${this.consecutiveFailures} failures). Next check in ${Math.round(this.backoffDelay / 1000)}s`;
+      console.log('⏳ Service status: In backoff mode');
     } else {
-      message = 'No fingerprint service found. Please start MFS100 service at http://localhost:8003';
+      message = 'MFS100 service not found. Is it running on port 8003?';
+      console.log('❌ Service status: Not available');
     }
+    
+    console.log('📋 Final service status:', { available, service: this.activeServiceUrl, message });
     
     return {
       available,
