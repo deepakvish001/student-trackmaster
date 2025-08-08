@@ -36,21 +36,27 @@ export class RDServiceClient {
   private deviceInfo: DeviceInfo | null = null;
   private lastAvailabilityCheck = 0;
   private availabilityCache: { result: boolean; timestamp: number; service?: string } | null = null;
-  private readonly CACHE_DURATION = 30000; // Increased to 30 seconds to reduce frequent checks
+  private readonly CACHE_DURATION = 60000; // Increased to 60 seconds to reduce frequent checks
   private activeServiceUrl = '';
   private consecutiveFailures = 0;
-  private readonly MAX_CONSECUTIVE_FAILURES = 5;
-  private backoffDelay = 1000; // Start with 1 second backoff
+  private readonly MAX_CONSECUTIVE_FAILURES = 3; // Reduced to fail faster
+  private backoffDelay = 2000; // Start with 2 second backoff
+  private isCheckingService = false; // Prevent concurrent checks
 
   constructor() {
     console.log('RDServiceClient initialized. Services will be checked on demand.');
   }
 
   /**
-   * Check if MFS100 service or RD Service is available with exponential backoff
+   * Check if MFS100 service is available with improved connection handling
    */
   async isServiceAvailable(): Promise<boolean> {
     const now = Date.now();
+    
+    // Prevent concurrent service checks
+    if (this.isCheckingService) {
+      return this.availabilityCache?.result || false;
+    }
     
     // Return cached result if still valid
     if (this.availabilityCache && (now - this.availabilityCache.timestamp < this.CACHE_DURATION)) {
@@ -60,7 +66,7 @@ export class RDServiceClient {
 
     // If we've had too many consecutive failures, increase backoff
     if (this.consecutiveFailures >= this.MAX_CONSECUTIVE_FAILURES) {
-      this.backoffDelay = Math.min(this.backoffDelay * 2, 60000); // Max 1 minute backoff
+      this.backoffDelay = Math.min(this.backoffDelay * 2, 30000); // Max 30 second backoff
       console.log(`⏳ Service check backoff: ${this.backoffDelay}ms after ${this.consecutiveFailures} failures`);
       
       // Check if enough time has passed since last check
@@ -69,10 +75,11 @@ export class RDServiceClient {
       }
     }
 
+    this.isCheckingService = true;
     this.lastAvailabilityCheck = now;
 
     try {
-      // Try MFS100 service first
+      // Try MFS100 service
       const mfs100Available = await this.checkMFS100Service();
       if (mfs100Available) {
         this.activeServiceUrl = this.baseUrl;
@@ -82,17 +89,22 @@ export class RDServiceClient {
           service: this.baseUrl
         };
         this.consecutiveFailures = 0;
-        this.backoffDelay = 1000; // Reset backoff
-        console.log('✅ MFS100 service is available');
+        this.backoffDelay = 2000; // Reset backoff
+        console.log('✅ MFS100 service is available and stable');
         return true;
       }
-      // MFS100 service only (no RD fallback)
+      
       // Service not available
       this.consecutiveFailures++;
       this.availabilityCache = {
         result: false,
         timestamp: now
       };
+
+      // Only log error message occasionally to reduce console spam
+      if (this.consecutiveFailures <= 2 || this.consecutiveFailures % 5 === 0) {
+        console.log('❌ MFS100 service not available at http://localhost:8003');
+      }
 
       return false;
 
@@ -108,18 +120,21 @@ export class RDServiceClient {
       }
       
       return false;
+    } finally {
+      this.isCheckingService = false;
     }
   }
 
   private async checkMFS100Service(): Promise<boolean> {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 2000); // Reduced timeout
+      const timeout = setTimeout(() => controller.abort(), 5000); // Increased timeout for stability
 
       const response = await fetch(`${this.baseUrl}/info`, {
         method: 'GET',
         signal: controller.signal,
         cache: 'no-cache',
+        mode: 'cors',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
@@ -129,15 +144,25 @@ export class RDServiceClient {
       clearTimeout(timeout);
       
       if (!response.ok) {
+        console.warn(`MFS100 service responded with status: ${response.status}`);
         return false;
       }
 
       const data = await response.json();
-      return data.ErrorCode === "0";
+      const isAvailable = data.ErrorCode === "0";
+      
+      if (isAvailable) {
+        console.log('✅ MFS100 service health check passed');
+      }
+      
+      return isAvailable;
     } catch (error) {
-      // Reduce console noise - only log first few failures
-      if (this.consecutiveFailures <= 2) {
-        console.debug('MFS100 service check failed:', error instanceof Error ? error.message : 'Unknown error');
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          console.warn('MFS100 service check timed out');
+        } else {
+          console.warn(`MFS100 service check failed: ${error.message}`);
+        }
       }
       return false;
     }
