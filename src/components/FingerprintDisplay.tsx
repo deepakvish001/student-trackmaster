@@ -99,7 +99,7 @@ export function FingerprintDisplay({
   };
 
   return (
-    <div className="bg-white border rounded-lg p-4 w-full max-w-[280px] mx-auto shadow-sm">
+    <div className="bg-white border rounded-lg p-4 w-full max-w-[320px] mx-auto shadow-sm">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center space-x-2">
@@ -136,7 +136,7 @@ export function FingerprintDisplay({
       </div>
 
       {/* Fingerprint Display Area */}
-      <div className={`relative w-full h-56 border-2 rounded-lg flex items-center justify-center bg-gray-50 transition-all duration-300 ${
+      <div className={`relative w-full h-72 border-2 rounded-lg flex items-center justify-center bg-gray-50 transition-all duration-300 ${
         isCapturing 
           ? 'border-blue-500 border-dashed animate-pulse' 
           : hasFingerprint

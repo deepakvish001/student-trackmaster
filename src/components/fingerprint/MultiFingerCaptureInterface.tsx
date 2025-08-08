@@ -339,7 +339,7 @@ export function MultiFingerCaptureInterface({
             
             <CardContent className="text-center space-y-4 pb-4">
               {/* Fingerprint Display */}
-              <div className={`mx-auto w-24 h-32 border-2 rounded-lg flex items-center justify-center transition-all duration-500 ${
+              <div className={`mx-auto w-40 h-48 border-2 rounded-lg flex items-center justify-center transition-all duration-500 ${
                 fingerprint.status === 'capturing' || fingerprint.status === 'retrying'
                   ? 'border-blue-500 border-dashed animate-pulse bg-gradient-to-br from-blue-100 to-indigo-100' 
                   : fingerprint.status === 'captured'
@@ -352,7 +352,11 @@ export function MultiFingerCaptureInterface({
                   <img 
                     src={fingerprint.imageData} 
                     alt={`${fingerNames[index]} preview`}
-                    className="w-20 h-28 object-contain rounded"
+                    className="w-36 h-44 object-contain rounded shadow-sm"
+                    style={{
+                      filter: 'contrast(1.2) brightness(1.1)',
+                      imageRendering: 'crisp-edges'
+                    }}
                   />
                 ) : (
                   <div className="flex flex-col items-center space-y-1">
