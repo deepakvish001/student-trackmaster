@@ -135,8 +135,8 @@ export function FingerprintDisplay({
         )}
       </div>
 
-      {/* Fingerprint Display Area */}
-      <div className={`relative w-full h-72 border-2 rounded-lg flex items-center justify-center bg-gray-50 transition-all duration-300 ${
+      {/* Enhanced Fingerprint Display Area */}
+      <div className={`relative w-full h-80 border-2 rounded-lg flex items-center justify-center bg-gray-50 transition-all duration-300 ${
         isCapturing 
           ? 'border-blue-500 border-dashed animate-pulse' 
           : hasFingerprint
@@ -160,16 +160,18 @@ export function FingerprintDisplay({
             {isLoading ? (
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             ) : (
-              <div className="relative w-full h-full">
+              <div className="relative w-full h-full p-2">
                 <img 
                   src={fingerprintImageUrl}
                   alt={`Fingerprint ${index + 1}`}
-                  className="w-full h-full object-contain rounded border"
+                  className="w-full h-full object-contain rounded-md shadow-sm"
                   onError={handleImageError}
                   onLoad={handleImageLoad}
                   style={{ 
-                    filter: 'contrast(1.3) brightness(1.15) saturate(1.1)',
-                    imageRendering: 'crisp-edges'
+                    filter: 'contrast(1.4) brightness(1.2) saturate(1.1)',
+                    imageRendering: 'crisp-edges',
+                    maxWidth: '100%',
+                    maxHeight: '100%'
                   }}
                 />
                 {/* Quality indicator overlay */}

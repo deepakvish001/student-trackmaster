@@ -106,14 +106,16 @@ export function PersistentFingerprintPreview({
                       <img
                         src={imageData}
                         alt={`${fingerName} fingerprint`}
-                        className="w-80 h-80 object-contain rounded-lg shadow-lg border border-gray-200"
+                        className="w-96 h-96 object-contain rounded-lg shadow-lg border border-gray-200"
                         style={{
                           imageRendering: 'crisp-edges',
-                          filter: 'contrast(1.2) brightness(1.1) saturate(1.1)'
+                          filter: 'contrast(1.4) brightness(1.2) saturate(1.1)',
+                          maxWidth: '100%',
+                          maxHeight: '100%'
                         }}
                       />
                     ) : (
-                      <div className="w-80 h-80 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center border border-gray-300">
+                      <div className="w-96 h-96 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center border border-gray-300">
                         <span className="text-gray-500 font-medium">No image data</span>
                       </div>
                     )}
@@ -150,25 +152,25 @@ export function PersistentFingerprintPreview({
             </CardContent>
           </Card>
 
-          {/* Action Buttons */}
-          <div className="flex space-x-4 pt-4">
+          {/* Enhanced Action Buttons */}
+          <div className="flex space-x-4 pt-6">
+            <Button
+              onClick={onRecapture}
+              variant="outline"
+              className="flex-1 border-2 border-orange-400 text-orange-700 hover:bg-orange-50 hover:border-orange-500 font-bold py-4 px-6 shadow-lg transition-all duration-300 transform hover:scale-105"
+              size="lg"
+            >
+              <RotateCcw className="mr-2 h-5 w-5" />
+              Recapture Fingerprint
+            </Button>
+            
             <Button
               onClick={onAccept}
-              className="flex-1 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-bold py-3 px-6 shadow-lg transition-all duration-300 transform hover:scale-105"
+              className="flex-1 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-bold py-4 px-6 shadow-lg transition-all duration-300 transform hover:scale-105"
               size="lg"
             >
               <CheckCircle className="mr-2 h-5 w-5" />
               Accept & Continue
-            </Button>
-            
-            <Button
-              onClick={onRecapture}
-              variant="outline"
-              className="flex-1 border-2 border-orange-300 text-orange-700 hover:bg-orange-50 font-bold py-3 px-6 shadow-lg transition-all duration-300 transform hover:scale-105"
-              size="lg"
-            >
-              <RotateCcw className="mr-2 h-5 w-5" />
-              Recapture
             </Button>
           </div>
 
