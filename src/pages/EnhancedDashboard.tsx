@@ -288,7 +288,7 @@ export default function EnhancedDashboard() {
         )}
 
         {/* Role-based Content */}
-        {hasRole('admin') && (
+        {hasRole('super_admin') && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

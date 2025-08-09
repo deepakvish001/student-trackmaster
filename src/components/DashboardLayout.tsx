@@ -26,10 +26,12 @@ import {
   User,
   Plus,
   Settings,
-  Activity
+  Activity,
+  Shield
 } from "lucide-react"
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -39,6 +41,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useEnhancedAuth();
+  const { isSuperAdmin } = useUserProfile();
 
   const menuItems = [
     { 
@@ -82,6 +85,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       icon: TestTube, 
       colorClass: 'icon-lime-green hover:text-lime-green',
       bgClass: 'hover:bg-lime-green/10'
+    },
+  ];
+
+  // Super Admin specific menu items
+  const adminMenuItems = [
+    { 
+      title: 'User Management', 
+      path: '/admin/users', 
+      icon: Shield, 
+      colorClass: 'icon-danger-red hover:text-danger-red',
+      bgClass: 'hover:bg-danger-red/10'
     },
   ];
 
@@ -150,6 +164,40 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+
+            {/* Super Admin Menu */}
+            {isSuperAdmin() && (
+              <SidebarGroup className="mt-6">
+                <SidebarGroupContent>
+                  <div className="px-4 py-2 text-foreground font-poppins font-medium text-sm uppercase tracking-wider opacity-70">
+                    Administration
+                  </div>
+                  <SidebarMenu className="space-y-2 mt-3">
+                    {adminMenuItems.map((item) => (
+                      <SidebarMenuItem key={item.path}>
+                        <SidebarMenuButton asChild>
+                          <Link
+                            to={item.path}
+                            className={`group flex items-center px-4 py-3 rounded-xl transition-all duration-300 ${
+                              location.pathname === item.path
+                                ? `bg-primary/20 border border-primary/30 shadow-glow text-primary font-semibold` 
+                                : `text-muted-foreground hover:text-foreground ${item.bgClass} hover:shadow-lg`
+                            }`}
+                          >
+                            <item.icon className={`w-5 h-5 mr-3 transition-colors duration-300 ${
+                              location.pathname === item.path
+                                ? 'text-primary' 
+                                : item.colorClass
+                            }`} />
+                            <span className="font-inter font-medium">{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
 
             {/* Add New Student Button */}
             <SidebarGroup className="mt-8">

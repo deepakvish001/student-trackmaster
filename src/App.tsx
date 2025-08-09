@@ -13,6 +13,7 @@ import AddStudent from "./pages/students/AddStudent";
 import EnhancedAddStudent from "./pages/students/EnhancedAddStudent";
 import ViewStudents from "./pages/students/ViewStudents";
 import StudentList from "./pages/students/StudentList";
+import UserManagementPage from "./pages/admin/UserManagement";
 import { EnhancedAuthProvider } from "./contexts/EnhancedAuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -93,6 +94,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Testing />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute>
+                  <UserManagementPage />
                 </ProtectedRoute>
               }
             />

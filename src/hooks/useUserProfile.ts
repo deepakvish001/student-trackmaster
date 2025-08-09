@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 
-export type UserRole = 'admin' | 'operator' | 'viewer';
+export type UserRole = 'super_admin' | 'user';
 
 interface UserProfile {
   id: string;
@@ -75,7 +75,7 @@ export function useUserProfile() {
         .insert({
           user_id: user.id,
           full_name: user.email?.split('@')[0] || 'User',
-          role: 'operator' as UserRole,
+          role: 'user' as UserRole,
           is_active: true
         })
         .select()
@@ -139,8 +139,12 @@ export function useUserProfile() {
   const hasRole = (requiredRole: UserRole): boolean => {
     if (!profile) return false;
     
-    const roleHierarchy = { admin: 3, operator: 2, viewer: 1 };
+    const roleHierarchy = { super_admin: 2, user: 1 };
     return roleHierarchy[profile.role] >= roleHierarchy[requiredRole];
+  };
+
+  const isSuperAdmin = (): boolean => {
+    return profile?.role === 'super_admin';
   };
 
   return {
@@ -149,6 +153,7 @@ export function useUserProfile() {
     error,
     updateProfile,
     hasRole,
+    isSuperAdmin,
     refetch: fetchProfile
   };
 }
