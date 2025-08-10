@@ -353,10 +353,9 @@ export default function Batches() {
           <div className="text-center text-muted-foreground mt-4">
             Showing {((pagination.currentPage - 1) * 12) + 1} to {Math.min(pagination.currentPage * 12, pagination.totalCount)} of {pagination.totalCount} batches
           </div>
-        </div>
 
-        {/* Batch Detail Modal */}
-        {selectedBatch && (
+          {/* Batch Detail Modal */}
+          {selectedBatch && (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
               <Card className="glass-card border-foreground/20 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                 <CardHeader className="bg-gradient-to-r from-electric-blue/10 via-emerald-green/10 to-pink-rose/10">
