@@ -400,11 +400,9 @@ export default function EnhancedAddStudent() {
                       <FormLabel className="text-white font-semibold">Select Batch</FormLabel>
                       <div className="h-12">
                         <BatchSelector
-                          selectedBatch={field.value}
-                          onBatchChange={field.onChange}
-                          batches={batches}
-                          placeholder="Select batch"
-                          className="bg-gray-900 border-gray-700 text-white focus:border-orange-500 focus:ring-orange-500 h-full"
+                          value={field.value}
+                          onChange={field.onChange}
+                          disabled={false}
                         />
                       </div>
                       <FormMessage className="text-red-400" />
@@ -479,11 +477,9 @@ export default function EnhancedAddStudent() {
                         {/* Capture Button */}
                         <div className="mt-auto">
                           <MultiFingerCaptureInterface
-                            onCaptureComplete={handleCaptureComplete}
-                            expectedFingers={5}
-                            className="w-full"
-                            buttonText={capturedImages[index] ? "Recapture" : "Capture"}
-                            buttonClassName="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105"
+                            onAllCaptured={handleCaptureComplete}
+                            disabled={isSubmitting}
+                            targetQuality={70}
                           />
                         </div>
                       </div>
