@@ -33,10 +33,15 @@ export default function AuditLogViewer() {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Super fast audit logs with aggressive caching
-  const { data: logs = [], isLoading, refetch } = useQuery({
+  const { data: logs = [], isLoading, refetch, error } = useQuery({
     queryKey: ['audit-logs', actionFilter, searchTerm],
     queryFn: async () => {
       console.log('🔍 Fetching audit logs with filter:', { actionFilter, searchTerm });
+      console.log('🔍 Current user auth state:', { uid: (await supabase.auth.getUser()).data.user?.id });
+      
+      // First test a simple query to check access
+      const testQuery = await supabase.from('audit_logs').select('count').limit(1);
+      console.log('🧪 Test query result:', testQuery);
       
       let query = supabase
         .from('audit_logs')
@@ -57,7 +62,7 @@ export default function AuditLogViewer() {
 
       const { data, error } = await query.limit(200);
       
-      console.log('📊 Query result:', { data: data?.length, error });
+      console.log('📊 Query result:', { data: data?.length, error, fullError: error });
       
       if (error) {
         console.error('❌ Error fetching audit logs:', error);
@@ -70,16 +75,19 @@ export default function AuditLogViewer() {
         user_profiles: Array.isArray(log.user_profiles) ? log.user_profiles[0] : log.user_profiles
       }));
       
-      console.log('✅ Transformed data:', transformedData.length, 'logs');
+      console.log('✅ Transformed data:', transformedData.length, 'logs', transformedData.slice(0, 2));
       return transformedData as AuditLogEntry[];
     },
-    staleTime: 30 * 1000, // 30 seconds
-    gcTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 5 * 1000, // 5 seconds for faster debugging
+    gcTime: 30 * 1000, // 30 seconds
     refetchOnWindowFocus: true,
     refetchOnMount: true,
     refetchOnReconnect: true,
     retry: 3,
   });
+
+  // Debug: Log query state
+  console.log('🔍 Query state:', { logs: logs?.length, isLoading, error });
 
   // Enhanced real-time subscription for audit logs
   useEffect(() => {
