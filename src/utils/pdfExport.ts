@@ -65,7 +65,7 @@ export const exportStudentsToPDF = async (students: Student[], filters?: {
     return count;
   };
 
-  // Create main table exactly like website - with embedded fingerprint images
+  // Create main table with all student information
   const tableBodyData = students.map((student, index) => {
     const imageFields = [
       student.finger_1_image,
@@ -84,24 +84,26 @@ export const exportStudentsToPDF = async (students: Student[], filters?: {
                           fingerprintCount > 0 ? 'Partial' : 'None';
 
     return [
-      index + 1,
-      `${student.student_name}\n${student.mobile_number || 'N/A'}`,
-      student.batches?.batch_name || 'N/A',
-      '', // Fingerprint images column - will be filled manually with images
-      biometricStatus,
-      student.is_enabled ? 'Active' : 'Inactive',
-      new Date(student.created_at).toLocaleDateString()
+      index + 1,                                    // #
+      student.student_name || 'N/A',               // Name
+      student.mobile_number || 'N/A',              // Mobile
+      student.address || 'N/A',                    // Address  
+      student.batches?.batch_name || 'N/A',        // Batch
+      '',                                          // Fingerprint Images (filled manually)
+      biometricStatus,                             // Bio Status
+      student.is_enabled ? 'Active' : 'Inactive',  // Status
+      new Date(student.created_at).toLocaleDateString() // Created Date
     ];
   });
 
-  // Create the main table exactly like website
+  // Create the main table with separate columns for each field
   autoTable(doc, {
-    head: [['#', 'Name & Mobile', 'Batch', 'High-Quality Fingerprint Images', 'Status', 'Active', 'Created']],
+    head: [['#', 'Student Name', 'Mobile Number', 'Address', 'Batch', 'Fingerprint Images', 'Bio Status', 'Status', 'Created Date']],
     body: tableBodyData,
     startY: yPosition,
     styles: {
-      fontSize: 8,
-      cellPadding: 3,
+      fontSize: 7, // Smaller font to fit more columns
+      cellPadding: 2,
       valign: 'middle',
       lineColor: [220, 220, 220],
       lineWidth: 0.5,
@@ -111,24 +113,26 @@ export const exportStudentsToPDF = async (students: Student[], filters?: {
       fillColor: [59, 130, 246], // Blue header like website
       textColor: 255,
       fontStyle: 'bold',
-      fontSize: 9,
+      fontSize: 8,
       minCellHeight: 12,
     },
     alternateRowStyles: {
       fillColor: [248, 250, 252], // Light gray alternating rows
     },
     columnStyles: {
-      0: { halign: 'center', cellWidth: 12, minCellHeight: 35 }, // #
-      1: { halign: 'left', cellWidth: 45, minCellHeight: 35 },   // Name & Mobile  
-      2: { halign: 'center', cellWidth: 30, minCellHeight: 35 }, // Batch
-      3: { halign: 'center', cellWidth: 120, minCellHeight: 35 }, // Fingerprint Images (increased height)
-      4: { halign: 'center', cellWidth: 20, minCellHeight: 35 }, // Status
-      5: { halign: 'center', cellWidth: 18, minCellHeight: 35 }, // Active
-      6: { halign: 'center', cellWidth: 25, minCellHeight: 35 }, // Created
+      0: { halign: 'center', cellWidth: 8, minCellHeight: 35 },   // #
+      1: { halign: 'left', cellWidth: 35, minCellHeight: 35 },    // Student Name  
+      2: { halign: 'center', cellWidth: 25, minCellHeight: 35 },  // Mobile Number
+      3: { halign: 'left', cellWidth: 30, minCellHeight: 35 },    // Address
+      4: { halign: 'center', cellWidth: 20, minCellHeight: 35 },  // Batch
+      5: { halign: 'center', cellWidth: 90, minCellHeight: 35 },  // Fingerprint Images (wide for 5 images)
+      6: { halign: 'center', cellWidth: 18, minCellHeight: 35 },  // Bio Status
+      7: { halign: 'center', cellWidth: 15, minCellHeight: 35 },  // Status
+      8: { halign: 'center', cellWidth: 20, minCellHeight: 35 },  // Created Date
     },
     didDrawCell: function(data) {
-      // Only add fingerprint images to data rows (not header), column index 3
-      if (data.column.index === 3 && data.row.index >= 0 && data.section === 'body') {
+      // Only add fingerprint images to data rows (not header), column index 5 (Fingerprint Images column)
+      if (data.column.index === 5 && data.row.index >= 0 && data.section === 'body') {
         const student = students[data.row.index];
         if (!student) return;
         
