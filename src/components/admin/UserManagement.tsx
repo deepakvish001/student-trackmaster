@@ -329,7 +329,7 @@ export default function UserManagement() {
     },
     onSuccess: (data, userId) => {
       const deletedUser = users?.find(u => u.user_id === userId);
-      logEvent('USER_DELETED', 'user_profiles', userId, {
+      logEvent('USER_DELETED', `${deletedUser?.full_name || 'User'} was deleted from the system`, 'user_profiles', userId, {
         full_name: deletedUser?.full_name,
         role: deletedUser?.role
       }, null);
@@ -359,7 +359,7 @@ export default function UserManagement() {
       // Log status change event
       const targetUser = users?.find(u => u.user_id === userId);
       const newStatus = !targetUser?.is_active;
-      logEvent(newStatus ? 'USER_ENABLED' : 'USER_DISABLED', 'user_profiles', userId, {
+      logEvent(newStatus ? 'USER_ENABLED' : 'USER_DISABLED', `${targetUser?.full_name || 'User'} account was ${newStatus ? 'enabled' : 'disabled'}`, 'user_profiles', userId, {
         is_active: targetUser?.is_active
       }, {
         is_active: newStatus
@@ -396,7 +396,7 @@ export default function UserManagement() {
       
       // Log ban/unban event
       const targetUser = users?.find(u => u.user_id === userId);
-      logEvent(action === 'ban_user' ? 'USER_BANNED' : 'USER_UNBANNED', 'user_profiles', userId, {
+      logEvent(action === 'ban_user' ? 'USER_BANNED' : 'USER_UNBANNED', `${targetUser?.full_name || 'User'} was ${action === 'ban_user' ? 'banned' : 'unbanned'}`, 'user_profiles', userId, {
         is_active: targetUser?.is_active
       }, {
         is_active: action === 'unban_user'

@@ -19,6 +19,7 @@ import { useRealTimeBatchAccess } from '@/hooks/useRealTimeBatchAccess';
 import { Batch } from '@/types/index';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
+import { auditLogger } from '@/services/auditLogService';
 
 interface BatchCRUDProps {
   batches: Batch[];
@@ -100,7 +101,8 @@ export function BatchCRUD({ batches }: BatchCRUDProps) {
         throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async (_, variables) => {
+      await auditLogger.logBatchAction('created', 'new', variables.batch_name, variables);
       queryClient.invalidateQueries({ queryKey: ['batches'] });
       toast.success('Batch created successfully');
       setShowCreateDialog(false);
@@ -129,7 +131,8 @@ export function BatchCRUD({ batches }: BatchCRUDProps) {
         throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async (_, variables) => {
+      await auditLogger.logBatchAction('updated', variables.id, variables.data.batch_name, variables.data);
       queryClient.invalidateQueries({ queryKey: ['batches'] });
       toast.success('Batch updated successfully');
       setShowEditDialog(false);
@@ -155,7 +158,10 @@ export function BatchCRUD({ batches }: BatchCRUDProps) {
         throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: async (_, batchId) => {
+      if (selectedBatch) {
+        await auditLogger.logBatchAction('deleted', batchId, selectedBatch.batch_name);
+      }
       queryClient.invalidateQueries({ queryKey: ['batches'] });
       toast.success('Batch deleted successfully');
       setShowDeleteDialog(false);

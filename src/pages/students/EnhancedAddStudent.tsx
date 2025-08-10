@@ -29,6 +29,7 @@ import { encryptFingerprintData, auditBiometricAccess } from "@/utils/biometricS
 import { sanitizeTextInput, sanitizeEmail, sanitizePhoneNumber } from "@/utils/inputSanitization";
 import { useEnhancedAuth } from "@/contexts/EnhancedAuthContext";
 import { useAuditLog } from "@/hooks/useAuditLog";
+import { auditLogger } from "@/services/auditLogService";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   Shield, 
@@ -131,8 +132,8 @@ export default function EnhancedAddStudent() {
 
     try {
       // Log the start of student creation
-      await logEvent('STUDENT_CREATION_STARTED', 'students', undefined, undefined, {
-        studentName: values.name,
+      await auditLogger.logStudentAction('created', 'temp', values.name, {
+        status: 'started',
         fingerprintCount: values.fingerprints.filter(fp => fp).length,
         imagesCount: capturedImages.filter(img => img).length
       });
@@ -221,8 +222,7 @@ export default function EnhancedAddStudent() {
 
       console.log('Student created successfully:', data);
       
-      await logEvent('STUDENT_CREATED', 'students', data[0].id, undefined, {
-        studentName: validation.sanitizedData!.student_name,
+      await auditLogger.logStudentAction('created', data[0].id, validation.sanitizedData!.student_name, {
         biometricSummary: validation.biometricSummary,
         imagesCount: capturedImages.filter(img => img).length
       });

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 import { logSecurityEvent } from '@/utils/inputSanitization';
+import { auditLogger } from '@/services/auditLogService';
 
 interface AuthContextType {
   user: User | null;
@@ -49,10 +50,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           userId: session?.user?.id,
           timestamp: new Date().toISOString()
         });
+        auditLogger.logAuthAction('login', { timestamp: new Date().toISOString() });
       } else if (event === 'SIGNED_OUT') {
         logSecurityEvent('USER_LOGOUT', { 
           timestamp: new Date().toISOString()
         });
+        auditLogger.logAuthAction('logout', { timestamp: new Date().toISOString() });
       } else if (event === 'TOKEN_REFRESHED') {
         logSecurityEvent('TOKEN_REFRESH', { 
           userId: session?.user?.id,
@@ -84,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: email.substring(0, 3) + '***',
         timestamp: new Date().toISOString()
       });
+      await auditLogger.logAuthAction('login');
       toast.success('Successfully logged in');
       navigate('/');
     } catch (error: any) {
@@ -115,6 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: email.substring(0, 3) + '***',
         timestamp: new Date().toISOString()
       });
+      await auditLogger.logAuthAction('signup');
       toast.success('Account created successfully');
       navigate('/');
     } catch (error: any) {

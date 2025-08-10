@@ -22,6 +22,9 @@ interface AuditLogEntry {
   ip_address?: string;
   user_agent?: string;
   created_at: string;
+  user_profiles?: {
+    full_name: string;
+  };
 }
 
 export default function AuditLogViewer() {
@@ -31,19 +34,39 @@ export default function AuditLogViewer() {
 
   // Super fast audit logs with aggressive caching
   const { data: logs = [], isLoading, refetch } = useQuery({
-    queryKey: ['audit-logs'],
+    queryKey: ['audit-logs', actionFilter, searchTerm],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('audit_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
+        .select(`
+          *,
+          user_profiles!inner(full_name)
+        `)
+        .order('created_at', { ascending: false });
+
+      // Apply database-level filtering for better performance
+      if (actionFilter !== 'all') {
+        query = query.ilike('action', `%${actionFilter}%`);
+      }
+
+      if (searchTerm) {
+        query = query.or(`action.ilike.%${searchTerm}%,table_name.ilike.%${searchTerm}%`);
+      }
+
+      const { data, error } = await query.limit(200);
       
       if (error) throw error;
-      return data as AuditLogEntry[];
+      
+      // Transform the data to match our interface
+      const transformedData = (data || []).map(log => ({
+        ...log,
+        user_profiles: Array.isArray(log.user_profiles) ? log.user_profiles[0] : log.user_profiles
+      }));
+      
+      return transformedData as AuditLogEntry[];
     },
-    staleTime: Infinity, // Never consider stale
-    gcTime: Infinity, // Keep in cache forever
+    staleTime: 60 * 1000, // 1 minute
+    gcTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     refetchOnReconnect: false,
@@ -66,28 +89,8 @@ export default function AuditLogViewer() {
     };
   }, [queryClient]);
 
-  // Super fast filtering with useMemo
-  const filteredLogs = React.useMemo(() => {
-    let filtered = logs;
-
-    // Filter by action
-    if (actionFilter !== 'all') {
-      filtered = filtered.filter(log => 
-        log.action.toLowerCase().includes(actionFilter.toLowerCase())
-      );
-    }
-
-    // Filter by search term
-    if (searchTerm) {
-      filtered = filtered.filter(log => 
-        log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.table_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.user_id.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    return filtered;
-  }, [logs, actionFilter, searchTerm]);
+  // Logs are now pre-filtered at database level for better performance
+  const filteredLogs = logs;
 
   const getActionIcon = (action: string) => {
     if (action.includes('LOGIN') || action.includes('SIGNUP')) {
@@ -125,29 +128,35 @@ export default function AuditLogViewer() {
   };
 
   const formatActionMessage = (log: AuditLogEntry) => {
-    switch (log.action) {
+    // If action is already a complete sentence, return it as is
+    if (log.action.includes(' ')) {
+      return log.action;
+    }
+    
+    // Legacy action format handling
+    switch (log.action.toUpperCase()) {
       case 'USER_LOGIN':
-        return 'User successfully logged in';
+        return `${log.user_profiles?.full_name || 'User'} logged in`;
       case 'USER_LOGOUT':
-        return 'User logged out';
+        return `${log.user_profiles?.full_name || 'User'} logged out`;
       case 'LOGIN_FAILED':
         return 'Failed login attempt';
       case 'DISABLED_USER_LOGIN_ATTEMPT':
         return 'Disabled user attempted to login';
       case 'USER_CREATED':
-        return 'New user account created';
+        return `${log.user_profiles?.full_name || 'User'} created a new user account`;
       case 'USER_UPDATED':
-        return 'User profile updated';
+        return `${log.user_profiles?.full_name || 'User'} updated user profile`;
       case 'USER_DELETED':
-        return 'User account deleted';
+        return `${log.user_profiles?.full_name || 'User'} deleted user account`;
       case 'USER_ENABLED':
-        return 'User account enabled';
+        return `${log.user_profiles?.full_name || 'User'} enabled user account`;
       case 'USER_DISABLED':
-        return 'User account disabled';
+        return `${log.user_profiles?.full_name || 'User'} disabled user account`;
       case 'PASSWORD_CHANGED':
-        return 'User password changed';
+        return `${log.user_profiles?.full_name || 'User'} changed password`;
       case 'ROLE_CHANGED':
-        return 'User role modified';
+        return `${log.user_profiles?.full_name || 'User'} changed user role`;
       case 'UNAUTHORIZED_ACCESS_ATTEMPT':
         return 'Unauthorized access attempt detected';
       case 'SUSPICIOUS_INACTIVITY':
@@ -202,7 +211,7 @@ export default function AuditLogViewer() {
                 <TableHead>Time</TableHead>
                 <TableHead>Action</TableHead>
                 <TableHead>Description</TableHead>
-                <TableHead>User ID</TableHead>
+                <TableHead>User</TableHead>
                 <TableHead>Details</TableHead>
               </TableRow>
             </TableHeader>
@@ -221,8 +230,8 @@ export default function AuditLogViewer() {
                   <TableCell>
                     {formatActionMessage(log)}
                   </TableCell>
-                  <TableCell className="font-mono text-sm">
-                    {log.user_id.substring(0, 8)}...
+                  <TableCell className="font-medium">
+                    {log.user_profiles?.full_name || 'Unknown User'}
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">

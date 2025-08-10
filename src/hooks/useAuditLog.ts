@@ -13,6 +13,13 @@ interface AuditLogEntry {
   ip_address?: string;
   user_agent?: string;
   created_at: string;
+  user_name?: string;
+}
+
+interface AuditLogWithProfile extends AuditLogEntry {
+  user_profile?: {
+    full_name: string;
+  };
 }
 
 export function useAuditLog() {
@@ -20,6 +27,7 @@ export function useAuditLog() {
 
   const logEvent = async (
     action: string,
+    description?: string,
     tableName?: string,
     recordId?: string,
     oldValues?: any,
@@ -29,12 +37,23 @@ export function useAuditLog() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Direct insert into audit_logs table instead of RPC
-      const { error } = await (supabase as any)
+      // Get user profile for better logging
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('full_name')
+        .eq('user_id', user.id)
+        .single();
+
+      // Create enhanced action description
+      const userName = profile?.full_name || 'Unknown User';
+      const enhancedAction = description || formatActionDescription(action, userName, tableName, recordId);
+
+      // Direct insert into audit_logs table
+      const { error } = await supabase
         .from('audit_logs')
         .insert({
           user_id: user.id,
-          action,
+          action: enhancedAction,
           table_name: tableName,
           record_id: recordId,
           old_values: oldValues,
@@ -51,6 +70,31 @@ export function useAuditLog() {
     }
   };
 
+  const formatActionDescription = (action: string, userName: string, tableName?: string, recordId?: string): string => {
+    const table = tableName || 'item';
+    const id = recordId ? ` #${recordId.substring(0, 8)}` : '';
+    
+    switch (action.toLowerCase()) {
+      case 'create':
+      case 'insert':
+        return `${userName} created a new ${table}${id}`;
+      case 'update':
+      case 'modify':
+        return `${userName} updated ${table}${id}`;
+      case 'delete':
+      case 'remove':
+        return `${userName} deleted ${table}${id}`;
+      case 'login':
+        return `${userName} logged in`;
+      case 'logout':
+        return `${userName} logged out`;
+      case 'signup':
+        return `${userName} signed up`;
+      default:
+        return `${userName} performed ${action} on ${table}${id}`;
+    }
+  };
+
   const getAuditLogs = async (
     filters: {
       limit?: number;
@@ -61,22 +105,32 @@ export function useAuditLog() {
       start_date?: string;
       end_date?: string;
     } = {}
-  ): Promise<AuditLogEntry[]> => {
+  ): Promise<AuditLogWithProfile[]> => {
     try {
       setIsLoading(true);
       
-      const { data, error } = await (supabase as any)
+      // Fetch audit logs with user profile data
+      const { data, error } = await supabase
         .from('audit_logs')
-        .select('*')
+        .select(`
+          *,
+          user_profiles!inner(full_name)
+        `)
         .order('created_at', { ascending: false })
-        .limit(filters.limit || 50);
+        .limit(filters.limit || 100);
 
       if (error) {
         console.error('Error fetching audit logs:', error);
         return [];
       }
       
-      return (data || []) as AuditLogEntry[];
+      // Transform the data to match our interface
+      const transformedData = (data || []).map(log => ({
+        ...log,
+        user_profile: Array.isArray(log.user_profiles) ? log.user_profiles[0] : log.user_profiles
+      }));
+      
+      return transformedData as AuditLogWithProfile[];
     } catch (err) {
       console.error('Failed to fetch audit logs:', err);
       return [];
