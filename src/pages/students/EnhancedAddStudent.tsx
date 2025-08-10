@@ -284,349 +284,172 @@ export default function EnhancedAddStudent() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-emerald-green/5">
-        <div className="space-y-8 p-6 animate-fade-in-up">
-          {/* Simple Header */}
-          <div className="text-center space-y-4">
-            <div className="flex items-center justify-center space-x-4">
-              <div className="w-16 h-16 branded-gradient rounded-3xl flex items-center justify-center shadow-glow-lg">
-                <User className="w-8 h-8 text-white" />
+      <div className="h-screen overflow-hidden bg-gradient-to-br from-background via-muted/10 to-emerald-green/5">
+        <div className="h-full p-6 flex flex-col">
+          {/* Compact Header */}
+          <div className="text-center mb-6">
+            <div className="flex items-center justify-center space-x-3">
+              <div className="w-12 h-12 branded-gradient rounded-2xl flex items-center justify-center">
+                <User className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-4xl font-bold text-branded-gradient">
-                  Add New Student
-                </h1>
-                <p className="text-lg text-muted-foreground">Complete the form and capture biometric data</p>
+                <h1 className="text-2xl font-bold text-branded-gradient">Add New Student</h1>
+                <p className="text-sm text-muted-foreground">Complete form and capture fingerprints</p>
               </div>
             </div>
           </div>
 
-          {/* Student Information Form */}
-          <div className="max-w-5xl mx-auto space-y-8">
-            {/* Student Information Section */}
-            <Card className="premium-card backdrop-blur-md border-2 border-electric-blue/20 shadow-glow-lg">
-              <CardHeader className="bg-electric-blue/5 border-b border-electric-blue/10">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-electric-blue/10 border border-electric-blue/20 rounded-2xl flex items-center justify-center">
-                    <User className="h-6 w-6 text-electric-blue" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-2xl font-bold bg-electric-blue bg-clip-text text-transparent">
-                      Student Information
-                    </CardTitle>
-                    <p className="text-muted-foreground font-medium">Enter basic student details below</p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-8">
-                <Form {...form}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Student Name */}
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-bold text-electric-blue uppercase tracking-wider flex items-center">
-                            <User className="h-4 w-4 mr-2" />
-                            Student Name
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter full name"
-                              {...field}
-                              className="h-14 bg-muted/20 border-2 border-border/50 focus:border-electric-blue focus:bg-background rounded-2xl transition-all duration-300 text-lg"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+          {/* Single Row Form */}
+          <Form {...form}>
+            <div className="grid grid-cols-5 gap-4 mb-6">
+              {/* Student Name */}
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-bold text-electric-blue uppercase">
+                      <User className="h-3 w-3 inline mr-1" />
+                      Name
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Full name"
+                        {...field}
+                        className="h-10 bg-muted/20 border border-border/50 focus:border-electric-blue rounded-lg"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                    {/* Mobile */}
-                    <FormField
-                      control={form.control}
-                      name="mobile"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-bold text-vibrant-purple uppercase tracking-wider flex items-center">
-                            <Phone className="h-4 w-4 mr-2" />
-                            Mobile Number
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter mobile number"
-                              {...field}
-                              className="h-14 bg-muted/20 border-2 border-border/50 focus:border-vibrant-purple focus:bg-background rounded-2xl transition-all duration-300 text-lg"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+              {/* Mobile */}
+              <FormField
+                control={form.control}
+                name="mobile"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-bold text-vibrant-purple uppercase">
+                      <Phone className="h-3 w-3 inline mr-1" />
+                      Mobile
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Mobile number"
+                        {...field}
+                        className="h-10 bg-muted/20 border border-border/50 focus:border-vibrant-purple rounded-lg"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                    {/* Email */}
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-bold text-emerald-green uppercase tracking-wider flex items-center">
-                            <Mail className="h-4 w-4 mr-2" />
-                            Email Address (Optional)
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="email"
-                              placeholder="Enter email address"
-                              {...field}
-                              className="h-14 bg-muted/20 border-2 border-border/50 focus:border-emerald-green focus:bg-background rounded-2xl transition-all duration-300 text-lg"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+              {/* Email */}
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-bold text-emerald-green uppercase">
+                      <Mail className="h-3 w-3 inline mr-1" />
+                      Email
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="Email (optional)"
+                        {...field}
+                        className="h-10 bg-muted/20 border border-border/50 focus:border-emerald-green rounded-lg"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                    {/* Batch Selection */}
-                    <FormField
-                      control={form.control}
-                      name="batchId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-bold text-sunset-orange uppercase tracking-wider flex items-center">
-                            <GraduationCap className="h-4 w-4 mr-2" />
-                            Select Batch
-                          </FormLabel>
-                          <FormControl>
-                            <div className="h-14 bg-muted/20 border-2 border-border/50 focus-within:border-sunset-orange rounded-2xl transition-all duration-300">
-                              <BatchSelector 
-                                value={field.value} 
-                                onChange={field.onChange}
-                                disabled={isSubmitting}
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+              {/* Batch */}
+              <FormField
+                control={form.control}
+                name="batchId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-bold text-sunset-orange uppercase">
+                      <GraduationCap className="h-3 w-3 inline mr-1" />
+                      Batch
+                    </FormLabel>
+                    <FormControl>
+                      <div className="h-10 bg-muted/20 border border-border/50 focus-within:border-sunset-orange rounded-lg">
+                        <BatchSelector 
+                          value={field.value} 
+                          onChange={field.onChange}
+                          disabled={isSubmitting}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                  {/* Address - Full Width */}
-                  <div className="mt-8">
-                    <FormField
-                      control={form.control}
-                      name="address"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-bold text-pink-rose uppercase tracking-wider flex items-center">
-                            <MapPin className="h-4 w-4 mr-2" />
-                            Address
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter full address"
-                              {...field}
-                              className="h-14 bg-muted/20 border-2 border-border/50 focus:border-pink-rose focus:bg-background rounded-2xl transition-all duration-300 text-lg"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </Form>
-              </CardContent>
-            </Card>
+              {/* Address */}
+              <FormField
+                control={form.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-bold text-pink-rose uppercase">
+                      <MapPin className="h-3 w-3 inline mr-1" />
+                      Address
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Full address"
+                        {...field}
+                        className="h-10 bg-muted/20 border border-border/50 focus:border-pink-rose rounded-lg"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {/* Fingerprint Capture Section */}
-            <Card className="premium-card backdrop-blur-md border-2 border-vibrant-purple/20 shadow-glow-lg">
-              <CardHeader className="bg-vibrant-purple/5 border-b border-vibrant-purple/10">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-vibrant-purple/10 border border-vibrant-purple/20 rounded-2xl flex items-center justify-center">
-                    <Shield className="h-6 w-6 text-vibrant-purple" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-2xl font-bold bg-vibrant-purple bg-clip-text text-transparent">
-                      Biometric Fingerprint Capture
-                    </CardTitle>
-                    <p className="text-muted-foreground font-medium">Capture all 5 fingerprints using RD Service for secure enrollment</p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-8">
-                <div className="space-y-8">
-                  {/* Security Notice */}
-                  <Alert className="border-electric-blue/30 bg-electric-blue/10 backdrop-blur-sm">
-                    <Shield className="h-5 w-5 text-electric-blue" />
-                    <AlertDescription className="text-electric-blue font-medium">
-                      🔐 <strong>UIDAI-Compliant Security:</strong> All biometric data is encrypted using AES-256 encryption before database storage. PidData format ensures government-standard compliance.
-                    </AlertDescription>
-                  </Alert>
-                  
-                  {/* Multi-Fingerprint Capture Interface */}
-                  <div className="bg-gradient-to-br from-muted/20 via-background/50 to-vibrant-purple/5 border-2 border-vibrant-purple/10 rounded-3xl p-8">
-                    <MultiFingerCaptureInterface
-                      onAllCaptured={handleAllFingerprintsCaptured}
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                  
-                  {/* Capture Progress Indicator */}
-                  {form.getValues("fingerprints").some(fp => fp) && (
-                    <div className="bg-emerald-green/10 border border-emerald-green/20 rounded-2xl p-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <CheckCircle className="h-6 w-6 text-emerald-green" />
-                          <div>
-                            <p className="font-semibold text-emerald-green">
-                              Biometric Capture Progress
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {form.getValues("fingerprints").filter(fp => fp).length} of 5 fingerprints captured
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {[1, 2, 3, 4, 5].map((index) => (
-                            <div
-                              key={index}
-                              className={`w-4 h-4 rounded-full border-2 transition-all duration-300 ${
-                                form.getValues("fingerprints")[index - 1]
-                                  ? "bg-emerald-green border-emerald-green"
-                                  : "border-border bg-muted"
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Submit Section */}
-            <Card className="premium-card backdrop-blur-md border-2 border-emerald-green/20 shadow-glow-lg overflow-hidden">
-              <div className="bg-emerald-green/5 border-b border-emerald-green/10 p-6">
-                <div className="text-center">
-                  <div className="inline-flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-emerald-green/10 border border-emerald-green/20 rounded-xl flex items-center justify-center">
-                      <CheckCircle className="h-5 w-5 text-emerald-green" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold bg-emerald-green bg-clip-text text-transparent">
-                        Complete Registration
-                      </h3>
-                      <p className="text-sm text-muted-foreground">Review and submit student information</p>
-                    </div>
-                  </div>
-                </div>
+            <div className="flex-1 flex flex-col">
+              <h2 className="text-lg font-bold text-center mb-4 text-branded-gradient">Biometric Fingerprint Capture</h2>
+              
+              <div className="flex-1">
+                <MultiFingerCaptureInterface
+                  onAllCaptured={handleAllFingerprintsCaptured}
+                  disabled={isSubmitting}
+                />
               </div>
-              <CardContent className="p-8">
-                <div className="space-y-6">
-                  {/* Form Validation Status */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className={`p-4 rounded-2xl border-2 transition-all duration-300 ${
-                      form.formState.isValid && Object.keys(form.formState.errors).length === 0
-                        ? "border-emerald-green/20 bg-emerald-green/5"
-                        : "border-sunset-orange/20 bg-sunset-orange/5"
-                    }`}>
-                      <div className="flex items-center space-x-3">
-                        <User className={`h-5 w-5 ${
-                          form.formState.isValid && Object.keys(form.formState.errors).length === 0
-                            ? "text-emerald-green"
-                            : "text-sunset-orange"
-                        }`} />
-                        <div>
-                          <p className="font-semibold text-sm">Student Information</p>
-                          <p className={`text-xs ${
-                            form.formState.isValid && Object.keys(form.formState.errors).length === 0
-                              ? "text-emerald-green"
-                              : "text-sunset-orange"
-                          }`}>
-                            {form.formState.isValid && Object.keys(form.formState.errors).length === 0
-                              ? "✅ All fields completed"
-                              : "⚠️ Please complete required fields"
-                            }
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className={`p-4 rounded-2xl border-2 transition-all duration-300 ${
-                      form.getValues("fingerprints").every(fp => fp)
-                        ? "border-emerald-green/20 bg-emerald-green/5"
-                        : "border-sunset-orange/20 bg-sunset-orange/5"
-                    }`}>
-                      <div className="flex items-center space-x-3">
-                        <Shield className={`h-5 w-5 ${
-                          form.getValues("fingerprints").every(fp => fp)
-                            ? "text-emerald-green"
-                            : "text-sunset-orange"
-                        }`} />
-                        <div>
-                          <p className="font-semibold text-sm">Biometric Data</p>
-                          <p className={`text-xs ${
-                            form.getValues("fingerprints").every(fp => fp)
-                              ? "text-emerald-green"
-                              : "text-sunset-orange"
-                          }`}>
-                            {form.getValues("fingerprints").every(fp => fp)
-                              ? "✅ All 5 fingerprints captured"
-                              : `⚠️ ${5 - form.getValues("fingerprints").filter(fp => fp).length} fingerprints remaining`
-                            }
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Action Buttons */}
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => navigate("/students")}
-                      disabled={isSubmitting}
-                      className="w-full sm:w-auto h-14 px-8 text-lg font-semibold border-2 border-border/50 hover:border-muted-foreground/50 hover:bg-muted/20 rounded-2xl transition-all duration-300"
-                    >
-                      Cancel Registration
-                    </Button>
-                    
-                    <Button
-                      onClick={form.handleSubmit(onSubmit)}
-                      disabled={isSubmitting || !form.formState.isValid || !form.getValues("fingerprints").every(fp => fp)}
-                      className="w-full sm:w-auto h-14 px-12 text-lg font-bold branded-gradient rounded-2xl shadow-glow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="h-5 w-5 mr-3 animate-spin" />
-                          Creating Student...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle className="h-5 w-5 mr-3" />
-                          Create Student Profile
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                  
-                  {/* Ready to Submit Indicator */}
-                  {form.formState.isValid && form.getValues("fingerprints").every(fp => fp) && (
-                    <div className="text-center pt-4">
-                      <div className="inline-flex items-center space-x-3 bg-emerald-green/10 border border-emerald-green/20 rounded-full px-8 py-4 animate-pulse">
-                        <CheckCircle className="h-6 w-6 text-emerald-green" />
-                        <span className="text-emerald-green font-bold text-lg">🎉 Ready to Create Student Profile!</span>
-                      </div>
-                    </div>
+
+              {/* Submit Button */}
+              <div className="mt-6 text-center">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  onClick={form.handleSubmit(onSubmit)}
+                  className="h-14 px-12 text-lg font-bold bg-gradient-to-r from-emerald-green to-electric-blue hover:shadow-glow-lg transition-all duration-300 rounded-xl"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Saving Student...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="mr-2 h-5 w-5" />
+                      Submit to Save
+                    </>
                   )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                </Button>
+              </div>
+            </div>
+          </Form>
         </div>
       </div>
     </DashboardLayout>
