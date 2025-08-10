@@ -157,15 +157,23 @@ export default function StudentList() {
 
   // Download PDF function
   const handleDownloadPDF = () => {
-    const selectedBatchData = batches.find(batch => batch.id === selectedBatch);
-    const filters = {
-      searchTerm: searchTerm || undefined,
-      selectedBatch,
-      batchName: selectedBatchData?.batch_name
-    };
-    
-    exportStudentsToPDF(students, filters);
-    toast.success('PDF report generated successfully');
+    try {
+      console.log('PDF download initiated', { studentsCount: students.length });
+      
+      const selectedBatchData = batches.find(batch => batch.id === selectedBatch);
+      const filters = {
+        searchTerm: searchTerm || undefined,
+        selectedBatch,
+        batchName: selectedBatchData?.batch_name
+      };
+      
+      console.log('PDF filters:', filters);
+      exportStudentsToPDF(students, filters);
+      toast.success('PDF report generated successfully');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error('Failed to generate PDF report');
+    }
   };
   if (isLoading) {
     return <DashboardLayout>

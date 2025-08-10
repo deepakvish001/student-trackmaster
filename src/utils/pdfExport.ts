@@ -1,10 +1,11 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { Student } from '@/types';
 
+// Extend jsPDF type for autoTable
 declare module 'jspdf' {
   interface jsPDF {
-    autoTable: (options: any) => jsPDF;
+    autoTable: typeof autoTable;
   }
 }
 
@@ -59,7 +60,7 @@ export const exportStudentsToPDF = (students: Student[], filters?: {
   ]);
   
   // Create table
-  doc.autoTable({
+  autoTable(doc, {
     head: [['#', 'Student Name', 'Mobile', 'Batch', 'Fingerprints', 'Status', 'Created Date']],
     body: tableData,
     startY: yPosition,
