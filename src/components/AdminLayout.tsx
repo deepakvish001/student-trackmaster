@@ -53,19 +53,25 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     { 
       title: 'Audit Logs', 
       path: '/admin/audit-logs', 
-      icon: FileText,
+      icon: FileText, 
+      colorClass: 'icon-electric-blue hover:text-electric-blue',
+      bgClass: 'hover:bg-electric-blue/10',
       description: 'View system audit trails'
     },
     { 
       title: 'User Management', 
       path: '/admin/users', 
-      icon: Users,
+      icon: Users, 
+      colorClass: 'icon-vibrant-purple hover:text-vibrant-purple',
+      bgClass: 'hover:bg-vibrant-purple/10',
       description: 'Manage user accounts and roles'
     },
     { 
       title: 'System Settings', 
       path: '/admin/settings', 
-      icon: Settings,
+      icon: Settings, 
+      colorClass: 'icon-emerald-green hover:text-emerald-green',
+      bgClass: 'hover:bg-emerald-green/10',
       description: 'Configure system parameters'
     },
   ];
@@ -83,32 +89,31 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     <SidebarProvider>
       <FixedHeader title="Admin Panel" subtitle="System Management" />
       <div className="pt-20 min-h-screen flex w-full bg-background">
-        <Sidebar className="bg-card border-r border-border" collapsible="icon">
-          <SidebarHeader className="p-4 border-b border-border">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
-                <Shield className="w-4 h-4 text-primary-foreground" />
+        <Sidebar className="bg-card border-r border-border">
+          <SidebarHeader className="p-6 border-b border-border">
+            <div className="flex items-center space-x-4">
+              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
+                <Shield className="w-5 h-5 text-primary-foreground" />
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="font-medium text-foreground text-sm truncate">Admin Panel</div>
-                <div className="text-xs text-muted-foreground truncate">Management</div>
+              <div>
+                <div className="font-semibold text-foreground">Admin Panel</div>
+                <div className="text-sm text-muted-foreground">System Management</div>
               </div>
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="p-2">
+          <SidebarContent className="px-4 py-6">
             {/* Back to Dashboard */}
             <SidebarGroup>
               <SidebarGroupContent>
-                <div className="px-1 mb-2">
+                <div className="px-2 mb-4">
                   <Link to="/dashboard">
                     <Button 
                       variant="outline"
-                      size="sm"
-                      className="w-full justify-start gap-2 text-sm font-medium"
+                      className="w-full justify-start gap-3 h-12 font-medium transition-colors"
                     >
-                      <ArrowLeft className="w-4 h-4 flex-shrink-0" />
-                      <span className="truncate">Back to Dashboard</span>
+                      <ArrowLeft className="w-4 h-4" />
+                      <span>Back to Dashboard</span>
                     </Button>
                   </Link>
                 </div>
@@ -118,26 +123,26 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             {/* Admin Menu */}
             <SidebarGroup>
               <SidebarGroupContent>
-                <div className="px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <div className="px-4 py-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
                   Administration
                 </div>
-                <SidebarMenu className="space-y-1">
+                <SidebarMenu className="space-y-2 mt-3">
                   {adminMenuItems.map((item) => (
                     <SidebarMenuItem key={item.path}>
                       <SidebarMenuButton asChild>
                         <Link
                           to={item.path}
-                          className={`flex flex-col items-start px-3 py-3 rounded-md transition-colors ${
+                          className={`flex flex-col items-start px-4 py-4 rounded-lg transition-colors ${
                             location.pathname === item.path
                               ? 'bg-primary text-primary-foreground font-medium' 
                               : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                           }`}
                         >
                           <div className="flex items-center w-full">
-                            <item.icon className="w-4 h-4 mr-3 flex-shrink-0" />
-                            <span className="text-sm font-medium truncate">{item.title}</span>
+                            <item.icon className="w-5 h-5 mr-3" />
+                            <span>{item.title}</span>
                           </div>
-                          <div className="text-xs text-muted-foreground mt-1 ml-7 line-clamp-2">
+                          <div className="text-xs text-muted-foreground mt-1 ml-8">
                             {item.description}
                           </div>
                         </Link>
@@ -149,15 +154,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </SidebarGroup>
           </SidebarContent>
 
-          <SidebarFooter className="p-2 border-t border-border">
+          <SidebarFooter className="p-6 border-t border-border">
             <Button
               onClick={handleLogout}
               variant="ghost"
-              size="sm"
-              className="w-full justify-start text-sm font-medium text-destructive hover:text-destructive hover:bg-destructive/10"
+              className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
             >
-              <LogOut className="w-4 h-4 mr-3 flex-shrink-0" />
-              <span className="truncate">Logout</span>
+              <LogOut className="w-5 h-5 mr-3" />
+              <span>Logout</span>
             </Button>
           </SidebarFooter>
         </Sidebar>
