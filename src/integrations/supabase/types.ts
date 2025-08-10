@@ -370,7 +370,18 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      mv_dashboard_stats: {
+        Row: {
+          complete_biometrics: number | null
+          last_updated: string | null
+          partial_biometrics: number | null
+          total_batches: number | null
+          total_capacity: number | null
+          total_students: number | null
+          total_users: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       delete_user_account: {
@@ -432,6 +443,10 @@ export type Database = {
           risk_level: number
           details?: Json
         }
+        Returns: undefined
+      }
+      refresh_dashboard_stats: {
+        Args: Record<PropertyKey, never>
         Returns: undefined
       }
       reset_failed_login_attempts: {
