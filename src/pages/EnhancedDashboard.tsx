@@ -301,13 +301,13 @@ export default function EnhancedDashboard() {
                 Administrative functions and system management tools.
               </p>
               <div className="flex gap-3">
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => window.location.href = '/admin/audit-logs'}>
                   View Audit Logs
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => window.location.href = '/admin/users'}>
                   Manage Users
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => window.location.href = '/admin/settings'}>
                   System Settings
                 </Button>
               </div>

@@ -14,6 +14,8 @@ import EnhancedAddStudent from "./pages/students/EnhancedAddStudent";
 import ViewStudents from "./pages/students/ViewStudents";
 import StudentList from "./pages/students/StudentList";
 import UserManagementPage from "./pages/admin/UserManagement";
+import AuditLogs from "./pages/admin/AuditLogs";
+import SystemSettings from "./pages/admin/SystemSettings";
 import { EnhancedAuthProvider } from "./contexts/EnhancedAuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -102,6 +104,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <UserManagementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/audit-logs"
+              element={
+                <ProtectedRoute>
+                  <AuditLogs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/settings"
+              element={
+                <ProtectedRoute>
+                  <SystemSettings />
                 </ProtectedRoute>
               }
             />
