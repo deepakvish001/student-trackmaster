@@ -37,112 +37,130 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      {/* Main Login Card */}
-      <div className="w-full max-w-md mx-4 modern-card p-8 animate-fade-in-up">
-        <div className="space-y-6 text-center">
-          {/* Logo/Icon */}
-          <div className="mx-auto w-16 h-16 gradient-primary rounded-2xl flex items-center justify-center shadow-glow animate-bounce-in">
-            <User className="w-8 h-8 text-white" />
-          </div>
-          
-          <div className="space-y-2">
-            <h1 className="text-3xl font-geist font-bold text-gradient-primary flex items-center justify-center gap-2">
-              {isSignUp ? 'Create Account' : 'Welcome Back'}
-              <Sparkles className="w-6 h-6 icon-primary animate-pulse" />
-            </h1>
-            <p className="text-muted-foreground font-geist">
-              {isSignUp 
-                ? 'Enter your details to create a new account and get started' 
-                : 'Sign in to access your dashboard and manage your system'
-              }
-            </p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/10 to-vibrant-purple/5 p-4">
+      {/* Premium Login Card */}
+      <div className="w-full max-w-lg mx-4 premium-card p-10 animate-fade-in-up">
+        <div className="space-y-8 text-center">
+          {/* Premium Logo/Icon */}
+          <div className="mx-auto space-y-4">
+            <div className="w-20 h-20 branded-gradient rounded-3xl flex items-center justify-center shadow-glow-lg animate-bounce-in">
+              <User className="w-10 h-10 text-white" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-4xl font-bold text-branded-gradient">
+                BiometricHub
+              </h1>
+              <div className="flex items-center justify-center gap-2">
+                <h2 className="text-2xl font-semibold text-foreground">
+                  {isSignUp ? 'Create Account' : 'Welcome Back'}
+                </h2>
+                <Sparkles className="w-6 h-6 text-vibrant-purple animate-pulse" />
+              </div>
+              <p className="text-lg text-muted-foreground max-w-sm mx-auto">
+                {isSignUp 
+                  ? 'Join the future of biometric management. Create your secure account now.' 
+                  : 'Access your enterprise biometric management platform with enhanced security.'
+                }
+              </p>
+            </div>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 mt-8">
-          {/* Email Field */}
-          <div className="space-y-2">
-            <label className="text-sm font-geist font-medium text-foreground">Email Address</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 icon-primary" />
+        <form onSubmit={handleSubmit} className="space-y-8 mt-8">
+          {/* Premium Email Field */}
+          <div className="space-y-3">
+            <label className="text-sm font-bold text-electric-blue uppercase tracking-wider">Email Address</label>
+            <div className="relative group">
+              <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-electric-blue group-focus-within:scale-110 transition-transform duration-300" />
               <Input
                 type="email"
-                placeholder="Enter your email"
+                placeholder="Enter your professional email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="modern-input pl-12 h-12"
+                className="modern-input pl-14 h-14 text-lg bg-muted/20 border-2 border-border/50 focus:border-electric-blue focus:bg-background transition-all duration-300"
               />
             </div>
           </div>
 
-          {/* Password Field */}
-          <div className="space-y-2">
-            <label className="text-sm font-geist font-medium text-foreground">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 icon-vibrant-purple" />
+          {/* Premium Password Field */}
+          <div className="space-y-3">
+            <label className="text-sm font-bold text-vibrant-purple uppercase tracking-wider">Secure Password</label>
+            <div className="relative group">
+              <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-vibrant-purple group-focus-within:scale-110 transition-transform duration-300" />
               <Input
                 type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
+                placeholder="Enter your secure password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="modern-input pl-12 pr-12 h-12"
+                className="modern-input pl-14 pr-14 h-14 text-lg bg-muted/20 border-2 border-border/50 focus:border-vibrant-purple focus:bg-background transition-all duration-300"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-vibrant-purple transition-all duration-300 hover:scale-110"
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
           </div>
 
-          {/* Submit Button */}
+          {/* Premium Submit Button */}
           <Button 
             type="submit" 
             disabled={isLoading}
-            className="w-full h-12 modern-button disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full h-16 text-lg font-bold bg-gradient-to-r from-vibrant-purple via-electric-blue to-emerald-green hover:scale-105 text-white rounded-2xl shadow-glow-lg transition-all duration-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
             {isLoading ? (
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                <span>Processing...</span>
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 border-3 border-white/20 border-t-white rounded-full animate-spin"></div>
+                <span>Authenticating...</span>
               </div>
             ) : (
-              <span>{isSignUp ? 'Create Account' : 'Sign In'}</span>
+              <div className="flex items-center gap-3">
+                <span>{isSignUp ? 'Create Premium Account' : 'Access Dashboard'}</span>
+                <Sparkles className="w-5 h-5" />
+              </div>
             )}
           </Button>
 
-          {/* Toggle Sign Up/Sign In */}
+          {/* Premium Toggle Sign Up/Sign In */}
           <Button 
             type="button" 
             variant="ghost" 
-            className="w-full h-12 modern-button-outline" 
+            className="w-full h-14 text-lg border-2 border-border/50 hover:border-electric-blue hover:bg-electric-blue/5 rounded-2xl transition-all duration-300" 
             onClick={() => setIsSignUp(!isSignUp)}
           >
             {isSignUp 
-              ? 'Already have an account? Sign in' 
-              : 'Need an account? Sign up'
+              ? 'Already have an account? Sign in →' 
+              : 'Need an account? Create one →'
             }
           </Button>
         </form>
 
-        {/* Features */}
-        <div className="grid grid-cols-2 gap-4 text-center mt-8">
-          <div className="p-3 glass rounded-xl">
-            <div className="w-8 h-8 mx-auto mb-2 gradient-accent rounded-lg flex items-center justify-center">
-              <Lock className="w-4 h-4 text-white" />
+        {/* Premium Features */}
+        <div className="grid grid-cols-3 gap-4 text-center mt-10">
+          <div className="p-4 bg-electric-blue/5 border border-electric-blue/20 rounded-2xl group hover:scale-105 transition-all duration-300">
+            <div className="w-12 h-12 mx-auto mb-3 bg-electric-blue/10 border border-electric-blue/20 rounded-2xl flex items-center justify-center group-hover:bg-electric-blue group-hover:text-white transition-all duration-300">
+              <Lock className="w-6 h-6 text-electric-blue group-hover:text-white" />
             </div>
-            <p className="text-xs font-geist text-muted-foreground">End-to-End Encrypted</p>
+            <p className="text-sm font-bold text-electric-blue">Enterprise Security</p>
+            <p className="text-xs text-muted-foreground mt-1">256-bit encryption</p>
           </div>
-          <div className="p-3 glass rounded-xl">
-            <div className="w-8 h-8 mx-auto mb-2 gradient-warning rounded-lg flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
+          <div className="p-4 bg-vibrant-purple/5 border border-vibrant-purple/20 rounded-2xl group hover:scale-105 transition-all duration-300">
+            <div className="w-12 h-12 mx-auto mb-3 bg-vibrant-purple/10 border border-vibrant-purple/20 rounded-2xl flex items-center justify-center group-hover:bg-vibrant-purple group-hover:text-white transition-all duration-300">
+              <Sparkles className="w-6 h-6 text-vibrant-purple group-hover:text-white" />
             </div>
-            <p className="text-xs font-geist text-muted-foreground">Modern Interface</p>
+            <p className="text-sm font-bold text-vibrant-purple">Modern UI</p>
+            <p className="text-xs text-muted-foreground mt-1">Intuitive design</p>
+          </div>
+          <div className="p-4 bg-emerald-green/5 border border-emerald-green/20 rounded-2xl group hover:scale-105 transition-all duration-300">
+            <div className="w-12 h-12 mx-auto mb-3 bg-emerald-green/10 border border-emerald-green/20 rounded-2xl flex items-center justify-center group-hover:bg-emerald-green group-hover:text-white transition-all duration-300">
+              <User className="w-6 h-6 text-emerald-green group-hover:text-white" />
+            </div>
+            <p className="text-sm font-bold text-emerald-green">Biometric Auth</p>
+            <p className="text-xs text-muted-foreground mt-1">Future-ready</p>
           </div>
         </div>
       </div>

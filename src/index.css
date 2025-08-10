@@ -7,34 +7,37 @@
 
 @layer base {
   :root {
-    /* Modern High Contrast Design System */
-    --background: 0 0% 100%; /* Pure white */
-    --foreground: 220 15% 15%; /* Rich dark text */
+    /* Premium SaaS Design System - Branded Colors */
+    --background: 250 100% 99%; /* Ultra-light purple tint */
+    --foreground: 220 25% 10%; /* Deep text */
     --card: 0 0% 100%;
-    --card-foreground: 220 15% 15%;
+    --card-foreground: 220 25% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 15% 15%;
-    --primary: 230 100% 60%; /* Modern blue */
+    --popover-foreground: 220 25% 10%;
+    --primary: 250 100% 65%; /* Brand primary - vibrant purple */
     --primary-foreground: 0 0% 100%;
-    --secondary: 250 95% 65%; /* Rich purple */
+    --secondary: 215 85% 55%; /* Tech blue */
     --secondary-foreground: 0 0% 100%;
-    --muted: 210 40% 98%;
-    --muted-foreground: 220 15% 35%;
-    --accent: 160 80% 50%; /* Fresh green */
+    --muted: 245 30% 96%;
+    --muted-foreground: 220 15% 45%;
+    --accent: 320 90% 65%; /* Brand accent - pink */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 85% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 13% 91%;
-    --input: 220 13% 95%;
-    --ring: 230 100% 60%;
+    --border: 240 15% 92%;
+    --input: 245 20% 96%;
+    --ring: 250 100% 65%;
     
-    /* Modern Color Palette */
-    --electric-blue: 230 100% 60%;
-    --vibrant-purple: 250 95% 65%;
-    --emerald-green: 160 80% 50%;
-    --sunset-orange: 30 100% 60%;
-    --pink-rose: 335 85% 65%;
+    /* Premium Brand Palette */
+    --electric-blue: 215 85% 55%;
+    --vibrant-purple: 250 100% 65%;
+    --emerald-green: 155 90% 50%;
+    --sunset-orange: 25 95% 60%;
+    --pink-rose: 320 90% 65%;
     --lime-green: 90 80% 55%;
+    --coral-red: 10 85% 65%;
+    --teal-cyan: 180 90% 55%;
+    --indigo-deep: 240 90% 65%;
     
     /* Modern Surfaces with subtle depth */
     --surface-1: 0 0% 99%;
@@ -53,29 +56,29 @@
   }
 
   .dark {
-    --background: 220 30% 8%;
-    --foreground: 210 20% 95%;
-    --card: 220 25% 10%;
-    --card-foreground: 210 20% 95%;
-    --popover: 220 25% 10%;
-    --popover-foreground: 210 20% 95%;
-    --primary: 230 100% 65%;
-    --primary-foreground: 220 30% 8%;
-    --secondary: 250 95% 70%;
-    --secondary-foreground: 220 30% 8%;
-    --muted: 220 20% 15%;
-    --muted-foreground: 210 15% 65%;
-    --accent: 160 80% 55%;
-    --accent-foreground: 220 30% 8%;
-    --destructive: 0 85% 65%;
+    --background: 250 30% 4%; /* Rich dark purple base */
+    --foreground: 245 20% 95%;
+    --card: 250 25% 6%;
+    --card-foreground: 245 20% 95%;
+    --popover: 250 25% 6%;
+    --popover-foreground: 245 20% 95%;
+    --primary: 250 100% 75%; /* Brighter in dark mode */
+    --primary-foreground: 250 30% 4%;
+    --secondary: 215 85% 65%;
+    --secondary-foreground: 250 30% 4%;
+    --muted: 250 20% 12%;
+    --muted-foreground: 245 15% 65%;
+    --accent: 320 90% 75%;
+    --accent-foreground: 250 30% 4%;
+    --destructive: 0 85% 70%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 15% 20%;
-    --input: 220 15% 18%;
-    --ring: 230 100% 65%;
+    --border: 245 15% 18%;
+    --input: 250 20% 10%;
+    --ring: 250 100% 75%;
     
-    --surface-1: 220 25% 10%;
-    --surface-2: 220 20% 12%;
-    --surface-3: 220 15% 15%;
+    --surface-1: 250 25% 6%;
+    --surface-2: 250 20% 8%;
+    --surface-3: 250 15% 12%;
   }
 }
 
@@ -236,10 +239,17 @@
     @apply hover:bg-muted focus:ring-2 focus:ring-primary/20 focus:outline-none;
   }
   
-  /* Modern Card Styles */
+  /* Premium Card Styles */
   .modern-card {
-    @apply bg-card border border-border rounded-lg shadow-enhanced;
-    @apply transition-all duration-200 hover:shadow-elevated;
+    @apply bg-card border border-border rounded-2xl shadow-enhanced backdrop-blur-sm;
+    @apply transition-all duration-300 hover:shadow-elevated hover:scale-[1.02];
+    background: linear-gradient(135deg, hsl(var(--card)), hsl(var(--muted)/30));
+  }
+  
+  .premium-card {
+    @apply bg-gradient-to-br from-card via-card to-muted/20 border border-border/50;
+    @apply rounded-2xl shadow-2xl backdrop-blur-md hover:shadow-purple-glow;
+    @apply transition-all duration-500 hover:scale-[1.02] hover:-translate-y-1;
   }
   
   /* Gradient Backgrounds */
@@ -304,7 +314,32 @@
   .icon-vibrant-purple { color: hsl(var(--vibrant-purple)); }
   .icon-sunset-orange { color: hsl(var(--sunset-orange)); }
   .icon-pink-rose { color: hsl(var(--pink-rose)); }
+  .icon-coral-red { color: hsl(var(--coral-red)); }
+  .icon-teal-cyan { color: hsl(var(--teal-cyan)); }
+  .icon-indigo-deep { color: hsl(var(--indigo-deep)); }
   .icon-danger-red { color: hsl(var(--destructive)); }
+  
+  /* Premium Interactive Elements */
+  .interactive-card {
+    @apply cursor-pointer transition-all duration-300;
+    @apply hover:scale-[1.02] hover:-translate-y-1 hover:shadow-glow-lg;
+  }
+  
+  .branded-gradient {
+    background: linear-gradient(135deg, 
+      hsl(var(--vibrant-purple)), 
+      hsl(var(--electric-blue)), 
+      hsl(var(--emerald-green)));
+  }
+  
+  .text-branded-gradient {
+    background: linear-gradient(135deg, 
+      hsl(var(--vibrant-purple)), 
+      hsl(var(--electric-blue)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
 }
 
 /* Enhanced Keyframes */

@@ -25,7 +25,8 @@ import {
   Clock,
   Database,
   Fingerprint,
-  Plus
+  Plus,
+  AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -195,146 +196,208 @@ export default function StudentList() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-background p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
-          {/* Header */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h1 className="text-2xl font-semibold text-foreground">Students</h1>
-              <p className="text-sm text-muted-foreground">{stats.totalStudents} total records</p>
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-electric-blue/5 p-6">
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* Premium Header */}
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            <div className="space-y-4">
+              <div className="flex items-center space-x-4">
+                <div className="w-14 h-14 bg-electric-blue/10 border border-electric-blue/20 rounded-2xl flex items-center justify-center">
+                  <Users className="w-7 h-7 text-electric-blue" />
+                </div>
+                <div>
+                  <h1 className="text-4xl font-bold text-branded-gradient">Student Management</h1>
+                  <p className="text-lg text-muted-foreground">{stats.totalStudents} active enrollments across all batches</p>
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
               <Button
                 onClick={() => window.location.href = '/students/enhanced-add'}
-                className="modern-button"
+                className="h-12 px-6 bg-electric-blue hover:bg-electric-blue/90 text-white rounded-2xl font-semibold transition-all duration-300 hover:scale-105 shadow-glow"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Student
+                <Plus className="h-5 w-5 mr-3" />
+                Add New Student
               </Button>
               <Button
                 onClick={() => refetch()}
                 variant="outline"
-                className="modern-button-outline"
+                className="h-12 px-6 border-2 border-vibrant-purple/30 text-vibrant-purple hover:bg-vibrant-purple/5 rounded-2xl font-semibold transition-all duration-300 hover:scale-105"
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
+                <RefreshCw className="h-5 w-5 mr-3" />
+                Refresh Data
               </Button>
             </div>
           </div>
 
-          {/* Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="modern-card">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Complete</p>
-                    <p className="text-lg font-semibold text-foreground">{stats.completeBiometrics}</p>
+          {/* Premium Statistics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="premium-card group interactive-card">
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="w-14 h-14 bg-emerald-green/10 border border-emerald-green/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Fingerprint className="h-7 w-7 text-emerald-green" />
+                    </div>
+                    <Activity className="h-5 w-5 text-emerald-green" />
                   </div>
-                  <Fingerprint className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <h3 className="text-sm font-bold text-emerald-green uppercase tracking-wider">
+                      Complete Biometrics
+                    </h3>
+                    <p className="text-3xl font-bold text-foreground">{stats.completeBiometrics}</p>
+                    <p className="text-sm text-muted-foreground">Fully enrolled students</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="modern-card">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Partial</p>
-                    <p className="text-lg font-semibold text-foreground">{stats.partialBiometrics}</p>
+            <Card className="premium-card group interactive-card">
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="w-14 h-14 bg-sunset-orange/10 border border-sunset-orange/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Shield className="h-7 w-7 text-sunset-orange" />
+                    </div>
+                    <Clock className="h-5 w-5 text-sunset-orange" />
                   </div>
-                  <Shield className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <h3 className="text-sm font-bold text-sunset-orange uppercase tracking-wider">
+                      Partial Biometrics
+                    </h3>
+                    <p className="text-3xl font-bold text-foreground">{stats.partialBiometrics}</p>
+                    <p className="text-sm text-muted-foreground">In progress</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="modern-card">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Incomplete</p>
-                    <p className="text-lg font-semibold text-foreground">{stats.noBiometrics}</p>
+            <Card className="premium-card group interactive-card">
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="w-14 h-14 bg-pink-rose/10 border border-pink-rose/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Activity className="h-7 w-7 text-pink-rose" />
+                    </div>
+                    <AlertTriangle className="h-5 w-5 text-pink-rose" />
                   </div>
-                  <Activity className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <h3 className="text-sm font-bold text-pink-rose uppercase tracking-wider">
+                      Incomplete
+                    </h3>
+                    <p className="text-3xl font-bold text-foreground">{stats.noBiometrics}</p>
+                    <p className="text-sm text-muted-foreground">Requires enrollment</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="modern-card">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total</p>
-                    <p className="text-lg font-semibold text-foreground">{stats.totalStudents}</p>
+            <Card className="premium-card group interactive-card">
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="w-14 h-14 bg-electric-blue/10 border border-electric-blue/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Users className="h-7 w-7 text-electric-blue" />
+                    </div>
+                    <Database className="h-5 w-5 text-electric-blue" />
                   </div>
-                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <h3 className="text-sm font-bold text-electric-blue uppercase tracking-wider">
+                      Total Students
+                    </h3>
+                    <p className="text-3xl font-bold text-foreground">{stats.totalStudents}</p>
+                    <p className="text-sm text-muted-foreground">System-wide</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Filters */}
-          <Card className="modern-card">
-            <CardContent className="p-4">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1 space-y-2">
-                  <Label className="text-sm font-medium">Search Students</Label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search by name..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="modern-input pl-10"
-                    />
+          {/* Premium Filters */}
+          <Card className="premium-card">
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-vibrant-purple/10 border border-vibrant-purple/20 rounded-xl flex items-center justify-center">
+                    <Search className="h-5 w-5 text-vibrant-purple" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-foreground">Advanced Search & Filters</h3>
+                    <p className="text-sm text-muted-foreground">Find students quickly with powerful filtering options</p>
                   </div>
                 </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-3">
+                    <Label className="text-sm font-bold text-electric-blue uppercase tracking-wider">Search Students</Label>
+                    <div className="relative group">
+                      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-electric-blue group-focus-within:scale-110 transition-transform duration-300" />
+                      <Input
+                        placeholder="Search by name, mobile, or email..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-12 h-12 bg-muted/20 border-2 border-border/50 focus:border-electric-blue focus:bg-background rounded-xl transition-all duration-300"
+                      />
+                    </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Filter by Batch</Label>
-                  <select
-                    value={selectedBatch}
-                    onChange={(e) => setSelectedBatch(e.target.value)}
-                    className="modern-input min-w-[200px]"
-                  >
-                    <option value="all">All Batches</option>
-                    {batches.map((batch) => (
-                      <option key={batch.id} value={batch.id}>
-                        {batch.batch_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  <div className="space-y-3">
+                    <Label className="text-sm font-bold text-vibrant-purple uppercase tracking-wider">Filter by Batch</Label>
+                    <div className="relative group">
+                      <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-vibrant-purple group-focus-within:scale-110 transition-transform duration-300" />
+                      <select
+                        value={selectedBatch}
+                        onChange={(e) => setSelectedBatch(e.target.value)}
+                        className="pl-12 pr-4 h-12 w-full bg-muted/20 border-2 border-border/50 focus:border-vibrant-purple focus:bg-background rounded-xl transition-all duration-300 text-foreground"
+                      >
+                        <option value="all">All Batches</option>
+                        {batches.map((batch) => (
+                          <option key={batch.id} value={batch.id}>
+                            {batch.batch_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Sort By</Label>
-                  <select
-                    value={`${sortBy}-${sortOrder}`}
-                    onChange={(e) => {
-                      const [field, order] = e.target.value.split('-');
-                      setSortBy(field as any);
-                      setSortOrder(order as any);
-                    }}
-                    className="modern-input min-w-[160px]"
-                  >
-                    <option value="created_at-desc">Newest First</option>
-                    <option value="created_at-asc">Oldest First</option>
-                    <option value="student_name-asc">Name A-Z</option>
-                    <option value="student_name-desc">Name Z-A</option>
-                  </select>
+                  <div className="space-y-3">
+                    <Label className="text-sm font-bold text-emerald-green uppercase tracking-wider">Sort By</Label>
+                    <div className="relative group">
+                      <Database className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-emerald-green group-focus-within:scale-110 transition-transform duration-300" />
+                      <select
+                        value={`${sortBy}-${sortOrder}`}
+                        onChange={(e) => {
+                          const [field, order] = e.target.value.split('-');
+                          setSortBy(field as any);
+                          setSortOrder(order as any);
+                        }}
+                        className="pl-12 pr-4 h-12 w-full bg-muted/20 border-2 border-border/50 focus:border-emerald-green focus:bg-background rounded-xl transition-all duration-300 text-foreground"
+                      >
+                        <option value="created_at-desc">Newest First</option>
+                        <option value="created_at-asc">Oldest First</option>
+                        <option value="student_name-asc">Name A-Z</option>
+                        <option value="student_name-desc">Name Z-A</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Student Table */}
-          <Card className="modern-card">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Student Records ({students.length})
-              </CardTitle>
+          {/* Premium Student Table */}
+          <Card className="premium-card">
+            <CardHeader className="pb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-electric-blue/10 border border-electric-blue/20 rounded-xl flex items-center justify-center">
+                  <Users className="h-5 w-5 text-electric-blue" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl font-bold text-foreground">Student Database</CardTitle>
+                  <p className="text-sm text-muted-foreground">{students.length} active student records</p>
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="p-6">
               <Tabs defaultValue="table" className="space-y-4">
