@@ -87,11 +87,11 @@ export default function EnhancedDashboard() {
         )
       };
     },
-    staleTime: Infinity, // Never consider data stale
-    gcTime: Infinity, // Keep in cache forever
-    refetchOnWindowFocus: false, // Prevent unnecessary refetches
-    refetchOnMount: false, // Use cached data
-    refetchOnReconnect: false, // Don't refetch on reconnect
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: true, // Refetch when window gains focus
+    refetchOnMount: true, // Always refetch on mount
+    refetchOnReconnect: true, // Refetch on reconnect
   });
 
   // Real-time updates for batch data
