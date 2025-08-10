@@ -21,9 +21,12 @@ import {
   LogOut,
   User,
   Plus,
-  Settings,
   Activity,
-  Shield
+  Shield,
+  ChevronLeft,
+  ChevronRight,
+  Building2,
+  Sparkles
 } from "lucide-react"
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
@@ -38,6 +41,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
   const { logout } = useEnhancedAuth();
   const { isSuperAdmin } = useUserProfile();
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
 
   const menuItems = [
     { 
@@ -186,13 +190,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <SidebarFooter className="p-6 border-t border-surface-3">
             <div className="space-y-3">
               <Button
-                variant="ghost"
-                className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-surface-2 transition-all duration-300 rounded-xl h-12"
-              >
-                <Settings className="w-5 h-5 mr-3 icon-vibrant-purple" />
-                <span className="font-inter font-medium">Settings</span>
-              </Button>
-              <Button
                 onClick={handleLogout}
                 variant="ghost"
                 className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 transition-all duration-300 rounded-xl h-12"
@@ -204,15 +201,60 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </SidebarFooter>
         </Sidebar>
 
-        {/* Main Content */}
+        {/* Modern Industry-Level Header */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <header className="bg-surface-1 border-b border-surface-3 px-8 py-4 shadow-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <SidebarTrigger className="lg:hidden p-2 hover:bg-surface-2 rounded-lg transition-colors" />
-                <div className="hidden md:flex items-center space-x-2">
-                  <Activity className="w-5 h-5 icon-electric-blue" />
-                  <span className="font-poppins font-semibold text-foreground">System Dashboard</span>
+          <header className="relative bg-gradient-to-r from-surface-1 via-surface-1/95 to-surface-1 border-b border-surface-3/50 backdrop-blur-xl shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-to-r from-electric-blue/5 via-transparent to-emerald-green/5"></div>
+            <div className="relative px-8 py-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-6">
+                  <SidebarTrigger 
+                    className="lg:hidden p-3 hover:bg-surface-2/80 rounded-xl transition-all duration-300 border border-surface-3/30 backdrop-blur-sm" 
+                    onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  />
+                  
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="relative">
+                        <div className="w-12 h-12 gradient-primary rounded-2xl flex items-center justify-center shadow-glow-lg">
+                          <Building2 className="w-7 h-7 text-white" />
+                        </div>
+                        <Sparkles className="absolute -top-1 -right-1 w-4 h-4 text-emerald-green animate-pulse" />
+                      </div>
+                      <div>
+                        <div className="font-poppins font-bold text-2xl bg-gradient-to-r from-electric-blue via-emerald-green to-vibrant-purple bg-clip-text text-transparent">
+                          BiometricHub
+                        </div>
+                        <div className="text-sm text-muted-foreground font-medium">
+                          Enterprise Biometric Management Platform
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-4">
+                  <div className="hidden md:flex items-center space-x-3 px-4 py-2 glass rounded-xl border border-surface-3/30">
+                    <Activity className="w-5 h-5 text-emerald-green animate-pulse" />
+                    <span className="font-inter font-semibold text-foreground text-sm">System Online</span>
+                    <div className="w-2 h-2 bg-emerald-green rounded-full animate-pulse"></div>
+                  </div>
+                  
+                  <Button
+                    onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                    variant="ghost"
+                    size="sm"
+                    className="hidden lg:flex items-center space-x-2 px-4 py-2 glass border border-surface-3/30 hover:bg-surface-2/80 rounded-xl transition-all duration-300"
+                  >
+                    {sidebarCollapsed ? (
+                      <ChevronRight className="w-4 h-4 text-electric-blue" />
+                    ) : (
+                      <ChevronLeft className="w-4 h-4 text-electric-blue" />
+                    )}
+                    <span className="text-sm font-medium text-foreground">
+                      {sidebarCollapsed ? 'Expand' : 'Collapse'}
+                    </span>
+                  </Button>
                 </div>
               </div>
             </div>
