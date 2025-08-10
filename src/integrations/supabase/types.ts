@@ -18,11 +18,14 @@ export type Database = {
         Row: {
           action: string
           created_at: string | null
+          device_fingerprint: string | null
           id: string
           ip_address: unknown | null
           new_values: Json | null
           old_values: Json | null
           record_id: string | null
+          risk_score: number | null
+          session_id: string | null
           table_name: string | null
           user_agent: string | null
           user_id: string | null
@@ -30,11 +33,14 @@ export type Database = {
         Insert: {
           action: string
           created_at?: string | null
+          device_fingerprint?: string | null
           id?: string
           ip_address?: unknown | null
           new_values?: Json | null
           old_values?: Json | null
           record_id?: string | null
+          risk_score?: number | null
+          session_id?: string | null
           table_name?: string | null
           user_agent?: string | null
           user_id?: string | null
@@ -42,11 +48,14 @@ export type Database = {
         Update: {
           action?: string
           created_at?: string | null
+          device_fingerprint?: string | null
           id?: string
           ip_address?: unknown | null
           new_values?: Json | null
           old_values?: Json | null
           record_id?: string | null
+          risk_score?: number | null
+          session_id?: string | null
           table_name?: string | null
           user_agent?: string | null
           user_id?: string | null
@@ -312,36 +321,48 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          failed_login_attempts: number | null
           full_name: string
           id: string
           is_active: boolean
           last_login_at: string | null
+          locked_until: string | null
           max_batches_allowed: number
+          password_changed_at: string | null
           role: Database["public"]["Enums"]["user_role"]
+          session_token: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          failed_login_attempts?: number | null
           full_name: string
           id?: string
           is_active?: boolean
           last_login_at?: string | null
+          locked_until?: string | null
           max_batches_allowed?: number
+          password_changed_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          session_token?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          failed_login_attempts?: number | null
           full_name?: string
           id?: string
           is_active?: boolean
           last_login_at?: string | null
+          locked_until?: string | null
           max_batches_allowed?: number
+          password_changed_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          session_token?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -372,9 +393,30 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: Json
       }
+      handle_failed_login: {
+        Args: { target_user_id: string }
+        Returns: Json
+      }
+      is_account_locked: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
       is_super_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      log_high_risk_activity: {
+        Args: {
+          activity_type: string
+          target_user_id: string
+          risk_level: number
+          details?: Json
+        }
+        Returns: undefined
+      }
+      reset_failed_login_attempts: {
+        Args: { target_user_id: string }
+        Returns: undefined
       }
       reset_system_settings_to_defaults: {
         Args: Record<PropertyKey, never>
