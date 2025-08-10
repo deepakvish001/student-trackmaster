@@ -73,27 +73,33 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Right Login Form Section - Clean White */}
-      <div className="flex-1 bg-white flex items-center justify-center p-8 lg:p-12 xl:p-16">
-        <div className="w-full max-w-md mx-auto">
+      {/* Right Login Form Section - Dark Black */}
+      <div className="flex-1 bg-black relative flex items-center justify-center p-8 lg:p-12 xl:p-16">
+        {/* Subtle Background Pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute inset-0 bg-gradient-to-bl from-orange-500/20 via-transparent to-orange-600/10"></div>
+          <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_75%_25%,_orange_0%,_transparent_50%)] opacity-10"></div>
+        </div>
+
+        <div className="relative z-10 w-full max-w-md mx-auto">
           {/* Form Container */}
-          <div className="bg-white rounded-3xl shadow-2xl shadow-black/5 p-8 lg:p-10 border border-gray-100">
+          <div className="bg-white/5 backdrop-blur-sm rounded-3xl shadow-2xl shadow-black/20 p-8 lg:p-10 border border-white/10">
             {/* Form Header */}
             <div className="text-center mb-10">
-              <h2 className="text-3xl font-bold text-gray-900 mb-3">Welcome Back</h2>
-              <p className="text-gray-600 text-lg">Sign in to your secure account</p>
+              <h2 className="text-3xl font-bold text-white mb-3">Welcome Back</h2>
+              <p className="text-gray-300 text-lg">Sign in to your secure account</p>
             </div>
 
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="space-y-7">
               {/* Email Field */}
               <div className="space-y-3">
-                <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                <label className="block text-sm font-semibold text-gray-300 uppercase tracking-wider">
                   Email Address
                 </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-blue-500 group-focus-within:text-blue-600 transition-colors" />
+                    <Mail className="h-5 w-5 text-orange-400 group-focus-within:text-orange-300 transition-colors" />
                   </div>
                   <Input
                     type="email"
@@ -101,19 +107,19 @@ export default function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="pl-12 h-14 bg-gray-50 border-gray-200 focus:border-blue-500 focus:bg-white rounded-xl text-gray-900 placeholder-gray-500 transition-all duration-200 focus:ring-2 focus:ring-blue-500/20"
+                    className="pl-12 h-14 bg-white/10 border-white/20 focus:border-orange-400 focus:bg-white/15 rounded-xl text-white placeholder-gray-400 transition-all duration-200 focus:ring-2 focus:ring-orange-400/30"
                   />
                 </div>
               </div>
 
               {/* Password Field */}
               <div className="space-y-3">
-                <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                <label className="block text-sm font-semibold text-gray-300 uppercase tracking-wider">
                   Password
                 </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-purple-500 group-focus-within:text-purple-600 transition-colors" />
+                    <Lock className="h-5 w-5 text-orange-400 group-focus-within:text-orange-300 transition-colors" />
                   </div>
                   <Input
                     type={showPassword ? "text" : "password"}
@@ -121,12 +127,12 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="pl-12 pr-12 h-14 bg-gray-50 border-gray-200 focus:border-purple-500 focus:bg-white rounded-xl text-gray-900 placeholder-gray-500 transition-all duration-200 focus:ring-2 focus:ring-purple-500/20"
+                    className="pl-12 pr-12 h-14 bg-white/10 border-white/20 focus:border-orange-400 focus:bg-white/15 rounded-xl text-white placeholder-gray-400 transition-all duration-200 focus:ring-2 focus:ring-orange-400/30"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-orange-400 transition-colors"
                   >
                     {showPassword ? (
                       <EyeOff className="h-5 w-5" />
@@ -157,13 +163,13 @@ export default function Login() {
             </form>
 
             {/* Security Footer */}
-            <div className="mt-8 pt-6 border-t border-gray-100">
+            <div className="mt-8 pt-6 border-t border-white/10">
               <div className="text-center">
-                <div className="inline-flex items-center gap-2 text-green-600 mb-2">
+                <div className="inline-flex items-center gap-2 text-orange-400 mb-2">
                   <Shield className="w-4 h-4" />
                   <span className="text-sm font-semibold">256-bit SSL Encrypted</span>
                 </div>
-                <p className="text-xs text-gray-500 leading-relaxed">
+                <p className="text-xs text-gray-400 leading-relaxed">
                   Your data is protected by enterprise-grade security protocols
                   <br />
                   and advanced encryption standards.
