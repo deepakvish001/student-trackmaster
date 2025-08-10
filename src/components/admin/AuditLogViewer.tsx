@@ -36,11 +36,13 @@ export default function AuditLogViewer() {
   const { data: logs = [], isLoading, refetch } = useQuery({
     queryKey: ['audit-logs', actionFilter, searchTerm],
     queryFn: async () => {
+      console.log('🔍 Fetching audit logs with filter:', { actionFilter, searchTerm });
+      
       let query = supabase
         .from('audit_logs')
         .select(`
           *,
-          user_profiles!inner(full_name)
+          user_profiles(full_name)
         `)
         .order('created_at', { ascending: false });
 
@@ -55,7 +57,12 @@ export default function AuditLogViewer() {
 
       const { data, error } = await query.limit(200);
       
-      if (error) throw error;
+      console.log('📊 Query result:', { data: data?.length, error });
+      
+      if (error) {
+        console.error('❌ Error fetching audit logs:', error);
+        throw error;
+      }
       
       // Transform the data to match our interface
       const transformedData = (data || []).map(log => ({
@@ -63,28 +70,50 @@ export default function AuditLogViewer() {
         user_profiles: Array.isArray(log.user_profiles) ? log.user_profiles[0] : log.user_profiles
       }));
       
+      console.log('✅ Transformed data:', transformedData.length, 'logs');
       return transformedData as AuditLogEntry[];
     },
-    staleTime: 60 * 1000, // 1 minute
-    gcTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-    refetchOnReconnect: false,
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 2 * 60 * 1000, // 2 minutes
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
+    retry: 3,
   });
 
-  // Real-time subscription for audit logs
+  // Enhanced real-time subscription for audit logs
   useEffect(() => {
+    console.log('🔔 Setting up real-time subscription for audit logs');
+    
     const channel = supabase
       .channel('audit-logs-realtime')
       .on('postgres_changes', 
         { event: 'INSERT', schema: 'public', table: 'audit_logs' },
-        () => {
+        (payload) => {
+          console.log('📥 New audit log received:', payload);
           queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
         }
       )
-      .subscribe();
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'audit_logs' },
+        (payload) => {
+          console.log('📝 Audit log updated:', payload);
+          queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+        }
+      )
+      .on('postgres_changes', 
+        { event: 'DELETE', schema: 'public', table: 'audit_logs' },
+        (payload) => {
+          console.log('🗑️ Audit log deleted:', payload);
+          queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Real-time subscription status:', status);
+      });
 
     return () => {
+      console.log('🔚 Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
   }, [queryClient]);
@@ -251,8 +280,20 @@ export default function AuditLogViewer() {
             </TableBody>
           </Table>
           {filteredLogs.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              {isLoading ? 'Loading audit logs...' : 'No audit logs found'}
+            <div className="text-center py-8">
+              {isLoading ? (
+                <div className="text-muted-foreground">Loading audit logs...</div>
+              ) : (
+                <div>
+                  <div className="text-muted-foreground mb-2">No audit logs found</div>
+                  <div className="text-sm text-muted-foreground">
+                    {searchTerm || actionFilter !== 'all' 
+                      ? 'Try adjusting your filters' 
+                      : 'Start using the system to generate audit logs'
+                    }
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </ScrollArea>
