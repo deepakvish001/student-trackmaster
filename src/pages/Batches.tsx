@@ -1,26 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Progress } from '@/components/ui/progress';
-import { BatchCRUD } from '@/components/batches/BatchCRUD';
+import { BatchTable } from '@/components/batches/BatchTable';
 import { BatchListSkeleton } from '@/components/batches/BatchListSkeleton';
-import { BatchPagination } from '@/components/batches/BatchPagination';
 import { useOptimizedBatches } from '@/hooks/useOptimizedBatches';
 import { useRealTimeBatchAccess } from '@/hooks/useRealTimeBatchAccess';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Batch } from '@/types/index';
-import { GraduationCap, Users, Search, Filter, Calendar, Activity, TrendingUp, Clock, Database, BookOpen, Target, RefreshCw, BarChart3, ChevronLeft, ChevronRight, Shield } from 'lucide-react';
+import { GraduationCap, Home, ChevronRight, Plus, Edit } from 'lucide-react';
+
 export default function Batches() {
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
+  const [batchName, setBatchName] = useState('');
 
   // Enable real-time batch access updates
-  const {
-    isSubscribed
-  } = useRealTimeBatchAccess();
+  const { isSubscribed } = useRealTimeBatchAccess();
+  
   const {
     batches,
     stats,
@@ -30,200 +26,176 @@ export default function Batches() {
     loading,
     error
   } = useOptimizedBatches({
-    pageSize: 12,
+    pageSize: 10,
     enablePrefetch: true
   });
 
-  // Real-time clock update
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-  const getUtilizationColor = (current: number, max: number) => {
-    const percentage = current / max * 100;
-    if (percentage >= 90) return 'text-pink-rose';
-    if (percentage >= 70) return 'text-sunset-orange';
-    if (percentage >= 50) return 'text-electric-blue';
-    return 'text-emerald-green';
+  const handleEdit = (batch: Batch) => {
+    setSelectedBatch(batch);
+    // Add edit logic here
   };
-  const getUtilizationBadge = (current: number, max: number) => {
-    const percentage = current / max * 100;
-    if (percentage >= 90) return <Badge className="bg-pink-rose/20 text-pink-rose border-pink-rose/30">Full</Badge>;
-    if (percentage >= 70) return <Badge className="bg-sunset-orange/20 text-sunset-orange border-sunset-orange/30">High</Badge>;
-    if (percentage >= 50) return <Badge className="bg-electric-blue/20 text-electric-blue border-electric-blue/30">Medium</Badge>;
-    return <Badge className="bg-emerald-green/20 text-emerald-green border-emerald-green/30">Low</Badge>;
+
+  const handleStatusChange = (batch: Batch) => {
+    // Add status change logic here
   };
+
+  const handleCreateBatch = () => {
+    if (batchName.trim()) {
+      // Add create batch logic here
+      console.log('Creating batch:', batchName);
+      setBatchName('');
+    }
+  };
+
   if (loading) {
-    return <DashboardLayout>
+    return (
+      <DashboardLayout>
         <div className="min-h-screen bg-background p-6">
           <div className="max-w-7xl mx-auto">
             <BatchListSkeleton />
           </div>
         </div>
-      </DashboardLayout>;
+      </DashboardLayout>
+    );
   }
-  return <DashboardLayout>
-      <div className="min-h-screen bg-background p-6">
-        <div className="max-w-7xl mx-auto space-y-8">
-          {/* Premium Header */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-            <div className="space-y-4">
-              <div className="flex items-center space-x-4">
-                <div className="w-14 h-14 bg-vibrant-purple/10 border border-vibrant-purple/20 rounded-2xl flex items-center justify-center">
-                  <GraduationCap className="w-7 h-7 text-vibrant-purple" />
-                </div>
-                <div>
-                  <h1 className="text-4xl font-bold text-branded-gradient">Batch Management</h1>
-                  <p className="text-lg text-muted-foreground">
-                    Manage your accessible batches • {stats.utilizationRate}% system utilization
-                  </p>
-                </div>
-              </div>
-              
-              {isSubscribed}
-            </div>
 
-            
+  return (
+    <DashboardLayout>
+      <div className="min-h-screen bg-background p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Header with Breadcrumbs */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                <Home className="h-4 w-4" />
+                <span>Home</span>
+                <ChevronRight className="h-4 w-4" />
+                <span className="text-electric-blue font-medium">Add Batch</span>
+              </div>
+              <h1 className="text-3xl font-bold text-foreground">Add Batch</h1>
+            </div>
           </div>
 
-          {/* Real-time Statistics Dashboard */}
-          
-
-          {/* Enhanced Search and Filters */}
+          {/* Add Batch Form */}
           <Card className="glass-card border-foreground/10">
             <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1 space-y-2">
-                  <label className="text-sm font-semibold text-electric-blue">Search Batches</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-electric-blue" />
-                    <Input placeholder="🔍 Search by batch name, serial number, or admin..." value={filters.searchTerm} onChange={e => actions.handleSearch(e.target.value)} className="pl-12 glass bg-surface-darker border-electric-blue/30 text-foreground placeholder:text-muted-foreground/70 focus:border-electric-blue focus:ring-electric-blue/20 h-12 text-base" />
-                  </div>
-                </div>
-
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-emerald-green">Filter by Status</label>
-                  <div className="relative">
-                    <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-emerald-green" />
-                    <select value={filters.statusFilter} onChange={e => actions.handleStatusFilter(e.target.value)} className="pl-12 pr-8 py-3 glass bg-surface-darker border-emerald-green/30 text-foreground rounded-lg focus:border-emerald-green h-12 min-w-[200px]">
-                      <option value="all">All Batches</option>
-                      <option value="active">Active Only</option>
-                      <option value="inactive">Inactive Only</option>
-                    </select>
-                  </div>
+                  <label className="text-sm font-semibold text-foreground">Batch Name</label>
+                  <Input 
+                    placeholder="Enter Batch Name" 
+                    value={batchName}
+                    onChange={(e) => setBatchName(e.target.value)}
+                    className="max-w-md glass bg-background border-foreground/20 focus:border-electric-blue"
+                  />
+                </div>
+                <div className="flex space-x-3">
+                  <Button 
+                    onClick={handleCreateBatch}
+                    className="bg-electric-blue hover:bg-electric-blue/90 text-white"
+                  >
+                    Create
+                  </Button>
+                  <Button variant="outline" className="glass-card">
+                    Edit
+                  </Button>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Enhanced Batch Grid */}
-          {batches.length === 0 ? <Card className="glass-card border-pink-rose/20 text-center p-16">
-              <div className="space-y-6">
-                <div className="w-24 h-24 bg-pink-rose/20 rounded-full flex items-center justify-center mx-auto">
-                  <GraduationCap className="h-12 w-12 text-pink-rose" />
-                </div>
-                <div>
-                  <h3 className="text-3xl font-bold text-pink-rose mb-2">No Accessible Batches</h3>
-                  <p className="text-muted-foreground text-lg">You don't have access to any batches yet. Contact your administrator to get batch access.</p>
+          {/* Student Batch List */}
+          <Card className="glass-card border-foreground/10">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-bold text-foreground">Student Batch List</CardTitle>
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm font-medium text-foreground">Search:</label>
+                  <Input 
+                    placeholder="Search..." 
+                    value={filters.searchTerm}
+                    onChange={(e) => actions.handleSearch(e.target.value)}
+                    className="w-64 glass bg-background border-foreground/20 focus:border-electric-blue"
+                  />
                 </div>
               </div>
-            </Card> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {batches.map(batch => {
-            const utilizationPercentage = (batch.student_count || 0) / batch.max_students * 100;
-            return <Card key={batch.id} className="glass-card border-foreground/10 hover-lift hover-glow interactive-card cursor-pointer overflow-hidden" onClick={() => setSelectedBatch(batch)}>
-                    <CardHeader className="bg-gradient-to-br from-electric-blue/10 via-emerald-green/10 to-pink-rose/10 pb-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-electric-blue to-vibrant-purple rounded-xl flex items-center justify-center">
-                            <BookOpen className="h-6 w-6 text-white" />
-                          </div>
-                          <div>
-                            <CardTitle className="text-lg text-foreground font-bold">{batch.batch_name}</CardTitle>
-                            <p className="text-sm text-muted-foreground font-mono">{batch.serial_number}</p>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end space-y-1">
-                          <Badge className={batch.is_enabled ? "bg-emerald-green/20 text-emerald-green border-emerald-green/30" : "bg-muted/20 text-muted-foreground border-muted/30"}>
-                            {batch.is_enabled ? 'Active' : 'Inactive'}
-                          </Badge>
-                          {getUtilizationBadge(batch.student_count || 0, batch.max_students)}
-                        </div>
+            </CardHeader>
+            <CardContent className="p-6 pt-0">
+              {batches.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="space-y-4">
+                    <div className="w-16 h-16 bg-muted/20 rounded-full flex items-center justify-center mx-auto">
+                      <GraduationCap className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground mb-1">No Accessible Batches</h3>
+                      <p className="text-muted-foreground">You don't have access to any batches yet.</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <BatchTable 
+                      currentBatches={batches}
+                      onEdit={handleEdit}
+                      onStatusChange={handleStatusChange}
+                    />
+                  </div>
+                  
+                  {/* Pagination */}
+                  {pagination.totalPages > 1 && (
+                    <div className="flex justify-between items-center mt-6 pt-4 border-t border-foreground/10">
+                      <div className="text-sm text-muted-foreground">
+                        Showing {(pagination.currentPage - 1) * 10 + 1} to {Math.min(pagination.currentPage * 10, pagination.totalCount)} of {pagination.totalCount} entries
                       </div>
-                    </CardHeader>
-                    
-                    <CardContent className="p-6 space-y-4">
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Users className="h-4 w-4 text-electric-blue" />
-                            <span className="text-sm text-foreground font-medium">Student Enrollment</span>
-                          </div>
-                          <span className={`text-lg font-bold ${getUtilizationColor(batch.student_count || 0, batch.max_students)}`}>
-                            {batch.student_count || 0}/{batch.max_students}
-                          </span>
+                      <div className="flex items-center space-x-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => actions.handlePageChange(pagination.currentPage - 1)} 
+                          disabled={!pagination.hasPreviousPage}
+                          className="glass-card"
+                        >
+                          Previous
+                        </Button>
+                        
+                        <div className="flex items-center space-x-1">
+                          {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                            const page = i + 1;
+                            const isCurrentPage = page === pagination.currentPage;
+                            return (
+                              <Button 
+                                key={page}
+                                variant={isCurrentPage ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => actions.handlePageChange(page)}
+                                className={isCurrentPage ? "bg-electric-blue text-white" : "glass-card hover:bg-electric-blue/10"}
+                              >
+                                {page}
+                              </Button>
+                            );
+                          })}
                         </div>
                         
-                        <Progress value={utilizationPercentage} className="h-3" />
-                        
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div className="space-y-1">
-                            <div className="flex items-center space-x-1">
-                              <Calendar className="h-3 w-3 text-sunset-orange" />
-                              <span className="text-muted-foreground">Created:</span>
-                            </div>
-                            <span className="text-sunset-orange font-medium">
-                              {new Date(batch.created_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                          
-                          <div className="space-y-1">
-                            <div className="flex items-center space-x-1">
-                              <TrendingUp className="h-3 w-3 text-vibrant-purple" />
-                              <span className="text-muted-foreground">Usage:</span>
-                            </div>
-                            <span className="text-vibrant-purple font-medium">
-                              {Math.round(utilizationPercentage)}%
-                            </span>
-                          </div>
-                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => actions.handlePageChange(pagination.currentPage + 1)} 
+                          disabled={!pagination.hasNextPage}
+                          className="glass-card"
+                        >
+                          Next
+                        </Button>
                       </div>
-                    </CardContent>
-                  </Card>;
-          })}
-            </div>}
-          
-          {/* Pagination */}
-          {pagination.totalPages > 1 && <div className="flex justify-center items-center space-x-4 mt-8">
-              <Button variant="outline" onClick={() => actions.handlePageChange(pagination.currentPage - 1)} disabled={!pagination.hasPreviousPage} className="glass-card">
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                Previous
-              </Button>
-              
-              <div className="flex items-center space-x-2">
-                {Array.from({
-              length: Math.min(5, pagination.totalPages)
-            }, (_, i) => {
-              const page = i + 1;
-              const isCurrentPage = page === pagination.currentPage;
-              return <Button key={page} variant={isCurrentPage ? "default" : "outline"} onClick={() => actions.handlePageChange(page)} className={isCurrentPage ? "bg-electric-blue text-white" : "glass-card hover:bg-electric-blue/10"} size="sm">
-                      {page}
-                    </Button>;
-            })}
-              </div>
-              
-              <Button variant="outline" onClick={() => actions.handlePageChange(pagination.currentPage + 1)} disabled={!pagination.hasNextPage} className="glass-card">
-                Next
-                <ChevronRight className="h-4 w-4 ml-2" />
-              </Button>
-            </div>}
-          
-          {/* Results Info */}
-          <div className="text-center text-muted-foreground mt-4">
-            Showing {(pagination.currentPage - 1) * 12 + 1} to {Math.min(pagination.currentPage * 12, pagination.totalCount)} of {pagination.totalCount} accessible batches
-          </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
-    </DashboardLayout>;
+    </DashboardLayout>
+  );
 }

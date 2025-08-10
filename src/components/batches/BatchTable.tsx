@@ -15,11 +15,10 @@ export const BatchTable = ({
         <TableRow>
           <TableHead>Sr. No.</TableHead>
           <TableHead>Batch Name</TableHead>
-          <TableHead>Admin Name</TableHead>
-          <TableHead>Username</TableHead>
-          <TableHead>Max Students</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Actions</TableHead>
+          <TableHead>Admin</TableHead>
+          <TableHead>User Name</TableHead>
+          <TableHead>Students</TableHead>
+          <TableHead>Action</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -31,26 +30,19 @@ export const BatchTable = ({
             }`}
           >
             <TableCell>{batch.serial_number}</TableCell>
-            <TableCell className="font-medium">{batch.batch_name}</TableCell>
+            <TableCell className="font-medium text-electric-blue">{batch.batch_name}</TableCell>
             <TableCell>{batch.admin_name}</TableCell>
             <TableCell>{batch.username}</TableCell>
-            <TableCell>{batch.max_students}</TableCell>
+            <TableCell className="text-vibrant-purple font-semibold">{(batch as any).student_count || 0}</TableCell>
             <TableCell>
-              <BatchStatusButton
-                isEnabled={batch.is_enabled}
-                onClick={() => onStatusChange(batch)}
-              />
-            </TableCell>
-            <TableCell>
-              <div className="flex space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onEdit(batch)}
-                >
-                  <Edit2 className="h-4 w-4" />
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onEdit(batch)}
+                className="bg-sunset-orange hover:bg-sunset-orange/90 text-white border-0"
+              >
+                Action
+              </Button>
             </TableCell>
           </TableRow>
         ))}
