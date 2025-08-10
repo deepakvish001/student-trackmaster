@@ -38,18 +38,61 @@ export function BatchCRUD({ batches }: BatchCRUDProps) {
 
   const queryClient = useQueryClient();
 
+  // Generate next serial number
+  const generateNextSerialNumber = async (): Promise<string> => {
+    const { data: existingBatches } = await supabase
+      .from('batches')
+      .select('serial_number')
+      .order('serial_number', { ascending: false });
+    
+    if (!existingBatches || existingBatches.length === 0) {
+      return '1';
+    }
+    
+    // Find the highest numeric serial number
+    const maxSerial = existingBatches
+      .map(batch => parseInt(batch.serial_number))
+      .filter(num => !isNaN(num))
+      .reduce((max, current) => Math.max(max, current), 0);
+    
+    return (maxSerial + 1).toString();
+  };
+
   // Create mutation
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       console.log('Creating batch:', data);
+      
+      // Auto-generate serial number if not provided or if it already exists
+      let serialNumber = data.serial_number;
+      if (!serialNumber) {
+        serialNumber = await generateNextSerialNumber();
+      } else {
+        // Check if serial number already exists
+        const { data: existingBatch } = await supabase
+          .from('batches')
+          .select('id')
+          .eq('serial_number', serialNumber)
+          .single();
+        
+        if (existingBatch) {
+          throw new Error(`Serial number "${serialNumber}" already exists. Please use a different serial number.`);
+        }
+      }
+      
       const { error } = await supabase
         .from('batches')
         .insert([{
           ...data,
+          serial_number: serialNumber,
           user_id: (await supabase.auth.getUser()).data.user?.id
         }]);
+        
       if (error) {
         console.error('Create error:', error);
+        if (error.code === '23505') {
+          throw new Error(`Serial number "${serialNumber}" already exists. Please use a different serial number.`);
+        }
         throw error;
       }
     },
@@ -61,7 +104,8 @@ export function BatchCRUD({ batches }: BatchCRUDProps) {
     },
     onError: (error) => {
       console.error('Error creating batch:', error);
-      toast.error('Failed to create batch');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create batch';
+      toast.error(errorMessage);
     }
   });
 
@@ -155,9 +199,18 @@ export function BatchCRUD({ batches }: BatchCRUDProps) {
     });
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     setShowCreateDialog(true);
     resetForm();
+    
+    // Auto-generate next serial number
+    try {
+      const nextSerial = await generateNextSerialNumber();
+      setFormData(prev => ({ ...prev, serial_number: nextSerial }));
+    } catch (error) {
+      console.error('Error generating serial number:', error);
+      toast.error('Error generating serial number');
+    }
   };
 
   const handleEdit = (batch: Batch) => {
@@ -280,14 +333,37 @@ export function BatchCRUD({ batches }: BatchCRUDProps) {
 
             <div className="space-y-2">
               <Label htmlFor="serial_number">Serial Number</Label>
-              <Input
-                id="serial_number"
-                value={formData.serial_number}
-                onChange={(e) => setFormData(prev => ({ ...prev, serial_number: e.target.value }))}
-                placeholder="Enter serial number"
-                required
-                disabled={createMutation.isPending}
-              />
+              <div className="flex space-x-2">
+                <Input
+                  id="serial_number"
+                  value={formData.serial_number}
+                  onChange={(e) => setFormData(prev => ({ ...prev, serial_number: e.target.value }))}
+                  placeholder="Auto-generated"
+                  required
+                  disabled={createMutation.isPending}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      const nextSerial = await generateNextSerialNumber();
+                      setFormData(prev => ({ ...prev, serial_number: nextSerial }));
+                      toast.success(`Generated serial number: ${nextSerial}`);
+                    } catch (error) {
+                      toast.error('Error generating serial number');
+                    }
+                  }}
+                  disabled={createMutation.isPending}
+                  className="whitespace-nowrap"
+                >
+                  Auto
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Serial number will be auto-generated if left empty
+              </p>
             </div>
 
             <div className="space-y-2">
