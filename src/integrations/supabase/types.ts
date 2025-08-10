@@ -273,6 +273,41 @@ export type Database = {
         }
         Relationships: []
       }
+      user_batch_access: {
+        Row: {
+          batch_id: string
+          created_at: string
+          granted_by: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_batch_access_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_profiles: {
         Row: {
           avatar_url: string | null
@@ -360,6 +395,10 @@ export type Database = {
       update_user_status: {
         Args: { target_user_id: string; new_status: boolean }
         Returns: Json
+      }
+      user_has_batch_access: {
+        Args: { target_user_id: string; target_batch_id: string }
+        Returns: boolean
       }
     }
     Enums: {

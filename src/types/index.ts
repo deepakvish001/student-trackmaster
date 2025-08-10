@@ -37,3 +37,16 @@ export interface Student {
     batch_name: string;
   };
 }
+
+export interface UserBatchAccess {
+  id: string;
+  user_id: string;
+  batch_id: string;
+  granted_by?: string | null;
+  created_at: string;
+  updated_at: string;
+  batches?: {
+    batch_name: string;
+    admin_name: string;
+  };
+}

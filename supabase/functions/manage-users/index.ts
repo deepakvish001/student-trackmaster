@@ -44,7 +44,7 @@ serve(async (req) => {
     }
 
     const body = await req.json()
-    const { action, email, password, full_name, user_id, new_password, role } = body
+    const { action, email, password, full_name, user_id, new_password, role, batch_access } = body
 
     switch (action) {
       case 'create_user': {
@@ -97,6 +97,24 @@ serve(async (req) => {
             JSON.stringify({ error: `Failed to update user profile: ${profileError.message}` }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
+        }
+
+        // If user role is 'user' and batch_access is provided, create batch access records
+        if (role === 'user' && batch_access && Array.isArray(batch_access) && batch_access.length > 0) {
+          const batchAccessRecords = batch_access.map(batchId => ({
+            user_id: newUser.user.id,
+            batch_id: batchId,
+            granted_by: user.id
+          }));
+
+          const { error: batchAccessError } = await supabaseClient
+            .from('user_batch_access')
+            .insert(batchAccessRecords);
+
+          if (batchAccessError) {
+            console.error('Batch access creation error:', batchAccessError);
+            // Don't fail the user creation, just log the error
+          }
         }
 
         console.log('User created successfully:', newUser.user.id)

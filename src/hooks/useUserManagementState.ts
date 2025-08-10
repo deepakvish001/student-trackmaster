@@ -6,6 +6,7 @@ interface CreateUserForm {
   password: string;
   full_name: string;
   role: UserRole;
+  batch_access: string[]; // Array of batch IDs
 }
 
 interface UserManagementState {
@@ -34,7 +35,8 @@ export function useUserManagementState() {
             email: '',
             password: '',
             full_name: '',
-            role: 'user' as UserRole
+            role: 'user' as UserRole,
+            batch_access: []
           }
         };
       }
@@ -51,7 +53,8 @@ export function useUserManagementState() {
         email: '',
         password: '',
         full_name: '',
-        role: 'user' as UserRole
+        role: 'user' as UserRole,
+        batch_access: []
       }
     };
   });
@@ -79,7 +82,8 @@ export function useUserManagementState() {
         email: '',
         password: '',
         full_name: '',
-        role: 'user' as UserRole
+        role: 'user' as UserRole,
+        batch_access: []
       }
     });
   };

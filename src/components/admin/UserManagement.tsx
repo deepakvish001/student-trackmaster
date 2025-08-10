@@ -9,13 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UserPlus, Trash2, Ban, Key, UserCheck, Power, Activity } from 'lucide-react';
+import { UserPlus, Trash2, Ban, Key, UserCheck, Power, Activity, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { UserRole } from '@/hooks/useUserProfile';
 import { useUserManagementState } from '@/hooks/useUserManagementState';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import AuditLogViewer from './AuditLogViewer';
+import { BatchSelector } from '@/components/BatchSelector';
+import { Checkbox } from '@/components/ui/checkbox';
+import type { Batch, UserBatchAccess } from '@/types';
 
 interface UserProfile {
   id: string;
@@ -34,6 +37,45 @@ export default function UserManagement() {
   const { state, updateState, resetCreateForm } = useUserManagementState();
   const { logEvent } = useAuditLog();
   const [showAuditLogs, setShowAuditLogs] = React.useState(false);
+  const [selectedUserForBatchAccess, setSelectedUserForBatchAccess] = React.useState<string | null>(null);
+
+  // Fetch available batches
+  const { data: batches } = useQuery({
+    queryKey: ['batches'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('batches')
+        .select('*')
+        .eq('is_enabled', true)
+        .order('batch_name');
+      
+      if (error) throw error;
+      return data as Batch[];
+    },
+  });
+
+  // Fetch user batch access
+  const { data: userBatchAccess, refetch: refetchBatchAccess } = useQuery({
+    queryKey: ['user-batch-access', selectedUserForBatchAccess],
+    queryFn: async () => {
+      if (!selectedUserForBatchAccess) return [];
+      
+      const { data, error } = await supabase
+        .from('user_batch_access')
+        .select(`
+          *,
+          batches (
+            batch_name,
+            admin_name
+          )
+        `)
+        .eq('user_id', selectedUserForBatchAccess);
+      
+      if (error) throw error;
+      return data as UserBatchAccess[];
+    },
+    enabled: !!selectedUserForBatchAccess,
+  });
 
   // Fetch all users with persistent caching
   const { data: users, isLoading, refetch } = useQuery({
@@ -68,7 +110,8 @@ export default function UserManagement() {
           email: userData.email,
           password: userData.password,
           full_name: userData.full_name,
-          role: userData.role
+          role: userData.role,
+          batch_access: userData.batch_access
         }
       });
       
@@ -377,6 +420,39 @@ export default function UserManagement() {
                   </SelectContent>
                 </Select>
               </div>
+              
+              {state.createUserForm.role === 'user' && (
+                <div>
+                  <Label>Batch Access</Label>
+                  <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
+                    {batches?.map((batch) => (
+                      <div key={batch.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`batch-${batch.id}`}
+                          checked={state.createUserForm.batch_access.includes(batch.id)}
+                          onCheckedChange={(checked) => {
+                            const newBatchAccess = checked
+                              ? [...state.createUserForm.batch_access, batch.id]
+                              : state.createUserForm.batch_access.filter(id => id !== batch.id);
+                            updateState({
+                              createUserForm: { ...state.createUserForm, batch_access: newBatchAccess }
+                            });
+                          }}
+                        />
+                        <Label htmlFor={`batch-${batch.id}`} className="text-sm">
+                          {batch.batch_name} - {batch.admin_name}
+                        </Label>
+                      </div>
+                    ))}
+                    {(!batches || batches.length === 0) && (
+                      <p className="text-sm text-muted-foreground">No batches available</p>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Select which batches this user can access
+                  </p>
+                </div>
+              )}
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => updateState({ isCreateDialogOpen: false })}>
                   Cancel
@@ -409,6 +485,7 @@ export default function UserManagement() {
                 <TableHead>Name</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Batch Access</TableHead>
                 <TableHead>Last Login</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Actions</TableHead>
@@ -427,6 +504,16 @@ export default function UserManagement() {
                     <Badge variant={user.is_active ? 'default' : 'destructive'}>
                       {user.is_active ? 'Enabled' : 'Disabled'}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedUserForBatchAccess(user.user_id)}
+                      title="Manage Batch Access"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                   <TableCell>
                     {user.last_login_at 
@@ -537,6 +624,112 @@ export default function UserManagement() {
                 disabled={updatePasswordMutation.isPending}
               >
                 {updatePasswordMutation.isPending ? 'Updating...' : 'Update Password'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Batch Access Management Dialog */}
+      <Dialog open={!!selectedUserForBatchAccess} onOpenChange={(open) => !open && setSelectedUserForBatchAccess(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Manage Batch Access</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-medium mb-2">Current Batch Access</h4>
+              {userBatchAccess && userBatchAccess.length > 0 ? (
+                <div className="space-y-2">
+                  {userBatchAccess.map((access) => (
+                    <div key={access.id} className="flex items-center justify-between p-2 border rounded">
+                      <div>
+                        <span className="font-medium">{access.batches?.batch_name}</span>
+                        <span className="text-sm text-muted-foreground ml-2">
+                          - {access.batches?.admin_name}
+                        </span>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={async () => {
+                          const { error } = await supabase
+                            .from('user_batch_access')
+                            .delete()
+                            .eq('id', access.id);
+                          
+                          if (!error) {
+                            refetchBatchAccess();
+                            toast({ title: "Success", description: "Batch access removed" });
+                          } else {
+                            toast({ 
+                              title: "Error", 
+                              description: "Failed to remove batch access",
+                              variant: "destructive" 
+                            });
+                          }
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground">No batch access assigned</p>
+              )}
+            </div>
+
+            <div>
+              <h4 className="font-medium mb-2">Add Batch Access</h4>
+              <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
+                {batches
+                  ?.filter(batch => !userBatchAccess?.some(access => access.batch_id === batch.id))
+                  ?.map((batch) => (
+                    <div key={batch.id} className="flex items-center justify-between">
+                      <div>
+                        <span className="font-medium">{batch.batch_name}</span>
+                        <span className="text-sm text-muted-foreground ml-2">
+                          - {batch.admin_name}
+                        </span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          const { error } = await supabase
+                            .from('user_batch_access')
+                            .insert({
+                              user_id: selectedUserForBatchAccess!,
+                              batch_id: batch.id,
+                              granted_by: (await supabase.auth.getUser()).data.user?.id
+                            });
+                          
+                          if (!error) {
+                            refetchBatchAccess();
+                            toast({ title: "Success", description: "Batch access granted" });
+                          } else {
+                            toast({ 
+                              title: "Error", 
+                              description: "Failed to grant batch access",
+                              variant: "destructive" 
+                            });
+                          }
+                        }}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  ))}
+                {batches?.filter(batch => !userBatchAccess?.some(access => access.batch_id === batch.id)).length === 0 && (
+                  <p className="text-sm text-muted-foreground">All available batches have been assigned</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={() => setSelectedUserForBatchAccess(null)}>
+                Close
               </Button>
             </div>
           </div>
