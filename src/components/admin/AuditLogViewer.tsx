@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -7,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { supabase } from '@/integrations/supabase/client';
 import { Eye, Shield, User, Activity, AlertTriangle, CheckCircle, XCircle, Search, RefreshCw } from 'lucide-react';
 
 interface AuditLogEntry {
@@ -23,23 +25,49 @@ interface AuditLogEntry {
 }
 
 export default function AuditLogViewer() {
-  const { getAuditLogs, isLoading } = useAuditLog();
-  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
-  const [filteredLogs, setFilteredLogs] = useState<AuditLogEntry[]>([]);
+  const queryClient = useQueryClient();
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const fetchLogs = async () => {
-    const fetchedLogs = await getAuditLogs({ limit: 100 });
-    setLogs(fetchedLogs);
-    setFilteredLogs(fetchedLogs);
-  };
+  // Super fast audit logs with aggressive caching
+  const { data: logs = [], isLoading, refetch } = useQuery({
+    queryKey: ['audit-logs'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
+      if (error) throw error;
+      return data as AuditLogEntry[];
+    },
+    staleTime: Infinity, // Never consider stale
+    gcTime: Infinity, // Keep in cache forever
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+  });
 
+  // Real-time subscription for audit logs
   useEffect(() => {
-    fetchLogs();
-  }, []);
+    const channel = supabase
+      .channel('audit-logs-realtime')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'audit_logs' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+        }
+      )
+      .subscribe();
 
-  useEffect(() => {
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
+  // Super fast filtering with useMemo
+  const filteredLogs = React.useMemo(() => {
     let filtered = logs;
 
     // Filter by action
@@ -58,7 +86,7 @@ export default function AuditLogViewer() {
       );
     }
 
-    setFilteredLogs(filtered);
+    return filtered;
   }, [logs, actionFilter, searchTerm]);
 
   const getActionIcon = (action: string) => {
@@ -160,7 +188,7 @@ export default function AuditLogViewer() {
               <SelectItem value="security">Security Events</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={fetchLogs} disabled={isLoading}>
+          <Button variant="outline" onClick={() => refetch()} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>

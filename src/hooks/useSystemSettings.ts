@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-interface SystemSettings {
+export interface SystemSettings {
   security: {
     enable_two_factor: boolean;
     session_timeout: number;
@@ -55,215 +56,160 @@ const defaultSettings: SystemSettings = {
 };
 
 export function useSystemSettings() {
-  const [settings, setSettings] = useState<SystemSettings>(defaultSettings);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [localSettings, setLocalSettings] = useState<SystemSettings>(defaultSettings);
 
-  // Load settings from database
-  const loadSettings = async () => {
-    try {
-      setIsLoading(true);
-      console.log('Loading system settings...');
-      
+  // Super fast system settings with aggressive caching
+  const { data: settings, isLoading, refetch } = useQuery({
+    queryKey: ['system-settings'],
+    queryFn: async () => {
       const { data, error } = await supabase.rpc('get_system_settings');
       
-      if (error) {
-        console.error('Error loading settings:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load system settings",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Type assertion for the response data
-      const response = data as { success?: boolean; settings?: Partial<SystemSettings>; error?: string };
-
-      if (response?.success && response?.settings) {
-        console.log('Loaded settings:', response.settings);
-        // Merge with default settings to ensure all properties exist
-        const mergedSettings = {
-          security: { ...defaultSettings.security, ...response.settings.security },
-          system: { ...defaultSettings.system, ...response.settings.system },
-          notifications: { ...defaultSettings.notifications, ...response.settings.notifications },
-          database: { ...defaultSettings.database, ...response.settings.database },
-        };
-        setSettings(mergedSettings);
-      } else if (response?.error) {
-        console.error('Settings error:', response.error);
-        toast({
-          title: "Error",
-          description: response.error,
-          variant: "destructive"
-        });
-        // Keep default settings on error
-      } else {
-        console.log('No settings found, using defaults');
-        // Keep default settings if no settings are returned
-      }
-    } catch (err) {
-      console.error('Failed to load settings:', err);
-      toast({
-        title: "Error",
-        description: "Failed to connect to database",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Save single setting
-  const updateSetting = async (key: string, value: any) => {
-    try {
-      console.log(`Updating setting ${key}:`, value);
+      if (error) throw error;
       
-      const { data, error } = await supabase.rpc('update_system_setting', {
-        key,
-        value: typeof value === 'string' ? `"${value}"` : JSON.stringify(value)
-      });
+      const response = data as { success?: boolean; settings?: Partial<SystemSettings>; error?: string };
+      
+      if (!response?.success) throw new Error(response?.error || 'Failed to load settings');
+      
+      // Merge with defaults to ensure all properties exist
+      const mergedSettings = {
+        security: { ...defaultSettings.security, ...response.settings?.security },
+        system: { ...defaultSettings.system, ...response.settings?.system },
+        notifications: { ...defaultSettings.notifications, ...response.settings?.notifications },
+        database: { ...defaultSettings.database, ...response.settings?.database },
+      };
+      
+      return mergedSettings;
+    },
+    staleTime: Infinity, // Never consider stale
+    gcTime: Infinity, // Keep in cache forever
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    initialData: defaultSettings,
+  });
 
-      if (error) {
-        console.error('Error updating setting:', error);
-        throw error;
-      }
-
-      // Type assertion for the response data
-      const response = data as { success?: boolean; error?: string };
-
-      if (response?.success) {
-        console.log('Setting updated successfully');
-        // Update local state
-        const keys = key.split('.');
-        setSettings(prev => {
-          const newSettings = { ...prev };
-          let current: any = newSettings;
-          for (let i = 0; i < keys.length - 1; i++) {
-            current = current[keys[i]];
-          }
-          current[keys[keys.length - 1]] = value;
-          return newSettings;
-        });
-        
-        toast({
-          title: "Success",
-          description: "Setting updated successfully"
-        });
-      } else {
-        throw new Error(response?.error || 'Unknown error');
-      }
-    } catch (err: any) {
-      console.error('Failed to update setting:', err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to update setting",
-        variant: "destructive"
-      });
+  // Update local settings when query data changes
+  useEffect(() => {
+    if (settings) {
+      setLocalSettings(settings);
     }
-  };
+  }, [settings]);
 
-  // Save all settings
-  const saveAllSettings = async () => {
-    try {
-      setIsSaving(true);
-      console.log('Saving all settings:', settings);
+  // Real-time subscription for system settings
+  useEffect(() => {
+    const channel = supabase
+      .channel('system-settings-realtime')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'system_settings' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['system-settings'] });
+        }
+      )
+      .subscribe();
 
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
+  // Super fast save all settings with optimistic updates
+  const saveAllSettingsMutation = useMutation({
+    mutationFn: async (settingsToSave: SystemSettings) => {
       // Convert settings to flat key-value pairs
       const flatSettings: Record<string, any> = {};
       
-      Object.entries(settings).forEach(([category, categorySettings]) => {
+      Object.entries(settingsToSave).forEach(([category, categorySettings]) => {
         Object.entries(categorySettings).forEach(([key, value]) => {
           flatSettings[`${category}.${key}`] = value;
         });
       });
 
-      // Save each setting individually for better error handling
-      const promises = Object.entries(flatSettings).map(([key, value]) =>
-        supabase.rpc('update_system_setting', {
-          key,
-          value: typeof value === 'string' ? `"${value}"` : JSON.stringify(value)
-        })
-      );
-
-      const results = await Promise.allSettled(promises);
-      
-      let successCount = 0;
-      let errorCount = 0;
-      
-      results.forEach((result, index) => {
-        if (result.status === 'fulfilled') {
-          const response = result.value.data as { success?: boolean; error?: string };
-          if (response?.success) {
-            successCount++;
-          } else {
-            errorCount++;
-            console.error(`Failed to save setting ${Object.keys(flatSettings)[index]}:`, response?.error);
-          }
-        } else {
-          errorCount++;
-          console.error(`Failed to save setting ${Object.keys(flatSettings)[index]}:`, result.reason);
-        }
+      // Save using bulk update for better performance
+      const { data, error } = await supabase.rpc('update_system_settings', {
+        settings: flatSettings
       });
 
-      if (errorCount === 0) {
-        toast({
-          title: "Success",
-          description: `All ${successCount} settings saved successfully`
-        });
-      } else {
-        toast({
-          title: "Partial Success",
-          description: `${successCount} settings saved, ${errorCount} failed`,
-          variant: "destructive"
-        });
-      }
-    } catch (err: any) {
-      console.error('Failed to save settings:', err);
+      if (error) throw error;
+      
+      const response = data as { success?: boolean; error?: string };
+      if (!response?.success) throw new Error(response?.error || 'Failed to save settings');
+      
+      return settingsToSave;
+    },
+    onMutate: async (newSettings) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['system-settings'] });
+      
+      // Snapshot the previous value
+      const previousSettings = queryClient.getQueryData(['system-settings']);
+      
+      // Optimistically update to the new value
+      queryClient.setQueryData(['system-settings'], newSettings);
+      
+      return { previousSettings };
+    },
+    onError: (err, newSettings, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      queryClient.setQueryData(['system-settings'], context?.previousSettings);
       toast({
         title: "Error",
-        description: err.message || "Failed to save settings",
+        description: "Failed to save settings",
         variant: "destructive"
       });
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "All settings saved successfully"
+      });
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure correct data
+      queryClient.invalidateQueries({ queryKey: ['system-settings'] });
+    },
+  });
 
-  // Update local settings
+  // Update local settings instantly
   const updateLocalSetting = (category: keyof SystemSettings, key: string, value: any) => {
-    setSettings(prev => ({
-      ...prev,
+    const newSettings = {
+      ...localSettings,
       [category]: {
-        ...prev[category],
+        ...localSettings[category],
         [key]: value
       }
-    }));
+    };
+    setLocalSettings(newSettings);
+  };
+
+  // Save all settings with super fast response
+  const saveAllSettings = () => {
+    saveAllSettingsMutation.mutate(localSettings);
+  };
+
+  // Load settings manually
+  const loadSettings = () => {
+    refetch();
   };
 
   // Check if maintenance mode is enabled
-  const isMaintenanceMode = () => settings.system.maintenance_mode;
+  const isMaintenanceMode = () => (settings || localSettings).system.maintenance_mode;
 
   // Get setting value by path
   const getSetting = (path: string) => {
     const keys = path.split('.');
-    let current: any = settings;
+    let current: any = settings || localSettings;
     for (const key of keys) {
       current = current?.[key];
     }
     return current;
   };
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
   return {
-    settings,
+    settings: localSettings, // Use local settings for instant UI updates
     isLoading,
-    isSaving,
-    updateSetting,
+    isSaving: saveAllSettingsMutation.isPending,
     saveAllSettings,
     updateLocalSetting,
     loadSettings,
