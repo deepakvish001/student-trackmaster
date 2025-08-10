@@ -449,41 +449,183 @@ export default function EnhancedAddStudent() {
                   </div>
                   <div>
                     <CardTitle className="text-2xl font-bold bg-vibrant-purple bg-clip-text text-transparent">
-                      Biometric Capture
+                      Biometric Fingerprint Capture
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground">Secure fingerprint enrollment</p>
+                    <p className="text-muted-foreground font-medium">Capture all 5 fingerprints using RD Service for secure enrollment</p>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <MultiFingerCaptureInterface
-                  onAllCaptured={handleAllFingerprintsCaptured}
-                  disabled={isSubmitting}
-                />
+              <CardContent className="p-8">
+                <div className="space-y-8">
+                  {/* Security Notice */}
+                  <Alert className="border-electric-blue/30 bg-electric-blue/10 backdrop-blur-sm">
+                    <Shield className="h-5 w-5 text-electric-blue" />
+                    <AlertDescription className="text-electric-blue font-medium">
+                      🔐 <strong>UIDAI-Compliant Security:</strong> All biometric data is encrypted using AES-256 encryption before database storage. PidData format ensures government-standard compliance.
+                    </AlertDescription>
+                  </Alert>
+                  
+                  {/* Multi-Fingerprint Capture Interface */}
+                  <div className="bg-gradient-to-br from-muted/20 via-background/50 to-vibrant-purple/5 border-2 border-vibrant-purple/10 rounded-3xl p-8">
+                    <MultiFingerCaptureInterface
+                      onAllCaptured={handleAllFingerprintsCaptured}
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                  
+                  {/* Capture Progress Indicator */}
+                  {form.getValues("fingerprints").some(fp => fp) && (
+                    <div className="bg-emerald-green/10 border border-emerald-green/20 rounded-2xl p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <CheckCircle className="h-6 w-6 text-emerald-green" />
+                          <div>
+                            <p className="font-semibold text-emerald-green">
+                              Biometric Capture Progress
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {form.getValues("fingerprints").filter(fp => fp).length} of 5 fingerprints captured
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {[1, 2, 3, 4, 5].map((index) => (
+                            <div
+                              key={index}
+                              className={`w-4 h-4 rounded-full border-2 transition-all duration-300 ${
+                                form.getValues("fingerprints")[index - 1]
+                                  ? "bg-emerald-green border-emerald-green"
+                                  : "border-border bg-muted"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
-          </div>
 
-          {/* Submit Button */}
-          <div className="flex justify-center">
-            <Button
-              type="submit"
-              onClick={form.handleSubmit(onSubmit)}
-              disabled={isSubmitting || !form.watch("fingerprints")?.every(fp => fp)}
-              className="h-16 px-12 text-lg font-bold bg-gradient-to-r from-vibrant-purple via-electric-blue to-emerald-green hover:scale-105 text-white rounded-2xl shadow-glow-lg transition-all duration-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-            >
-              {isSubmitting ? (
-                <div className="flex items-center gap-3">
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                  <span>Creating Student...</span>
+            {/* Submit Section */}
+            <Card className="premium-card backdrop-blur-md border-2 border-emerald-green/20 shadow-glow-lg overflow-hidden">
+              <div className="bg-emerald-green/5 border-b border-emerald-green/10 p-6">
+                <div className="text-center">
+                  <div className="inline-flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-emerald-green/10 border border-emerald-green/20 rounded-xl flex items-center justify-center">
+                      <CheckCircle className="h-5 w-5 text-emerald-green" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold bg-emerald-green bg-clip-text text-transparent">
+                        Complete Registration
+                      </h3>
+                      <p className="text-sm text-muted-foreground">Review and submit student information</p>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="h-6 w-6" />
-                  <span>Register Student</span>
+              </div>
+              <CardContent className="p-8">
+                <div className="space-y-6">
+                  {/* Form Validation Status */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className={`p-4 rounded-2xl border-2 transition-all duration-300 ${
+                      form.formState.isValid && Object.keys(form.formState.errors).length === 0
+                        ? "border-emerald-green/20 bg-emerald-green/5"
+                        : "border-sunset-orange/20 bg-sunset-orange/5"
+                    }`}>
+                      <div className="flex items-center space-x-3">
+                        <User className={`h-5 w-5 ${
+                          form.formState.isValid && Object.keys(form.formState.errors).length === 0
+                            ? "text-emerald-green"
+                            : "text-sunset-orange"
+                        }`} />
+                        <div>
+                          <p className="font-semibold text-sm">Student Information</p>
+                          <p className={`text-xs ${
+                            form.formState.isValid && Object.keys(form.formState.errors).length === 0
+                              ? "text-emerald-green"
+                              : "text-sunset-orange"
+                          }`}>
+                            {form.formState.isValid && Object.keys(form.formState.errors).length === 0
+                              ? "✅ All fields completed"
+                              : "⚠️ Please complete required fields"
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className={`p-4 rounded-2xl border-2 transition-all duration-300 ${
+                      form.getValues("fingerprints").every(fp => fp)
+                        ? "border-emerald-green/20 bg-emerald-green/5"
+                        : "border-sunset-orange/20 bg-sunset-orange/5"
+                    }`}>
+                      <div className="flex items-center space-x-3">
+                        <Shield className={`h-5 w-5 ${
+                          form.getValues("fingerprints").every(fp => fp)
+                            ? "text-emerald-green"
+                            : "text-sunset-orange"
+                        }`} />
+                        <div>
+                          <p className="font-semibold text-sm">Biometric Data</p>
+                          <p className={`text-xs ${
+                            form.getValues("fingerprints").every(fp => fp)
+                              ? "text-emerald-green"
+                              : "text-sunset-orange"
+                          }`}>
+                            {form.getValues("fingerprints").every(fp => fp)
+                              ? "✅ All 5 fingerprints captured"
+                              : `⚠️ ${5 - form.getValues("fingerprints").filter(fp => fp).length} fingerprints remaining`
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => navigate("/students")}
+                      disabled={isSubmitting}
+                      className="w-full sm:w-auto h-14 px-8 text-lg font-semibold border-2 border-border/50 hover:border-muted-foreground/50 hover:bg-muted/20 rounded-2xl transition-all duration-300"
+                    >
+                      Cancel Registration
+                    </Button>
+                    
+                    <Button
+                      onClick={form.handleSubmit(onSubmit)}
+                      disabled={isSubmitting || !form.formState.isValid || !form.getValues("fingerprints").every(fp => fp)}
+                      className="w-full sm:w-auto h-14 px-12 text-lg font-bold branded-gradient rounded-2xl shadow-glow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="h-5 w-5 mr-3 animate-spin" />
+                          Creating Student...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-5 w-5 mr-3" />
+                          Create Student Profile
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  
+                  {/* Ready to Submit Indicator */}
+                  {form.formState.isValid && form.getValues("fingerprints").every(fp => fp) && (
+                    <div className="text-center pt-4">
+                      <div className="inline-flex items-center space-x-3 bg-emerald-green/10 border border-emerald-green/20 rounded-full px-8 py-4 animate-pulse">
+                        <CheckCircle className="h-6 w-6 text-emerald-green" />
+                        <span className="text-emerald-green font-bold text-lg">🎉 Ready to Create Student Profile!</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </Button>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
