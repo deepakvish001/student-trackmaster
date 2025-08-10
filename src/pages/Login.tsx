@@ -3,23 +3,20 @@ import { useState } from 'react';
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Navigate } from 'react-router-dom';
-import { Mail, Lock, User, Eye, EyeOff, Sparkles } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Fingerprint, Shield, Zap, Users, Sparkles, CheckCircle, ArrowRight } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false); // Always false for login only
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, signUp, user, isLoading: authLoading } = useEnhancedAuth();
+  const { login, user, isLoading: authLoading } = useEnhancedAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      // Only login, no signup option
       await login(email, password);
     } catch (error) {
       console.error('Login failed:', error);
@@ -34,114 +31,162 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      {/* Premium Login Card */}
-      <div className="w-full max-w-lg mx-4 premium-card p-10 animate-fade-in-up">
-        <div className="space-y-8 text-center">
-          {/* Premium Logo/Icon */}
-          <div className="mx-auto space-y-4">
-            <div className="w-20 h-20 bg-sunset-orange rounded-3xl flex items-center justify-center shadow-lg animate-bounce-in">
-              <User className="w-10 h-10 text-white" />
+    <div className="min-h-screen flex overflow-hidden bg-background">
+      {/* Left Hero Section */}
+      <div className="flex-1 relative bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5 flex flex-col justify-center px-12 lg:px-20">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+        
+        {/* Hero Content */}
+        <div className="relative z-10 max-w-lg">
+          {/* Logo */}
+          <div className="flex items-center gap-4 mb-12">
+            <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-lg">
+              <Fingerprint className="w-8 h-8 text-white" />
             </div>
-            <div className="space-y-2">
-              <h1 className="text-4xl font-bold text-branded-gradient">
-                BiometricHub
-              </h1>
-              <div className="flex items-center justify-center gap-2">
-                <h2 className="text-2xl font-semibold text-foreground">
-                  Welcome Back
-                </h2>
-                <Sparkles className="w-6 h-6 text-vibrant-purple animate-pulse" />
+            <div>
+              <h1 className="text-3xl font-bold text-branded-gradient">BiometricHub</h1>
+              <p className="text-sm text-muted-foreground font-medium">Enterprise Platform</p>
+            </div>
+          </div>
+
+          {/* Hero Title */}
+          <div className="space-y-6 mb-12">
+            <h2 className="text-5xl font-bold text-foreground leading-tight">
+              Secure Access
+              <br />
+              <span className="text-branded-gradient">Made Simple</span>
+            </h2>
+            <p className="text-xl text-muted-foreground leading-relaxed">
+              Advanced biometric authentication platform for modern enterprises. 
+              Manage users, capture fingerprints, and secure your organization with cutting-edge technology.
+            </p>
+          </div>
+
+          {/* Feature Icons */}
+          <div className="grid grid-cols-2 gap-6">
+            <div className="flex items-center gap-4 p-4 bg-card/50 rounded-2xl border border-border/50">
+              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                <Shield className="w-6 h-6 text-primary" />
               </div>
-              <p className="text-lg text-muted-foreground max-w-sm mx-auto">
-                Access your enterprise biometric management platform with enhanced security.
-              </p>
+              <div>
+                <h3 className="font-semibold text-foreground">Enterprise Security</h3>
+                <p className="text-sm text-muted-foreground">Bank-level encryption</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4 p-4 bg-card/50 rounded-2xl border border-border/50">
+              <div className="w-12 h-12 bg-secondary/10 rounded-xl flex items-center justify-center">
+                <Zap className="w-6 h-6 text-secondary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Lightning Fast</h3>
+                <p className="text-sm text-muted-foreground">Instant recognition</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 p-4 bg-card/50 rounded-2xl border border-border/50">
+              <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center">
+                <Users className="w-6 h-6 text-accent" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">User Management</h3>
+                <p className="text-sm text-muted-foreground">Complete control</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 p-4 bg-card/50 rounded-2xl border border-border/50">
+              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                <Sparkles className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Modern UI</h3>
+                <p className="text-sm text-muted-foreground">Intuitive design</p>
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8 mt-8">
-          {/* Premium Email Field */}
-          <div className="space-y-3">
-            <label className="text-sm font-bold text-electric-blue uppercase tracking-wider">Email Address</label>
-            <div className="relative group">
-              <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-electric-blue group-focus-within:scale-110 transition-transform duration-300" />
-              <Input
-                type="email"
-                placeholder="Enter your professional email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="modern-input pl-14 h-14 text-lg bg-muted/20 border-2 border-border/50 focus:border-electric-blue focus:bg-background transition-all duration-300"
-              />
-            </div>
+      {/* Right Login Form */}
+      <div className="w-full max-w-md flex flex-col justify-center px-8 lg:px-12 bg-card/30 backdrop-blur-xl border-l border-border/50">
+        <div className="w-full max-w-sm mx-auto">
+          {/* Form Header */}
+          <div className="text-center mb-8">
+            <h3 className="text-2xl font-bold text-foreground mb-2">Welcome Back</h3>
+            <p className="text-muted-foreground">Sign in to your account to continue</p>
           </div>
 
-          {/* Premium Password Field */}
-          <div className="space-y-3">
-            <label className="text-sm font-bold text-vibrant-purple uppercase tracking-wider">Secure Password</label>
-            <div className="relative group">
-              <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-vibrant-purple group-focus-within:scale-110 transition-transform duration-300" />
-              <Input
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your secure password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="modern-input pl-14 pr-14 h-14 text-lg bg-muted/20 border-2 border-border/50 focus:border-vibrant-purple focus:bg-background transition-all duration-300"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-vibrant-purple transition-all duration-300 hover:scale-110"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Premium Submit Button */}
-          <Button 
-            type="submit" 
-            disabled={isLoading}
-            className="w-full h-16 text-lg font-bold bg-sunset-orange hover:bg-sunset-orange/90 hover:scale-105 text-white rounded-2xl shadow-lg transition-all duration-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-          >
-            {isLoading ? (
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 border-3 border-white/20 border-t-white rounded-full animate-spin"></div>
-                <span>Authenticating...</span>
+          {/* Login Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Email Field */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="pl-10 h-12 bg-background/50 border-border focus:border-primary transition-all duration-300"
+                />
               </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                <span>Access Dashboard</span>
-                <Sparkles className="w-5 h-5" />
-              </div>
-            )}
-          </Button>
-        </form>
+            </div>
 
-        {/* Premium Features */}
-        <div className="grid grid-cols-3 gap-4 text-center mt-10">
-          <div className="p-4 bg-electric-blue/5 border border-electric-blue/20 rounded-2xl group hover:scale-105 transition-all duration-300">
-            <div className="w-12 h-12 mx-auto mb-3 bg-electric-blue/10 border border-electric-blue/20 rounded-2xl flex items-center justify-center group-hover:bg-electric-blue group-hover:text-white transition-all duration-300">
-              <Lock className="w-6 h-6 text-electric-blue group-hover:text-white" />
+            {/* Password Field */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="pl-10 pr-10 h-12 bg-background/50 border-border focus:border-primary transition-all duration-300"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
-            <p className="text-sm font-bold text-electric-blue">Enterprise Security</p>
-            <p className="text-xs text-muted-foreground mt-1">256-bit encryption</p>
-          </div>
-          <div className="p-4 bg-vibrant-purple/5 border border-vibrant-purple/20 rounded-2xl group hover:scale-105 transition-all duration-300">
-            <div className="w-12 h-12 mx-auto mb-3 bg-vibrant-purple/10 border border-vibrant-purple/20 rounded-2xl flex items-center justify-center group-hover:bg-vibrant-purple group-hover:text-white transition-all duration-300">
-              <Sparkles className="w-6 h-6 text-vibrant-purple group-hover:text-white" />
+
+            {/* Submit Button */}
+            <Button 
+              type="submit" 
+              disabled={isLoading}
+              className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl transition-all duration-300 disabled:opacity-50"
+            >
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin"></div>
+                  <span>Signing in...</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span>Sign In</span>
+                  <ArrowRight className="w-5 h-5" />
+                </div>
+              )}
+            </Button>
+          </form>
+
+          {/* Security Badge */}
+          <div className="mt-8 p-4 bg-card/50 rounded-xl border border-border/50 text-center">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <CheckCircle className="w-5 h-5 text-emerald-500" />
+              <span className="text-sm font-medium text-foreground">Secure Login</span>
             </div>
-            <p className="text-sm font-bold text-vibrant-purple">Modern UI</p>
-            <p className="text-xs text-muted-foreground mt-1">Intuitive design</p>
-          </div>
-          <div className="p-4 bg-emerald-green/5 border border-emerald-green/20 rounded-2xl group hover:scale-105 transition-all duration-300">
-            <div className="w-12 h-12 mx-auto mb-3 bg-emerald-green/10 border border-emerald-green/20 rounded-2xl flex items-center justify-center group-hover:bg-emerald-green group-hover:text-white transition-all duration-300">
-              <User className="w-6 h-6 text-emerald-green group-hover:text-white" />
-            </div>
-            <p className="text-sm font-bold text-emerald-green">Biometric Auth</p>
-            <p className="text-xs text-muted-foreground mt-1">Future-ready</p>
+            <p className="text-xs text-muted-foreground">
+              Protected by 256-bit SSL encryption and enterprise-grade security protocols.
+            </p>
           </div>
         </div>
       </div>
