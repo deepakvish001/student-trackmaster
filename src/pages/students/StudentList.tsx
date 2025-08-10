@@ -155,21 +155,71 @@ export default function StudentList() {
     }
   };
 
-  // Download PDF function
+  // Download PDF function - fetch ALL students for PDF
   const handleDownloadPDF = async () => {
     try {
-      console.log('PDF download initiated', { studentsCount: students.length });
+      console.log('PDF download initiated - fetching ALL students');
+      
+      // Fetch ALL students for PDF (not paginated)
+      let query = supabase
+        .from('students')
+        .select(`
+          id,
+          student_name,
+          mobile_number,
+          address,
+          created_at,
+          updated_at,
+          batch_id,
+          is_enabled,
+          user_id,
+          finger_1,
+          finger_2,
+          finger_3,
+          finger_4,
+          finger_5,
+          finger_1_image,
+          finger_2_image,
+          finger_3_image,
+          finger_4_image,
+          finger_5_image,
+          batches:batch_id!inner (
+            batch_name
+          )
+        `)
+        .eq('is_enabled', true);
+
+      // Apply same filters as current view
+      if (searchTerm.trim()) {
+        query = query.or(`student_name.ilike.%${searchTerm.trim()}%,mobile_number.ilike.%${searchTerm.trim()}%`);
+      }
+
+      if (selectedBatch !== 'all') {
+        query = query.eq('batch_id', selectedBatch);
+      }
+
+      // Apply same sorting
+      query = query.order(sortBy, { ascending: sortOrder === 'asc' });
+
+      const { data: allStudents, error } = await query;
+
+      if (error) {
+        console.error('Error fetching all students for PDF:', error);
+        toast.error('Failed to fetch student data for PDF');
+        return;
+      }
+
+      console.log(`Fetched ${allStudents?.length || 0} students for PDF`);
       
       const selectedBatchData = batches.find(batch => batch.id === selectedBatch);
       const filters = {
-        searchTerm: searchTerm || undefined,
+        searchTerm: searchTerm.trim() || undefined,
         selectedBatch,
         batchName: selectedBatchData?.batch_name
       };
       
-      console.log('PDF filters:', filters);
-      await exportStudentsToPDF(students, filters);
-      toast.success('PDF report with fingerprint images generated successfully');
+      await exportStudentsToPDF(allStudents || [], filters);
+      toast.success(`PDF report generated with ${allStudents?.length || 0} students and fingerprint images`);
     } catch (error) {
       console.error('PDF generation error:', error);
       toast.error('Failed to generate PDF report');
