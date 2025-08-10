@@ -15,9 +15,9 @@ import { useAuditLog } from '@/hooks/useAuditLog';
 export default function EnhancedDashboard() {
   const { profile, hasRole } = useUserProfile();
   const { metrics, isChecking, performHealthCheck } = useSystemHealthMonitoring();
-  const { getAuditLogs } = useAuditLog();
+  const { logEvent } = useAuditLog();
 
-  // Enhanced dashboard statistics with batch names
+  // Enhanced dashboard statistics with real-time batch updates
   const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
@@ -91,6 +91,43 @@ export default function EnhancedDashboard() {
     refetchOnReconnect: false, // Don't refetch on reconnect
   });
 
+  // Real-time updates for batch data
+  React.useEffect(() => {
+    const channel = supabase
+      .channel('dashboard-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'batches'
+        },
+        (payload) => {
+          console.log('Batch data changed:', payload);
+          // Refetch stats when batch data changes
+          refetchStats();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public', 
+          table: 'students'
+        },
+        (payload) => {
+          console.log('Student data changed:', payload);
+          // Refetch stats when student data changes
+          refetchStats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetchStats]);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'healthy':
@@ -138,7 +175,7 @@ export default function EnhancedDashboard() {
             </div>
             
             {/* Enhanced Stats Summary Bar */}
-            <div className="bg-gray-900/50 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 shadow-2xl">
+            <div className="bg-black/80 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 shadow-2xl">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-8">
                   <div className="text-center">
@@ -178,7 +215,7 @@ export default function EnhancedDashboard() {
 
           {/* Enhanced Key Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <Card className="bg-gradient-to-br from-gray-900/80 to-gray-800/60 border-gray-700/50 shadow-2xl hover:shadow-orange-500/20 transition-all duration-500 group backdrop-blur-xl">
+            <Card className="bg-black/90 border-gray-700/50 shadow-2xl hover:shadow-orange-500/20 transition-all duration-500 group backdrop-blur-xl">
               <CardContent className="p-8">
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
@@ -202,7 +239,7 @@ export default function EnhancedDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-gray-900/80 to-gray-800/60 border-gray-700/50 shadow-2xl hover:shadow-emerald-500/20 transition-all duration-500 group backdrop-blur-xl">
+            <Card className="bg-black/90 border-gray-700/50 shadow-2xl hover:shadow-emerald-500/20 transition-all duration-500 group backdrop-blur-xl">
               <CardContent className="p-8">
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
@@ -226,7 +263,7 @@ export default function EnhancedDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-gray-900/80 to-gray-800/60 border-gray-700/50 shadow-2xl hover:shadow-blue-500/20 transition-all duration-500 group backdrop-blur-xl">
+            <Card className="bg-black/90 border-gray-700/50 shadow-2xl hover:shadow-blue-500/20 transition-all duration-500 group backdrop-blur-xl">
               <CardContent className="p-8">
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
@@ -250,7 +287,7 @@ export default function EnhancedDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-gray-900/80 to-gray-800/60 border-gray-700/50 shadow-2xl hover:shadow-purple-500/20 transition-all duration-500 group backdrop-blur-xl">
+            <Card className="bg-black/90 border-gray-700/50 shadow-2xl hover:shadow-purple-500/20 transition-all duration-500 group backdrop-blur-xl">
               <CardContent className="p-8">
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
@@ -277,7 +314,7 @@ export default function EnhancedDashboard() {
 
           {/* Enhanced Batch Analytics - Full Width */}
           <div className="grid grid-cols-1 gap-8">
-            <Card className="bg-gradient-to-br from-gray-900/80 to-gray-800/60 border-gray-700/50 shadow-2xl backdrop-blur-xl">
+            <Card className="bg-black/90 border-gray-700/50 shadow-2xl backdrop-blur-xl">
               <CardHeader className="pb-6 border-b border-gray-700/50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
@@ -301,7 +338,7 @@ export default function EnhancedDashboard() {
                 {stats?.batchUtilization && stats.batchUtilization.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {stats.batchUtilization.map((batch, index) => (
-                      <div key={batch.id} className="bg-gray-800/40 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-6 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 group">
+                      <div key={batch.id} className="bg-black/60 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-6 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 group">
                         <div className="space-y-4">
                           <div className="flex justify-between items-start">
                             <div className="flex items-center space-x-3">
@@ -347,7 +384,7 @@ export default function EnhancedDashboard() {
                   </div>
                 ) : (
                   <div className="text-center py-16">
-                    <div className="w-20 h-20 bg-gray-800/50 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <div className="w-20 h-20 bg-black/80 rounded-3xl flex items-center justify-center mx-auto mb-6">
                       <Database className="h-10 w-10 text-gray-500" />
                     </div>
                     <h3 className="text-xl font-bold text-gray-400 mb-2">No Batch Data Available</h3>
