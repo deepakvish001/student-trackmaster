@@ -155,12 +155,25 @@ export default function StudentList() {
     }
   };
 
-  // Download PDF function - fetch ALL students for PDF
+  // Download PDF function - fetch ALL students or filtered students in real-time
   const handleDownloadPDF = async () => {
     try {
-      console.log('PDF download initiated - fetching ALL students');
+      console.log('🔄 PDF download initiated - fetching real-time student data');
       
-      // Fetch ALL students for PDF (not paginated)
+      // Check if any filters are applied
+      const hasSearchFilter = searchTerm.trim().length > 0;
+      const hasBatchFilter = selectedBatch !== 'all';
+      const hasFilters = hasSearchFilter || hasBatchFilter;
+      
+      console.log('📊 Filter status:', {
+        hasSearchFilter,
+        hasBatchFilter,
+        searchTerm: searchTerm.trim(),
+        selectedBatch,
+        hasFilters
+      });
+
+      // Build query for ALL students or filtered students
       let query = supabase
         .from('students')
         .select(`
@@ -189,39 +202,62 @@ export default function StudentList() {
         `)
         .eq('is_enabled', true);
 
-      // Apply same filters as current view
-      if (searchTerm.trim()) {
+      // Apply filters only if they exist
+      if (hasSearchFilter) {
+        console.log('🔍 Applying search filter:', searchTerm.trim());
         query = query.or(`student_name.ilike.%${searchTerm.trim()}%,mobile_number.ilike.%${searchTerm.trim()}%`);
       }
 
-      if (selectedBatch !== 'all') {
+      if (hasBatchFilter) {
+        console.log('🏷️ Applying batch filter:', selectedBatch);
         query = query.eq('batch_id', selectedBatch);
       }
 
-      // Apply same sorting
+      // Apply same sorting as current view
       query = query.order(sortBy, { ascending: sortOrder === 'asc' });
 
+      // Fetch real-time data
       const { data: allStudents, error } = await query;
 
       if (error) {
-        console.error('Error fetching all students for PDF:', error);
+        console.error('❌ Error fetching students for PDF:', error);
         toast.error('Failed to fetch student data for PDF');
         return;
       }
 
-      console.log(`Fetched ${allStudents?.length || 0} students for PDF`);
+      const studentCount = allStudents?.length || 0;
+      console.log(`✅ Fetched ${studentCount} students for PDF`);
       
+      // Prepare filter information for PDF
       const selectedBatchData = batches.find(batch => batch.id === selectedBatch);
       const filters = {
-        searchTerm: searchTerm.trim() || undefined,
-        selectedBatch,
+        searchTerm: hasSearchFilter ? searchTerm.trim() : undefined,
+        selectedBatch: hasBatchFilter ? selectedBatch : undefined,
         batchName: selectedBatchData?.batch_name
       };
       
+      // Determine PDF type message
+      let pdfType = '';
+      if (hasFilters) {
+        if (hasSearchFilter && hasBatchFilter) {
+          pdfType = `filtered by search "${searchTerm.trim()}" and batch "${selectedBatchData?.batch_name}"`;
+        } else if (hasSearchFilter) {
+          pdfType = `filtered by search "${searchTerm.trim()}"`;
+        } else if (hasBatchFilter) {
+          pdfType = `filtered by batch "${selectedBatchData?.batch_name}"`;
+        }
+      } else {
+        pdfType = 'complete database (all students)';
+      }
+      
+      console.log('📄 Generating PDF for:', pdfType);
+      
       await exportStudentsToPDF(allStudents || [], filters);
-      toast.success(`PDF report generated with ${allStudents?.length || 0} students and fingerprint images`);
+      
+      toast.success(`📋 PDF generated successfully with ${studentCount} students (${pdfType})`);
+      
     } catch (error) {
-      console.error('PDF generation error:', error);
+      console.error('❌ PDF generation error:', error);
       toast.error('Failed to generate PDF report');
     }
   };

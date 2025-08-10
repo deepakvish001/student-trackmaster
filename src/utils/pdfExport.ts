@@ -16,27 +16,31 @@ export const exportStudentsToPDF = async (students: Student[], filters?: {
 }) => {
   const doc = new jsPDF('l', 'mm', 'a4'); // Landscape for better table width
   
-  // Add title - same as website
-  doc.setFontSize(18);
-  doc.setTextColor(40);
-  doc.text('Student List Report - Complete Data', 14, 20);
+  // Determine document type based on filters
+  let documentTitle = 'Student List Report';
+  if (filters?.searchTerm || (filters?.selectedBatch && filters?.selectedBatch !== 'all')) {
+    if (filters.searchTerm && filters.selectedBatch && filters.selectedBatch !== 'all') {
+      documentTitle = `Filtered Student Report - Search: "${filters.searchTerm}" | Batch: ${filters.batchName}`;
+    } else if (filters.searchTerm) {
+      documentTitle = `Filtered Student Report - Search: "${filters.searchTerm}"`;
+    } else if (filters.selectedBatch && filters.selectedBatch !== 'all') {
+      documentTitle = `Batch Student Report - ${filters.batchName}`;
+    }
+  } else {
+    documentTitle = 'Complete Student Database Report';
+  }
   
-  // Add generation info
+  // Add title with filter information
+  doc.setFontSize(16);
+  doc.setTextColor(40);
+  doc.text(documentTitle, 14, 20);
+  
+  // Add generation info with real-time indicator
   doc.setFontSize(10);
   doc.setTextColor(100);
-  doc.text(`Generated: ${new Date().toLocaleString()} | Total Students: ${students.length}`, 14, 30);
+  doc.text(`📊 Generated: ${new Date().toLocaleString()} | Total Students: ${students.length} | 🔴 Real-time Data`, 14, 30);
   
-  // Add filter information if applied
   let yPosition = 40;
-  if (filters?.searchTerm || (filters?.selectedBatch && filters?.selectedBatch !== 'all')) {
-    doc.setFontSize(10);
-    doc.setTextColor(60);
-    let filterText = 'Filters Applied: ';
-    if (filters.searchTerm) filterText += `Search: "${filters.searchTerm}" `;
-    if (filters.selectedBatch && filters.selectedBatch !== 'all') filterText += `Batch: ${filters.batchName}`;
-    doc.text(filterText, 14, yPosition);
-    yPosition += 10;
-  }
 
   // Helper function to get fingerprint image data
   const getFingerprintImageData = (fingerprintData: string | null) => {
