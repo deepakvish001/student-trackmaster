@@ -16,6 +16,8 @@ import SystemSettings from "./pages/admin/SystemSettings";
 import { EnhancedAuthProvider } from "./contexts/EnhancedAuthContext";
 import { useGlobalPerformanceOptimization } from "./hooks/useGlobalPerformanceOptimization";
 import ProtectedRoute from "./components/ProtectedRoute";
+import SecurityWrapper from "./components/SecurityWrapper";
+import { SuperAdminRoute, UserRoute } from "./components/RoleBasedRoute";
 
 function App() {
   return (
@@ -32,14 +34,22 @@ function AppWithQueryClient() {
   return (
     <BrowserRouter>
       <EnhancedAuthProvider>
-        <Toaster />
-        <Routes>
+        <TooltipProvider>
+          <Toaster />
+          <Routes>
+            {/* Public route - Login only */}
             <Route path="/login" element={<Login />} />
+            
+            {/* All other routes require authentication and security validation */}
             <Route
               path="/"
               element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <SecurityWrapper>
+                    <UserRoute>
+                      <Dashboard />
+                    </UserRoute>
+                  </SecurityWrapper>
                 </ProtectedRoute>
               }
             />
@@ -47,7 +57,11 @@ function AppWithQueryClient() {
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <SecurityWrapper>
+                    <UserRoute>
+                      <Dashboard />
+                    </UserRoute>
+                  </SecurityWrapper>
                 </ProtectedRoute>
               }
             />
@@ -55,7 +69,11 @@ function AppWithQueryClient() {
               path="/students"
               element={
                 <ProtectedRoute>
-                  <StudentList />
+                  <SecurityWrapper>
+                    <UserRoute>
+                      <StudentList />
+                    </UserRoute>
+                  </SecurityWrapper>
                 </ProtectedRoute>
               }
             />
@@ -63,7 +81,11 @@ function AppWithQueryClient() {
               path="/students/add"
               element={
                 <ProtectedRoute>
-                  <AddStudent />
+                  <SecurityWrapper>
+                    <UserRoute>
+                      <AddStudent />
+                    </UserRoute>
+                  </SecurityWrapper>
                 </ProtectedRoute>
               }
             />
@@ -71,7 +93,11 @@ function AppWithQueryClient() {
               path="/students/enhanced-add"
               element={
                 <ProtectedRoute>
-                  <EnhancedAddStudent />
+                  <SecurityWrapper>
+                    <UserRoute>
+                      <EnhancedAddStudent />
+                    </UserRoute>
+                  </SecurityWrapper>
                 </ProtectedRoute>
               }
             />
@@ -79,15 +105,25 @@ function AppWithQueryClient() {
               path="/batches"
               element={
                 <ProtectedRoute>
-                  <Batches />
+                  <SecurityWrapper>
+                    <UserRoute>
+                      <Batches />
+                    </UserRoute>
+                  </SecurityWrapper>
                 </ProtectedRoute>
               }
             />
+            
+            {/* Admin routes - Super Admin only */}
             <Route
               path="/admin/users"
               element={
                 <ProtectedRoute>
-                  <UserManagementPage />
+                  <SecurityWrapper>
+                    <SuperAdminRoute>
+                      <UserManagementPage />
+                    </SuperAdminRoute>
+                  </SecurityWrapper>
                 </ProtectedRoute>
               }
             />
@@ -95,7 +131,11 @@ function AppWithQueryClient() {
               path="/admin/audit-logs"
               element={
                 <ProtectedRoute>
-                  <AuditLogs />
+                  <SecurityWrapper>
+                    <SuperAdminRoute>
+                      <AuditLogs />
+                    </SuperAdminRoute>
+                  </SecurityWrapper>
                 </ProtectedRoute>
               }
             />
@@ -103,14 +143,33 @@ function AppWithQueryClient() {
               path="/admin/settings"
               element={
                 <ProtectedRoute>
-                  <SystemSettings />
+                  <SecurityWrapper>
+                    <SuperAdminRoute>
+                      <SystemSettings />
+                    </SuperAdminRoute>
+                  </SecurityWrapper>
                 </ProtectedRoute>
               }
             />
+            
+            {/* Catch-all route - redirect to login for any undefined routes */}
+            <Route 
+              path="*" 
+              element={
+                <ProtectedRoute>
+                  <SecurityWrapper>
+                    <UserRoute>
+                      <Dashboard />
+                    </UserRoute>
+                  </SecurityWrapper>
+                </ProtectedRoute>
+              } 
+            />
           </Routes>
-        </EnhancedAuthProvider>
-      </BrowserRouter>
-    );
+        </TooltipProvider>
+      </EnhancedAuthProvider>
+    </BrowserRouter>
+  );
 }
 
 const QueryClient = ({ children }: { children: React.ReactNode }) => {
@@ -119,11 +178,11 @@ const QueryClient = ({ children }: { children: React.ReactNode }) => {
       new TanstackQueryClient({
         defaultOptions: {
           queries: {
-            staleTime: Infinity, // Never consider data stale globally
-            gcTime: Infinity, // Keep in cache forever globally
-            refetchOnWindowFocus: false, // Never refetch on window focus
-            refetchOnMount: false, // Never refetch when component mounts
-            refetchOnReconnect: false, // Never refetch on network reconnect
+            staleTime: 5 * 60 * 1000, // 5 minutes instead of Infinity for security
+            gcTime: 10 * 60 * 1000, // 10 minutes instead of Infinity for security
+            refetchOnWindowFocus: true, // Re-enable for security validation
+            refetchOnMount: true, // Re-enable for fresh data
+            refetchOnReconnect: true, // Re-enable for network security
             retry: 1, // Only retry once
           },
           mutations: {

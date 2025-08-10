@@ -294,7 +294,15 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
       });
       
       toast.success('Successfully logged in');
-      navigate('/');
+      
+      // Handle post-login redirect
+      const redirectPath = localStorage.getItem('redirectAfterLogin');
+      if (redirectPath && redirectPath !== '/login') {
+        localStorage.removeItem('redirectAfterLogin');
+        navigate(redirectPath);
+      } else {
+        navigate('/');
+      }
       
     } catch (error: any) {
       const errorMessage = error.message || 'Login failed. Please check your credentials.';
