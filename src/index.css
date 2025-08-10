@@ -7,52 +7,52 @@
 
 @layer base {
   :root {
-    /* Premium SaaS Design System - Branded Colors */
-    --background: 250 100% 99%; /* Ultra-light purple tint */
-    --foreground: 220 25% 10%; /* Deep text */
-    --card: 0 0% 100%;
-    --card-foreground: 220 25% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 25% 10%;
-    --primary: 250 100% 65%; /* Brand primary - vibrant purple */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 215 85% 55%; /* Tech blue */
-    --secondary-foreground: 0 0% 100%;
-    --muted: 245 30% 96%;
-    --muted-foreground: 220 15% 45%;
-    --accent: 320 90% 65%; /* Brand accent - pink */
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 85% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 240 15% 92%;
-    --input: 245 20% 96%;
-    --ring: 250 100% 65%;
+    /* Modern Dark Admin Panel - Core System */
+    --background: 0 0% 3%;           /* Deep black background */
+    --foreground: 0 0% 98%;          /* Clean white text */
+    --card: 0 0% 6%;                 /* Slightly elevated black */
+    --card-foreground: 0 0% 95%;     /* White text on cards */
+    --popover: 0 0% 6%;              /* Dark popover background */
+    --popover-foreground: 0 0% 95%;  /* White popover text */
+    --primary: 25 100% 60%;          /* Bright orange primary */
+    --primary-foreground: 0 0% 100%; /* White text on orange */
+    --secondary: 0 0% 12%;           /* Dark secondary background */
+    --secondary-foreground: 0 0% 90%; /* Light secondary text */
+    --muted: 0 0% 8%;               /* Dark gray surfaces */
+    --muted-foreground: 0 0% 65%;   /* Muted gray text */
+    --accent: 0 0% 10%;             /* Dark accent background */
+    --accent-foreground: 0 0% 90%;   /* Light accent text */
+    --destructive: 0 75% 55%;       /* Red for destructive actions */
+    --destructive-foreground: 0 0% 100%; /* White text on red */
+    --border: 0 0% 15%;             /* Subtle dark borders */
+    --input: 0 0% 8%;               /* Dark input backgrounds */
+    --ring: 25 100% 60%;            /* Orange focus rings */
     
-    /* Premium Brand Palette */
-    --electric-blue: 215 85% 55%;
-    --vibrant-purple: 250 100% 65%;
-    --emerald-green: 155 90% 50%;
-    --sunset-orange: 25 95% 60%;
-    --pink-rose: 320 90% 65%;
-    --lime-green: 90 80% 55%;
-    --coral-red: 10 85% 65%;
-    --teal-cyan: 180 90% 55%;
-    --indigo-deep: 240 90% 65%;
+    /* Modern Brand Palette - Orange Focus */
+    --electric-blue: 220 100% 60%;     /* Bright blue accent */
+    --vibrant-purple: 270 85% 65%;     /* Purple accent */
+    --emerald-green: 145 80% 50%;      /* Green success */
+    --sunset-orange: 25 100% 60%;      /* Main orange brand */
+    --pink-rose: 340 75% 65%;          /* Pink accent */
+    --lime-green: 85 85% 55%;          /* Lime accent */
+    --coral-red: 15 85% 60%;           /* Coral accent */
+    --teal-cyan: 180 85% 50%;          /* Teal accent */
+    --indigo-deep: 240 85% 60%;        /* Deep indigo */
     
-    /* Modern Surfaces with subtle depth */
-    --surface-1: 0 0% 99%;
-    --surface-2: 220 13% 98%;
-    --surface-3: 220 13% 94%;
-    --surface-dark: 220 30% 8%;
-    --surface-darker: 220 35% 5%;
+    /* Dark Surface System */
+    --surface-1: 0 0% 6%;
+    --surface-2: 0 0% 8%;
+    --surface-3: 0 0% 12%;
+    --surface-dark: 0 0% 3%;
+    --surface-darker: 0 0% 1%;
     
-    /* Typography hierarchy */
-    --text-primary: 220 15% 15%;
-    --text-secondary: 220 15% 25%;
-    --text-tertiary: 220 15% 35%;
-    --text-muted: 220 15% 50%;
+    /* Typography for Dark Theme */
+    --text-primary: 0 0% 98%;
+    --text-secondary: 0 0% 85%;
+    --text-tertiary: 0 0% 70%;
+    --text-muted: 0 0% 55%;
     
-    --radius: 0.875rem; /* 14px - modern radius */
+    --radius: 0.75rem; /* 12px - modern radius */
   }
 
   .dark {
@@ -239,17 +239,19 @@
     @apply hover:bg-muted focus:ring-2 focus:ring-primary/20 focus:outline-none;
   }
   
-  /* Premium Card Styles */
+  /* Premium Card Styles - Dark Theme */
   .modern-card {
-    @apply bg-card border border-border rounded-2xl shadow-enhanced backdrop-blur-sm;
-    @apply transition-all duration-300 hover:shadow-elevated hover:scale-[1.02];
-    background: linear-gradient(135deg, hsl(var(--card)), hsl(var(--muted)/30));
+    @apply border border-white/10 rounded-xl shadow-xl backdrop-blur-md;
+    @apply transition-all duration-300 hover:scale-[1.02];
+    background: linear-gradient(135deg, hsl(0 0% 6% / 0.9), hsl(0 0% 8% / 0.7));
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   }
   
   .premium-card {
-    @apply bg-gradient-to-br from-card via-card to-muted/20 border border-border/50;
-    @apply rounded-2xl shadow-2xl backdrop-blur-md hover:shadow-purple-glow;
+    @apply border border-sunset-orange/20 rounded-xl shadow-2xl backdrop-blur-xl;
     @apply transition-all duration-500 hover:scale-[1.02] hover:-translate-y-1;
+    background: linear-gradient(135deg, hsl(0 0% 6% / 0.95), hsl(0 0% 8% / 0.8));
+    box-shadow: 0 25px 50px -12px hsl(var(--sunset-orange) / 0.15);
   }
   
   /* Gradient Backgrounds */
@@ -327,14 +329,13 @@
   
   .branded-gradient {
     background: linear-gradient(135deg, 
-      hsl(var(--vibrant-purple)), 
-      hsl(var(--electric-blue)), 
-      hsl(var(--emerald-green)));
+      hsl(var(--sunset-orange)), 
+      hsl(var(--electric-blue)));
   }
   
   .text-branded-gradient {
     background: linear-gradient(135deg, 
-      hsl(var(--vibrant-purple)), 
+      hsl(var(--sunset-orange)), 
       hsl(var(--electric-blue)));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;

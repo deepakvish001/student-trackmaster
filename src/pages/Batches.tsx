@@ -69,7 +69,7 @@ export default function Batches() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-vibrant-purple/5 p-6">
+        <div className="min-h-screen bg-background p-6">
           <div className="max-w-7xl mx-auto">
             <BatchListSkeleton />
           </div>
@@ -80,7 +80,7 @@ export default function Batches() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-vibrant-purple/5 p-6">
+      <div className="min-h-screen bg-background p-6">
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Premium Header */}
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">

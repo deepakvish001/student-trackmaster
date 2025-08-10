@@ -115,7 +115,7 @@ export default function EnhancedDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-vibrant-purple/5 p-6">
+      <div className="min-h-screen bg-background p-6">
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Premium Header */}
           <div className="space-y-4">
@@ -334,15 +334,15 @@ export default function EnhancedDashboard() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button className="w-full h-14 bg-electric-blue hover:bg-electric-blue/90 text-white rounded-xl font-semibold transition-all duration-300 hover:scale-105" onClick={() => window.location.href = '/students/enhanced-add'}>
+                <Button className="w-full h-14 bg-sunset-orange hover:bg-sunset-orange/90 text-white rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl" onClick={() => window.location.href = '/students/enhanced-add'}>
                   <Users className="h-5 w-5 mr-3" />
                   Add New Student
                 </Button>
-                <Button className="w-full h-14 bg-vibrant-purple hover:bg-vibrant-purple/90 text-white rounded-xl font-semibold transition-all duration-300 hover:scale-105" onClick={() => window.location.href = '/batches'}>
+                <Button className="w-full h-14 bg-electric-blue hover:bg-electric-blue/90 text-white rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl" onClick={() => window.location.href = '/batches'}>
                   <GraduationCap className="h-5 w-5 mr-3" />
                   Manage Batches
                 </Button>
-                <Button className="w-full h-14 bg-emerald-green hover:bg-emerald-green/90 text-white rounded-xl font-semibold transition-all duration-300 hover:scale-105" onClick={() => window.location.href = '/students'}>
+                <Button className="w-full h-14 bg-emerald-green hover:bg-emerald-green/90 text-white rounded-xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl" onClick={() => window.location.href = '/students'}>
                   <Shield className="h-5 w-5 mr-3" />
                   View All Students
                 </Button>

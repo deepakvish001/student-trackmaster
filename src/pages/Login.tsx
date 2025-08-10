@@ -37,13 +37,13 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/10 to-vibrant-purple/5 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       {/* Premium Login Card */}
       <div className="w-full max-w-lg mx-4 premium-card p-10 animate-fade-in-up">
         <div className="space-y-8 text-center">
           {/* Premium Logo/Icon */}
           <div className="mx-auto space-y-4">
-            <div className="w-20 h-20 branded-gradient rounded-3xl flex items-center justify-center shadow-glow-lg animate-bounce-in">
+            <div className="w-20 h-20 bg-sunset-orange rounded-3xl flex items-center justify-center shadow-lg animate-bounce-in">
               <User className="w-10 h-10 text-white" />
             </div>
             <div className="space-y-2">
@@ -110,7 +110,7 @@ export default function Login() {
           <Button 
             type="submit" 
             disabled={isLoading}
-            className="w-full h-16 text-lg font-bold bg-gradient-to-r from-vibrant-purple via-electric-blue to-emerald-green hover:scale-105 text-white rounded-2xl shadow-glow-lg transition-all duration-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            className="w-full h-16 text-lg font-bold bg-sunset-orange hover:bg-sunset-orange/90 hover:scale-105 text-white rounded-2xl shadow-lg transition-all duration-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
             {isLoading ? (
               <div className="flex items-center gap-3">

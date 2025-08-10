@@ -227,7 +227,7 @@ export default function AddStudent() {
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="space-y-3">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-electric-blue to-vibrant-purple bg-clip-text text-transparent">Add Student</h1>
+          <h1 className="text-4xl font-bold text-branded-gradient">Add Student</h1>
           <p className="text-lg text-muted-foreground">Enter student details and capture biometric data</p>
         </div>
 

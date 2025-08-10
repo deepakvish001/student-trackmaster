@@ -167,7 +167,7 @@ export default function StudentList() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-electric-blue/5 p-6">
+      <div className="min-h-screen bg-background p-6">
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Premium Header */}
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
@@ -186,7 +186,7 @@ export default function StudentList() {
             <div className="flex items-center gap-4">
               <Button
                 onClick={() => window.location.href = '/students/enhanced-add'}
-                className="h-12 px-6 bg-electric-blue hover:bg-electric-blue/90 text-white rounded-2xl font-semibold transition-all duration-300 hover:scale-105 shadow-glow"
+                className="h-12 px-6 bg-sunset-orange hover:bg-sunset-orange/90 text-white rounded-2xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg"
               >
                 <Plus className="h-5 w-5 mr-3" />
                 Add New Student
@@ -194,7 +194,7 @@ export default function StudentList() {
               <Button
                 onClick={() => refetch()}
                 variant="outline"
-                className="h-12 px-6 border-2 border-vibrant-purple/30 text-vibrant-purple hover:bg-vibrant-purple/5 rounded-2xl font-semibold transition-all duration-300 hover:scale-105"
+                className="h-12 px-6 border-2 border-electric-blue/30 text-electric-blue hover:bg-electric-blue/5 rounded-2xl font-semibold transition-all duration-300 hover:scale-105"
               >
                 <RefreshCw className="h-5 w-5 mr-3" />
                 Refresh Data
