@@ -302,38 +302,40 @@ export default function EnhancedAddStudent() {
           </div>
 
           {/* Student Information Form */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Left Column - Form */}
-            <Card className="premium-card">
-              <CardHeader>
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-electric-blue/10 border border-electric-blue/20 rounded-xl flex items-center justify-center">
-                    <User className="h-5 w-5 text-electric-blue" />
+          <div className="max-w-5xl mx-auto space-y-8">
+            {/* Student Information Section */}
+            <Card className="premium-card backdrop-blur-md border-2 border-electric-blue/20 shadow-glow-lg">
+              <CardHeader className="bg-electric-blue/5 border-b border-electric-blue/10">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-electric-blue/10 border border-electric-blue/20 rounded-2xl flex items-center justify-center">
+                    <User className="h-6 w-6 text-electric-blue" />
                   </div>
                   <div>
-                    <CardTitle className="text-xl font-bold text-foreground">Student Information</CardTitle>
-                    <p className="text-sm text-muted-foreground">Enter basic student details</p>
+                    <CardTitle className="text-2xl font-bold bg-electric-blue bg-clip-text text-transparent">
+                      Student Information
+                    </CardTitle>
+                    <p className="text-muted-foreground font-medium">Enter basic student details below</p>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="p-8">
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* Student Name */}
                     <FormField
                       control={form.control}
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-bold text-electric-blue uppercase tracking-wider">
-                            <User className="h-4 w-4 inline mr-2" />
+                          <FormLabel className="text-sm font-bold text-electric-blue uppercase tracking-wider flex items-center">
+                            <User className="h-4 w-4 mr-2" />
                             Student Name
                           </FormLabel>
                           <FormControl>
                             <Input
                               placeholder="Enter full name"
                               {...field}
-                              className="h-12 bg-muted/20 border-2 border-border/50 focus:border-electric-blue focus:bg-background rounded-xl transition-all duration-300"
+                              className="h-14 bg-muted/20 border-2 border-border/50 focus:border-electric-blue focus:bg-background rounded-2xl transition-all duration-300 text-lg"
                             />
                           </FormControl>
                           <FormMessage />
@@ -347,15 +349,15 @@ export default function EnhancedAddStudent() {
                       name="mobile"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-bold text-vibrant-purple uppercase tracking-wider">
-                            <Phone className="h-4 w-4 inline mr-2" />
+                          <FormLabel className="text-sm font-bold text-vibrant-purple uppercase tracking-wider flex items-center">
+                            <Phone className="h-4 w-4 mr-2" />
                             Mobile Number
                           </FormLabel>
                           <FormControl>
                             <Input
                               placeholder="Enter mobile number"
                               {...field}
-                              className="h-12 bg-muted/20 border-2 border-border/50 focus:border-vibrant-purple focus:bg-background rounded-xl transition-all duration-300"
+                              className="h-14 bg-muted/20 border-2 border-border/50 focus:border-vibrant-purple focus:bg-background rounded-2xl transition-all duration-300 text-lg"
                             />
                           </FormControl>
                           <FormMessage />
@@ -369,8 +371,8 @@ export default function EnhancedAddStudent() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-bold text-emerald-green uppercase tracking-wider">
-                            <Mail className="h-4 w-4 inline mr-2" />
+                          <FormLabel className="text-sm font-bold text-emerald-green uppercase tracking-wider flex items-center">
+                            <Mail className="h-4 w-4 mr-2" />
                             Email Address (Optional)
                           </FormLabel>
                           <FormControl>
@@ -378,7 +380,7 @@ export default function EnhancedAddStudent() {
                               type="email"
                               placeholder="Enter email address"
                               {...field}
-                              className="h-12 bg-muted/20 border-2 border-border/50 focus:border-emerald-green focus:bg-background rounded-xl transition-all duration-300"
+                              className="h-14 bg-muted/20 border-2 border-border/50 focus:border-emerald-green focus:bg-background rounded-2xl transition-all duration-300 text-lg"
                             />
                           </FormControl>
                           <FormMessage />
@@ -392,57 +394,63 @@ export default function EnhancedAddStudent() {
                       name="batchId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-bold text-sunset-orange uppercase tracking-wider">
-                            <GraduationCap className="h-4 w-4 inline mr-2" />
+                          <FormLabel className="text-sm font-bold text-sunset-orange uppercase tracking-wider flex items-center">
+                            <GraduationCap className="h-4 w-4 mr-2" />
                             Select Batch
                           </FormLabel>
                           <FormControl>
-                            <BatchSelector 
-                              value={field.value} 
-                              onChange={field.onChange}
-                              disabled={isSubmitting}
-                            />
+                            <div className="h-14 bg-muted/20 border-2 border-border/50 focus-within:border-sunset-orange rounded-2xl transition-all duration-300">
+                              <BatchSelector 
+                                value={field.value} 
+                                onChange={field.onChange}
+                                disabled={isSubmitting}
+                              />
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+                  </div>
 
-                    {/* Address */}
+                  {/* Address - Full Width */}
+                  <div className="mt-8">
                     <FormField
                       control={form.control}
                       name="address"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-bold text-pink-rose uppercase tracking-wider">
-                            <MapPin className="h-4 w-4 inline mr-2" />
+                          <FormLabel className="text-sm font-bold text-pink-rose uppercase tracking-wider flex items-center">
+                            <MapPin className="h-4 w-4 mr-2" />
                             Address
                           </FormLabel>
                           <FormControl>
                             <Input
                               placeholder="Enter full address"
                               {...field}
-                              className="h-12 bg-muted/20 border-2 border-border/50 focus:border-pink-rose focus:bg-background rounded-xl transition-all duration-300"
+                              className="h-14 bg-muted/20 border-2 border-border/50 focus:border-pink-rose focus:bg-background rounded-2xl transition-all duration-300 text-lg"
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                  </form>
+                  </div>
                 </Form>
               </CardContent>
             </Card>
 
-            {/* Right Column - Fingerprint Capture */}
-            <Card className="premium-card">
-              <CardHeader>
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-vibrant-purple/10 border border-vibrant-purple/20 rounded-xl flex items-center justify-center">
-                    <Shield className="h-5 w-5 text-vibrant-purple" />
+            {/* Fingerprint Capture Section */}
+            <Card className="premium-card backdrop-blur-md border-2 border-vibrant-purple/20 shadow-glow-lg">
+              <CardHeader className="bg-vibrant-purple/5 border-b border-vibrant-purple/10">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-vibrant-purple/10 border border-vibrant-purple/20 rounded-2xl flex items-center justify-center">
+                    <Shield className="h-6 w-6 text-vibrant-purple" />
                   </div>
                   <div>
-                    <CardTitle className="text-xl font-bold text-foreground">Biometric Capture</CardTitle>
+                    <CardTitle className="text-2xl font-bold bg-vibrant-purple bg-clip-text text-transparent">
+                      Biometric Capture
+                    </CardTitle>
                     <p className="text-sm text-muted-foreground">Secure fingerprint enrollment</p>
                   </div>
                 </div>
