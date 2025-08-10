@@ -19,7 +19,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BatchSelector } from "@/components/BatchSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -36,10 +35,7 @@ import {
   Loader2, 
   CheckCircle, 
   User,
-  Mail,
-  Phone,
-  MapPin,
-  GraduationCap
+  ArrowLeft
 } from "lucide-react";
 
 const formSchema = z.object({
@@ -49,20 +45,38 @@ const formSchema = z.object({
   address: z.string().min(5, "Address must be at least 5 characters").max(500, "Address must not exceed 500 characters"),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
   fingerprints: z.array(z.string()).length(5, "All 5 fingerprints are required"),
+  images: z.array(z.string().nullable()).length(5, "All 5 fingerprint images are required")
 });
+
+type FormData = z.infer<typeof formSchema>;
 
 interface FingerprintData {
   pidData: string;
-  imageData?: string;
   quality: number;
+  imageData?: string;
+}
+
+interface Batch {
+  id: string;
+  batch_name: string;
 }
 
 export default function EnhancedAddStudent() {
   const navigate = useNavigate();
   const { user, encryptionKey } = useEnhancedAuth();
   const { logEvent } = useAuditLog();
-  
-  const form = useForm<z.infer<typeof formSchema>>({
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [fingerprintData, setFingerprintData] = useState<FingerprintData[]>([
+    { pidData: "", quality: 0 },
+    { pidData: "", quality: 0 },
+    { pidData: "", quality: 0 },
+    { pidData: "", quality: 0 },
+    { pidData: "", quality: 0 }
+  ]);
+  const [capturedImages, setCapturedImages] = useState<(string | null)[]>([null, null, null, null, null]);
+
+  const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
@@ -71,33 +85,47 @@ export default function EnhancedAddStudent() {
       address: "",
       email: "",
       fingerprints: ["", "", "", "", ""],
+      images: [null, null, null, null, null]
     },
   });
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [capturedImages, setCapturedImages] = useState<(string | null)[]>([null, null, null, null, null]);
-  const [fingerprintData, setFingerprintData] = useState<FingerprintData[]>([
-    { pidData: "", quality: 0 },
-    { pidData: "", quality: 0 },
-    { pidData: "", quality: 0 },
-    { pidData: "", quality: 0 },
-    { pidData: "", quality: 0 }
-  ]);
+  // Load batches
+  useEffect(() => {
+    const loadBatches = async () => {
+      const { data, error } = await supabase
+        .from('batches')
+        .select('id, batch_name')
+        .eq('is_enabled', true)
+        .order('batch_name');
+      
+      if (error) {
+        console.error('Error loading batches:', error);
+        toast.error('Failed to load batches');
+      } else {
+        setBatches(data || []);
+      }
+    };
 
-  // Handle multi-fingerprint capture completion
-  const handleAllFingerprintsCaptured = async (fingerprintData: any[]) => {
-    console.log('All fingerprints captured:', fingerprintData);
+    loadBatches();
+  }, []);
+
+  const handleCaptureComplete = (captures: any[]) => {
+    console.log('All captures completed:', captures);
     
-    // Convert to form format
-    const fingerprints = ["", "", "", "", ""];
+    const fingerprints: string[] = ["", "", "", "", ""];
     const images: (string | null)[] = [null, null, null, null, null];
-    const newFingerprintData: FingerprintData[] = [];
+    const newFingerprintData: FingerprintData[] = [
+      { pidData: "", quality: 0 },
+      { pidData: "", quality: 0 },
+      { pidData: "", quality: 0 },
+      { pidData: "", quality: 0 },
+      { pidData: "", quality: 0 }
+    ];
     
-    fingerprintData.forEach((fp) => {
+    captures.forEach((fp) => {
       if (fp.index >= 0 && fp.index < 5) {
-        fingerprints[fp.index] = fp.template || fp.imageData || 'captured';
-        images[fp.index] = fp.imageData || null;
-        
+        fingerprints[fp.index] = fp.template || 'enhanced_capture';
+        images[fp.index] = fp.imageData;
         newFingerprintData[fp.index] = {
           pidData: fp.template || 'enhanced_capture',
           imageData: fp.imageData,
@@ -108,6 +136,7 @@ export default function EnhancedAddStudent() {
     
     // Update form state
     form.setValue("fingerprints", fingerprints);
+    form.setValue("images", images);
     setCapturedImages(images);
     setFingerprintData(newFingerprintData);
     
@@ -117,7 +146,7 @@ export default function EnhancedAddStudent() {
     toast.success(`All 5 fingerprints captured successfully!`);
   };
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: FormData) {
     if (isSubmitting) {
       console.log('Already submitting, ignoring duplicate submit');
       return;
@@ -158,41 +187,36 @@ export default function EnhancedAddStudent() {
         mobile: sanitizePhoneNumber(values.mobile),
         batchId: values.batchId,
         address: sanitizeTextInput(values.address),
-        email: values.email ? sanitizeEmail(values.email) : "",
-        fingerprints: values.fingerprints,
+        email: values.email ? sanitizeEmail(values.email) : undefined
       };
 
-      // Validate with biometric data
-      const validation = await validateStudentDataWithBiometrics(sanitizedData);
+      // Enhanced security validation with biometrics
+      const validation = await validateStudentDataWithBiometrics({
+        student_name: sanitizedData.name,
+        mobile_number: sanitizedData.mobile,
+        batch_id: sanitizedData.batchId,
+        address: sanitizedData.address,
+        email: sanitizedData.email,
+        fingerprints: fingerprintData.map(fp => fp.pidData).filter(Boolean),
+        fingerprintImages: capturedImages.filter(Boolean) as string[]
+      });
+
       if (!validation.isValid) {
-        await logEvent('VALIDATION_FAILED', undefined, undefined, undefined, {
-          errors: validation.errors
-        });
+        console.error('Validation failed:', validation.errors);
         toast.error(`Validation failed: ${validation.errors.join(', ')}`);
         return;
       }
 
-      // Encrypt PidData and store image data
+      // Encrypt biometric data
       const encryptedFingerprints: any = {};
-      for (let i = 0; i < 5; i++) {
-        if (validation.sanitizedData![`finger_${i + 1}`]) {
+      for (let i = 0; i < fingerprintData.length; i++) {
+        if (fingerprintData[i].pidData) {
           try {
-            const encrypted = await encryptFingerprintData(
-              validation.sanitizedData![`finger_${i + 1}`],
-              encryptionKey,
-              { fingerId: i + 1, userId: user.id }
+            encryptedFingerprints[`finger_${i + 1}`] = await encryptFingerprintData(
+              fingerprintData[i].pidData, 
+              encryptionKey
             );
             
-            encryptedFingerprints[`finger_${i + 1}`] = JSON.stringify({
-              encrypted: encrypted.encryptedData,
-              iv: encrypted.iv,
-              authTag: encrypted.authTag,
-              timestamp: encrypted.timestamp,
-              format: 'PidData',
-              version: '2.0'
-            });
-            
-            // Store image data if available
             if (capturedImages[i]) {
               encryptedFingerprints[`finger_${i + 1}_image`] = capturedImages[i];
             }
@@ -209,6 +233,9 @@ export default function EnhancedAddStudent() {
       const { data, error } = await supabase.from('students').insert({
         student_name: validation.sanitizedData!.student_name,
         batch_id: validation.sanitizedData!.batch_id,
+        mobile_number: validation.sanitizedData!.mobile_number,
+        address: validation.sanitizedData!.address,
+        email: validation.sanitizedData!.email,
         ...encryptedFingerprints,
       }).select();
 
@@ -270,10 +297,10 @@ export default function EnhancedAddStudent() {
   if (!user) {
     return (
       <DashboardLayout>
-        <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-emerald-green/5 p-6">
-          <Alert className="max-w-2xl mx-auto border-destructive/30 bg-destructive/5 backdrop-blur-sm">
-            <Shield className="h-5 w-5 text-destructive" />
-            <AlertDescription className="text-destructive font-medium">
+        <div className="min-h-screen bg-black flex items-center justify-center p-6">
+          <Alert className="max-w-2xl border-red-600 bg-red-900/20 backdrop-blur-sm">
+            <Shield className="h-5 w-5 text-red-400" />
+            <AlertDescription className="text-red-300 font-medium">
               🔐 Authentication required. Please log in to access this secure feature.
             </AlertDescription>
           </Alert>
@@ -284,349 +311,219 @@ export default function EnhancedAddStudent() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-emerald-green/5">
-        <div className="space-y-8 p-6 animate-fade-in-up">
-          {/* Simple Header */}
-          <div className="text-center space-y-4">
-            <div className="flex items-center justify-center space-x-4">
-              <div className="w-16 h-16 branded-gradient rounded-3xl flex items-center justify-center shadow-glow-lg">
-                <User className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-4xl font-bold text-branded-gradient">
-                  Add New Student
-                </h1>
-                <p className="text-lg text-muted-foreground">Complete the form and capture biometric data</p>
-              </div>
+      <div className="min-h-screen bg-black text-white overflow-hidden">
+        {/* Header */}
+        <div className="px-8 py-6 border-b border-gray-800">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-500 to-orange-400 bg-clip-text text-transparent">
+                Add New Student
+              </h1>
+              <p className="text-gray-400 mt-1">Register student with secure biometric data</p>
             </div>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/students')}
+              className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:border-orange-500 transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Students
+            </Button>
           </div>
+        </div>
 
-          {/* Student Information Form */}
-          <div className="max-w-5xl mx-auto space-y-8">
-            {/* Student Information Section */}
-            <Card className="premium-card backdrop-blur-md border-2 border-electric-blue/20 shadow-glow-lg">
-              <CardHeader className="bg-electric-blue/5 border-b border-electric-blue/10">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-electric-blue/10 border border-electric-blue/20 rounded-2xl flex items-center justify-center">
-                    <User className="h-6 w-6 text-electric-blue" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-2xl font-bold bg-electric-blue bg-clip-text text-transparent">
-                      Student Information
-                    </CardTitle>
-                    <p className="text-muted-foreground font-medium">Enter basic student details below</p>
+        <div className="px-8 py-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              {/* Single Row Form Fields */}
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white font-semibold">Student Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter full name"
+                          {...field}
+                          className="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500 transition-colors h-12"
+                        />
+                      </FormControl>
+                      <FormMessage className="text-red-400" />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="mobile"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white font-semibold">Mobile Number</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter mobile number"
+                          {...field}
+                          className="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500 transition-colors h-12"
+                        />
+                      </FormControl>
+                      <FormMessage className="text-red-400" />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white font-semibold">Email Address</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter email address"
+                          type="email"
+                          {...field}
+                          className="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500 transition-colors h-12"
+                        />
+                      </FormControl>
+                      <FormMessage className="text-red-400" />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="batchId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white font-semibold">Select Batch</FormLabel>
+                      <div className="h-12">
+                        <BatchSelector
+                          selectedBatch={field.value}
+                          onBatchChange={field.onChange}
+                          batches={batches}
+                          placeholder="Select batch"
+                          className="bg-gray-900 border-gray-700 text-white focus:border-orange-500 focus:ring-orange-500 h-full"
+                        />
+                      </div>
+                      <FormMessage className="text-red-400" />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white font-semibold">Address</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter address"
+                          {...field}
+                          className="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500 transition-colors h-12"
+                        />
+                      </FormControl>
+                      <FormMessage className="text-red-400" />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Fingerprint Capture Section */}
+              <div className="mt-12">
+                <div className="flex items-center gap-3 mb-8">
+                  <Shield className="h-6 w-6 text-orange-500" />
+                  <h2 className="text-2xl font-bold text-white">Biometric Capture</h2>
+                  <div className="text-sm text-gray-400 bg-gray-800 px-3 py-1 rounded-full">
+                    Captured: {fingerprintData.filter(fp => fp.pidData).length}/5
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent className="p-8">
-                <Form {...form}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Student Name */}
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-bold text-electric-blue uppercase tracking-wider flex items-center">
-                            <User className="h-4 w-4 mr-2" />
-                            Student Name
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter full name"
-                              {...field}
-                              className="h-14 bg-muted/20 border-2 border-border/50 focus:border-electric-blue focus:bg-background rounded-2xl transition-all duration-300 text-lg"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
 
-                    {/* Mobile */}
-                    <FormField
-                      control={form.control}
-                      name="mobile"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-bold text-vibrant-purple uppercase tracking-wider flex items-center">
-                            <Phone className="h-4 w-4 mr-2" />
-                            Mobile Number
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter mobile number"
-                              {...field}
-                              className="h-14 bg-muted/20 border-2 border-border/50 focus:border-vibrant-purple focus:bg-background rounded-2xl transition-all duration-300 text-lg"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Email */}
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-bold text-emerald-green uppercase tracking-wider flex items-center">
-                            <Mail className="h-4 w-4 mr-2" />
-                            Email Address (Optional)
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="email"
-                              placeholder="Enter email address"
-                              {...field}
-                              className="h-14 bg-muted/20 border-2 border-border/50 focus:border-emerald-green focus:bg-background rounded-2xl transition-all duration-300 text-lg"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Batch Selection */}
-                    <FormField
-                      control={form.control}
-                      name="batchId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-bold text-sunset-orange uppercase tracking-wider flex items-center">
-                            <GraduationCap className="h-4 w-4 mr-2" />
-                            Select Batch
-                          </FormLabel>
-                          <FormControl>
-                            <div className="h-14 bg-muted/20 border-2 border-border/50 focus-within:border-sunset-orange rounded-2xl transition-all duration-300">
-                              <BatchSelector 
-                                value={field.value} 
-                                onChange={field.onChange}
-                                disabled={isSubmitting}
+                {/* Five Fingerprint Captures Side by Side */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                  {[0, 1, 2, 3, 4].map((index) => (
+                    <div key={index} className="space-y-3">
+                      <div className="text-center">
+                        <h3 className="text-white font-semibold text-lg mb-3">
+                          Finger {index + 1}
+                        </h3>
+                      </div>
+                      
+                      <div className="bg-gray-900 border-2 border-gray-700 hover:border-gray-600 rounded-xl p-6 min-h-[320px] flex flex-col transition-all duration-200">
+                        {/* Preview Area */}
+                        <div className="flex-1 flex items-center justify-center bg-gray-800 rounded-lg border-2 border-dashed border-gray-600 min-h-[220px] mb-4">
+                          {capturedImages[index] ? (
+                            <div className="text-center">
+                              <img
+                                src={capturedImages[index] || ''}
+                                alt={`Finger ${index + 1}`}
+                                className="max-w-full max-h-[200px] rounded-lg border border-gray-600 shadow-lg"
                               />
+                              <div className="mt-3 text-sm text-green-400 flex items-center justify-center gap-2">
+                                <CheckCircle className="h-4 w-4" />
+                                Quality: {fingerprintData[index]?.quality || 0}%
+                              </div>
                             </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {/* Address - Full Width */}
-                  <div className="mt-8">
-                    <FormField
-                      control={form.control}
-                      name="address"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-bold text-pink-rose uppercase tracking-wider flex items-center">
-                            <MapPin className="h-4 w-4 mr-2" />
-                            Address
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter full address"
-                              {...field}
-                              className="h-14 bg-muted/20 border-2 border-border/50 focus:border-pink-rose focus:bg-background rounded-2xl transition-all duration-300 text-lg"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </Form>
-              </CardContent>
-            </Card>
-
-            {/* Fingerprint Capture Section */}
-            <Card className="premium-card backdrop-blur-md border-2 border-vibrant-purple/20 shadow-glow-lg">
-              <CardHeader className="bg-vibrant-purple/5 border-b border-vibrant-purple/10">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-vibrant-purple/10 border border-vibrant-purple/20 rounded-2xl flex items-center justify-center">
-                    <Shield className="h-6 w-6 text-vibrant-purple" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-2xl font-bold bg-vibrant-purple bg-clip-text text-transparent">
-                      Biometric Fingerprint Capture
-                    </CardTitle>
-                    <p className="text-muted-foreground font-medium">Capture all 5 fingerprints using RD Service for secure enrollment</p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-8">
-                <div className="space-y-8">
-                  {/* Security Notice */}
-                  <Alert className="border-electric-blue/30 bg-electric-blue/10 backdrop-blur-sm">
-                    <Shield className="h-5 w-5 text-electric-blue" />
-                    <AlertDescription className="text-electric-blue font-medium">
-                      🔐 <strong>UIDAI-Compliant Security:</strong> All biometric data is encrypted using AES-256 encryption before database storage. PidData format ensures government-standard compliance.
-                    </AlertDescription>
-                  </Alert>
-                  
-                  {/* Multi-Fingerprint Capture Interface */}
-                  <div className="bg-gradient-to-br from-muted/20 via-background/50 to-vibrant-purple/5 border-2 border-vibrant-purple/10 rounded-3xl p-8">
-                    <MultiFingerCaptureInterface
-                      onAllCaptured={handleAllFingerprintsCaptured}
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                  
-                  {/* Capture Progress Indicator */}
-                  {form.getValues("fingerprints").some(fp => fp) && (
-                    <div className="bg-emerald-green/10 border border-emerald-green/20 rounded-2xl p-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <CheckCircle className="h-6 w-6 text-emerald-green" />
-                          <div>
-                            <p className="font-semibold text-emerald-green">
-                              Biometric Capture Progress
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {form.getValues("fingerprints").filter(fp => fp).length} of 5 fingerprints captured
-                            </p>
-                          </div>
+                          ) : (
+                            <div className="text-center text-gray-500">
+                              <div className="w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center mb-3 mx-auto">
+                                <User className="h-10 w-10" />
+                              </div>
+                              <p className="text-sm">No capture</p>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex items-center space-x-2">
-                          {[1, 2, 3, 4, 5].map((index) => (
-                            <div
-                              key={index}
-                              className={`w-4 h-4 rounded-full border-2 transition-all duration-300 ${
-                                form.getValues("fingerprints")[index - 1]
-                                  ? "bg-emerald-green border-emerald-green"
-                                  : "border-border bg-muted"
-                              }`}
-                            />
-                          ))}
+
+                        {/* Capture Button */}
+                        <div className="mt-auto">
+                          <MultiFingerCaptureInterface
+                            onCaptureComplete={handleCaptureComplete}
+                            expectedFingers={5}
+                            className="w-full"
+                            buttonText={capturedImages[index] ? "Recapture" : "Capture"}
+                            buttonClassName="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105"
+                          />
                         </div>
                       </div>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Submit Section */}
-            <Card className="premium-card backdrop-blur-md border-2 border-emerald-green/20 shadow-glow-lg overflow-hidden">
-              <div className="bg-emerald-green/5 border-b border-emerald-green/10 p-6">
-                <div className="text-center">
-                  <div className="inline-flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-emerald-green/10 border border-emerald-green/20 rounded-xl flex items-center justify-center">
-                      <CheckCircle className="h-5 w-5 text-emerald-green" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold bg-emerald-green bg-clip-text text-transparent">
-                        Complete Registration
-                      </h3>
-                      <p className="text-sm text-muted-foreground">Review and submit student information</p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
-              <CardContent className="p-8">
-                <div className="space-y-6">
-                  {/* Form Validation Status */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className={`p-4 rounded-2xl border-2 transition-all duration-300 ${
-                      form.formState.isValid && Object.keys(form.formState.errors).length === 0
-                        ? "border-emerald-green/20 bg-emerald-green/5"
-                        : "border-sunset-orange/20 bg-sunset-orange/5"
-                    }`}>
-                      <div className="flex items-center space-x-3">
-                        <User className={`h-5 w-5 ${
-                          form.formState.isValid && Object.keys(form.formState.errors).length === 0
-                            ? "text-emerald-green"
-                            : "text-sunset-orange"
-                        }`} />
-                        <div>
-                          <p className="font-semibold text-sm">Student Information</p>
-                          <p className={`text-xs ${
-                            form.formState.isValid && Object.keys(form.formState.errors).length === 0
-                              ? "text-emerald-green"
-                              : "text-sunset-orange"
-                          }`}>
-                            {form.formState.isValid && Object.keys(form.formState.errors).length === 0
-                              ? "✅ All fields completed"
-                              : "⚠️ Please complete required fields"
-                            }
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className={`p-4 rounded-2xl border-2 transition-all duration-300 ${
-                      form.getValues("fingerprints").every(fp => fp)
-                        ? "border-emerald-green/20 bg-emerald-green/5"
-                        : "border-sunset-orange/20 bg-sunset-orange/5"
-                    }`}>
-                      <div className="flex items-center space-x-3">
-                        <Shield className={`h-5 w-5 ${
-                          form.getValues("fingerprints").every(fp => fp)
-                            ? "text-emerald-green"
-                            : "text-sunset-orange"
-                        }`} />
-                        <div>
-                          <p className="font-semibold text-sm">Biometric Data</p>
-                          <p className={`text-xs ${
-                            form.getValues("fingerprints").every(fp => fp)
-                              ? "text-emerald-green"
-                              : "text-sunset-orange"
-                          }`}>
-                            {form.getValues("fingerprints").every(fp => fp)
-                              ? "✅ All 5 fingerprints captured"
-                              : `⚠️ ${5 - form.getValues("fingerprints").filter(fp => fp).length} fingerprints remaining`
-                            }
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Action Buttons */}
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => navigate("/students")}
-                      disabled={isSubmitting}
-                      className="w-full sm:w-auto h-14 px-8 text-lg font-semibold border-2 border-border/50 hover:border-muted-foreground/50 hover:bg-muted/20 rounded-2xl transition-all duration-300"
-                    >
-                      Cancel Registration
-                    </Button>
-                    
-                    <Button
-                      onClick={form.handleSubmit(onSubmit)}
-                      disabled={isSubmitting || !form.formState.isValid || !form.getValues("fingerprints").every(fp => fp)}
-                      className="w-full sm:w-auto h-14 px-12 text-lg font-bold branded-gradient rounded-2xl shadow-glow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="h-5 w-5 mr-3 animate-spin" />
-                          Creating Student...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle className="h-5 w-5 mr-3" />
-                          Create Student Profile
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                  
-                  {/* Ready to Submit Indicator */}
-                  {form.formState.isValid && form.getValues("fingerprints").every(fp => fp) && (
-                    <div className="text-center pt-4">
-                      <div className="inline-flex items-center space-x-3 bg-emerald-green/10 border border-emerald-green/20 rounded-full px-8 py-4 animate-pulse">
-                        <CheckCircle className="h-6 w-6 text-emerald-green" />
-                        <span className="text-emerald-green font-bold text-lg">🎉 Ready to Create Student Profile!</span>
-                      </div>
-                    </div>
+
+              {/* Submit Button */}
+              <div className="flex justify-center pt-12">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting || fingerprintData.filter(fp => fp.pidData).length < 5}
+                  className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white font-bold text-xl px-16 py-6 rounded-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none min-w-[400px] shadow-2xl shadow-orange-500/25"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+                      Saving Student...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="mr-3 h-6 w-6" />
+                      Submit to Save Student
+                    </>
                   )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                </Button>
+              </div>
+
+              {/* Security Alert */}
+              {fingerprintData.filter(fp => fp.pidData).length > 0 && (
+                <Alert className="bg-gray-900 border-gray-700 mt-8">
+                  <Shield className="h-4 w-4 text-orange-500" />
+                  <AlertDescription className="text-gray-300">
+                    <strong className="text-orange-400">Security Notice:</strong> Biometric data is encrypted with AES-256 and securely stored. All captures are logged for audit purposes.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </form>
+          </Form>
         </div>
       </div>
     </DashboardLayout>
