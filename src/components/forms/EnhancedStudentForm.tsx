@@ -76,14 +76,14 @@ export function EnhancedStudentForm({
   };
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 sm:space-y-6">
       {/* Personal Information */}
       <EnhancedCard
         title="Personal Information"
         description="Basic student details and contact information"
         icon={User}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <EnhancedInput
             label="Full Name"
             placeholder="Enter student's full name"
@@ -127,15 +127,17 @@ export function EnhancedStudentForm({
           />
         </div>
 
-        <EnhancedInput
-          label="Address"
-          placeholder="Enter complete address"
-          leftIcon={<MapPin className="h-4 w-4" />}
-          error={errors.address?.message}
-          success={dirtyFields.address && !errors.address ? 'Valid address' : undefined}
-          required
-          {...register('address')}
-        />
+        <div className="mt-3 sm:mt-4">
+          <EnhancedInput
+            label="Address"
+            placeholder="Enter complete address"
+            leftIcon={<MapPin className="h-4 w-4" />}
+            error={errors.address?.message}
+            success={dirtyFields.address && !errors.address ? 'Valid address' : undefined}
+            required
+            {...register('address')}
+          />
+        </div>
       </EnhancedCard>
 
       {/* Academic Information */}
@@ -144,7 +146,7 @@ export function EnhancedStudentForm({
         description="Student's academic details and batch assignment"
         icon={GraduationCap}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <EnhancedInput
             label="Roll Number"
             placeholder="Enter roll number"
@@ -163,10 +165,10 @@ export function EnhancedStudentForm({
               value={watchedBatch}
               onValueChange={(value) => setValue('batch', value, { shouldValidate: true })}
             >
-              <SelectTrigger className={errors.batch ? 'border-red-500' : ''}>
+              <SelectTrigger className={`h-10 sm:h-11 ${errors.batch ? 'border-red-500' : ''}`}>
                 <SelectValue placeholder="Select a batch" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-50 bg-popover">
                 {availableBatches.map((batch) => (
                   <SelectItem key={batch.id} value={batch.id}>
                     {batch.name}
@@ -187,7 +189,7 @@ export function EnhancedStudentForm({
         description="Emergency contact and guardian details"
         icon={User}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <EnhancedInput
             label="Guardian Name"
             placeholder="Enter guardian's full name"
@@ -212,15 +214,20 @@ export function EnhancedStudentForm({
       </EnhancedCard>
 
       {/* Submit Button */}
-      <div className="flex justify-end space-x-3 pt-4">
-        <Button type="button" variant="outline" disabled={isLoading}>
+      <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4">
+        <Button 
+          type="button" 
+          variant="outline" 
+          disabled={isLoading}
+          className="w-full sm:w-auto h-11 touch-manipulation"
+        >
           Cancel
         </Button>
         <Button 
           type="submit" 
           disabled={!isValid || isLoading}
           size="lg"
-          className="min-w-32"
+          className="w-full sm:w-auto min-w-32 h-11 touch-manipulation"
         >
           {isLoading ? 'Saving...' : 'Save Student'}
         </Button>

@@ -108,64 +108,105 @@ export function CleanFingerprintGrid({
   };
 
   return (
-    <div className="grid grid-cols-5 gap-8 max-w-6xl">
-      {fingerprints.map((fingerprint, index) => (
-        <div key={index} className="text-center space-y-3">
-          {/* Fingerprint Preview Box */}
-          <div className="w-full h-40 border-2 border-gray-600 rounded-lg bg-black flex items-center justify-center overflow-hidden">
-            {fingerprint.imageData ? (
-              <img 
-                src={fingerprint.imageData} 
-                alt={`${fingerNames[index]} preview`}
-                className="w-full h-full object-contain"
-                style={{
-                  filter: 'contrast(1.3) brightness(1.15)',
-                  imageRendering: 'crisp-edges'
-                }}
-              />
-            ) : (
-              <div className="flex flex-col items-center space-y-2">
-                {getStatusIcon(fingerprint.status)}
-                <span className="text-xs text-gray-400">
-                  {fingerprint.status === 'capturing' ? 'Capturing...' :
-                   fingerprint.status === 'retrying' ? 'Retrying...' :
-                   fingerprint.status === 'failed' ? 'Failed' :
-                   fingerprint.status === 'captured' ? 'Captured' : 'Ready'}
-                </span>
+    <div className="w-full">
+      <div className="mb-4 sm:mb-6">
+        <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Biometric Capture</h3>
+        <p className="text-sm text-gray-400">Capture all 5 fingerprints for secure identification</p>
+      </div>
+      
+      {/* Mobile View: Stack vertically */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6 lg:gap-8">
+        {fingerprints.map((fingerprint, index) => (
+          <div key={index} className="text-center space-y-3">
+            {/* Fingerprint Preview Box */}
+            <div className="w-full h-32 sm:h-36 lg:h-40 border-2 border-gray-600 rounded-lg bg-black flex items-center justify-center overflow-hidden">
+              {fingerprint.imageData ? (
+                <img 
+                  src={fingerprint.imageData} 
+                  alt={`${fingerNames[index]} preview`}
+                  className="w-full h-full object-contain"
+                  style={{
+                    filter: 'contrast(1.3) brightness(1.15)',
+                    imageRendering: 'crisp-edges'
+                  }}
+                />
+              ) : (
+                <div className="flex flex-col items-center space-y-2">
+                  {getStatusIcon(fingerprint.status)}
+                  <span className="text-xs text-gray-400">
+                    {fingerprint.status === 'capturing' ? 'Capturing...' :
+                     fingerprint.status === 'retrying' ? 'Retrying...' :
+                     fingerprint.status === 'failed' ? 'Failed' :
+                     fingerprint.status === 'captured' ? 'Captured' : 'Ready'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Finger Label */}
+            <div className="text-white font-medium text-sm sm:text-base">
+              {fingerNames[index]}
+            </div>
+
+            {/* Quality Badge */}
+            {fingerprint.quality > 0 && (
+              <div className="text-xs text-orange-400 font-medium">
+                Quality: {fingerprint.quality}%
               </div>
             )}
-          </div>
 
-          {/* Finger Label */}
-          <div className="text-white font-medium">
-            {fingerNames[index]}
+            {/* Capture Button */}
+            <div>
+              {fingerprint.status === 'captured' ? (
+                <Button
+                  size="sm"
+                  className="w-full h-10 sm:h-11 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm touch-manipulation"
+                  onClick={() => handleRetry(index)}
+                  disabled={disabled || isCapturing}
+                >
+                  Recapture
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  className="w-full h-10 sm:h-11 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm touch-manipulation"
+                  onClick={() => handleCapture(index)}
+                  disabled={disabled || isCapturing || fingerprint.status === 'capturing' || fingerprint.status === 'retrying'}
+                >
+                  {fingerprint.status === 'capturing' ? 'Capturing...' :
+                   fingerprint.status === 'retrying' ? 'Retrying...' : 'Capture'}
+                </Button>
+              )}
+            </div>
           </div>
+        ))}
+      </div>
 
-          {/* Capture Button */}
-          <div>
-            {fingerprint.status === 'captured' ? (
-              <Button
-                size="sm"
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-lg"
-                onClick={() => handleRetry(index)}
-                disabled={disabled || isCapturing}
-              >
-                Recapture
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-lg"
-                onClick={() => handleCapture(index)}
-                disabled={disabled || isCapturing || fingerprint.status === 'capturing' || fingerprint.status === 'retrying'}
-              >
-                {fingerprint.status === 'capturing' ? 'Capturing...' :
-                 fingerprint.status === 'retrying' ? 'Retrying...' : 'Capture'}
-              </Button>
-            )}
+      {/* Progress Indicator */}
+      <div className="mt-6 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="text-sm text-gray-300">
+            Progress: {completedCount}/5 fingerprints captured
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 sm:w-32 h-2 bg-gray-700 rounded-full">
+              <div 
+                className="h-2 bg-orange-500 rounded-full transition-all duration-300"
+                style={{ width: `${(completedCount / 5) * 100}%` }}
+              />
+            </div>
+            <span className="text-xs text-orange-400 font-medium whitespace-nowrap">
+              {Math.round((completedCount / 5) * 100)}%
+            </span>
           </div>
         </div>
-      ))}
+        {allCaptured && (
+          <div className="mt-2 text-sm text-green-400 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4" />
+            All fingerprints captured successfully!
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -26,6 +26,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import FixedHeader from './FixedHeader';
+import { MobileNav } from '@/components/ui/mobile-nav';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -90,40 +91,42 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <SidebarProvider>
-      <FixedHeader />
-      <div className="pt-20 min-h-screen flex w-full bg-background">
-        <Sidebar className="bg-card border-r border-border">
-          <SidebarHeader className="p-6 border-b border-border">
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                <User className="w-5 h-5 text-primary-foreground" />
+      <FixedHeader>
+        <MobileNav />
+      </FixedHeader>
+      <div className="pt-16 sm:pt-20 min-h-screen flex w-full bg-background">
+        <Sidebar className="bg-card border-r border-border hidden lg:flex lg:w-64">
+          <SidebarHeader className="p-4 sm:p-6 border-b border-border">
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary rounded-xl flex items-center justify-center">
+                <User className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
               </div>
-              <div>
-                <div className="font-semibold text-foreground">Dashboard</div>
-                <div className="text-sm text-muted-foreground">Navigation</div>
+              <div className="hidden sm:block">
+                <div className="font-semibold text-foreground text-sm sm:text-base">Dashboard</div>
+                <div className="text-xs sm:text-sm text-muted-foreground">Navigation</div>
               </div>
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="px-4 py-6">
+          <SidebarContent className="px-3 sm:px-4 py-4 sm:py-6">
             {/* Main Menu */}
             <SidebarGroup>
               <SidebarGroupContent>
-                <SidebarMenu className="space-y-2">
+                <SidebarMenu className="space-y-1 sm:space-y-2">
                   {menuItems.map((item) => (
                     <SidebarMenuItem key={item.path}>
                       <SidebarMenuButton asChild>
                         <Link
                           to={item.path}
-                          className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
+                          className={`flex items-center px-3 sm:px-4 py-2 sm:py-3 rounded-lg transition-colors text-sm sm:text-base touch-manipulation ${
                             (location.pathname === item.path || 
                              (item.path === '/dashboard' && (location.pathname === '/' || location.pathname === '/dashboard')))
                               ? 'bg-primary text-primary-foreground font-medium' 
                               : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                           }`}
                         >
-                          <item.icon className="w-5 h-5 mr-3" />
-                          <span>{item.title}</span>
+                          <item.icon className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 flex-shrink-0" />
+                          <span className="truncate">{item.title}</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -134,25 +137,25 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
             {/* Super Admin Menu */}
             {isSuperAdmin() && (
-              <SidebarGroup className="mt-6">
+              <SidebarGroup className="mt-4 sm:mt-6">
                 <SidebarGroupContent>
-                  <div className="px-4 py-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  <div className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-muted-foreground uppercase tracking-wider">
                     Administration
                   </div>
-                  <SidebarMenu className="space-y-2 mt-3">
+                  <SidebarMenu className="space-y-1 sm:space-y-2 mt-2 sm:mt-3">
                     {adminMenuItems.map((item) => (
                       <SidebarMenuItem key={item.path}>
                         <SidebarMenuButton asChild>
                           <Link
                             to={item.path}
-                            className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
+                            className={`flex items-center px-3 sm:px-4 py-2 sm:py-3 rounded-lg transition-colors text-sm sm:text-base touch-manipulation ${
                               location.pathname === item.path
                                 ? 'bg-primary text-primary-foreground font-medium' 
                                 : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                             }`}
                           >
-                            <item.icon className="w-5 h-5 mr-3" />
-                            <span>{item.title}</span>
+                            <item.icon className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 flex-shrink-0" />
+                            <span className="truncate">{item.title}</span>
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -163,20 +166,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             )}
           </SidebarContent>
 
-          <SidebarFooter className="p-6 border-t border-border">
+          <SidebarFooter className="p-4 sm:p-6 border-t border-border">
             <Button
               onClick={handleLogout}
               variant="ghost"
-              className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+              className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 text-sm sm:text-base touch-manipulation"
             >
-              <LogOut className="w-5 h-5 mr-3" />
+              <LogOut className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3" />
               <span>Logout</span>
             </Button>
           </SidebarFooter>
         </Sidebar>
 
         <main className="flex-1 overflow-y-auto bg-background">
-          <div className="p-8">
+          <div className="p-3 sm:p-6 lg:p-8">
             <div className="max-w-7xl mx-auto">
               {children}
             </div>
