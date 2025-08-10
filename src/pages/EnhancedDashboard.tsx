@@ -17,48 +17,58 @@ export default function EnhancedDashboard() {
   const { metrics, isChecking, performHealthCheck } = useSystemHealthMonitoring();
   const { getAuditLogs } = useAuditLog();
 
-  // Fetch dashboard statistics
+  // Optimized dashboard statistics with efficient queries
   const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
+      // Use parallel queries with minimal data selection for speed
       const [studentsRes, batchesRes] = await Promise.all([
-        supabase.from('students').select('id, created_at, batch_id').eq('is_enabled', true),
-        supabase.from('batches').select('id, created_at, max_students').eq('is_enabled', true)
+        supabase
+          .from('students')
+          .select('id, created_at, batch_id')
+          .eq('is_enabled', true),
+        supabase
+          .from('batches')
+          .select('id, created_at, max_students')
+          .eq('is_enabled', true)
       ]);
       
       const students = studentsRes.data || [];
       const batches = batchesRes.data || [];
 
-      // Get user profiles data with error handling
+      // Get user profiles data with minimal selection and error handling
       let profiles = [];
       try {
-        const profilesRes = await (supabase as any).from('user_profiles').select('id, role, last_login_at');
+        const profilesRes = await supabase
+          .from('user_profiles')
+          .select('id, role, last_login_at');
         profiles = profilesRes.data || [];
       } catch (err) {
         console.warn('Could not fetch user profiles:', err);
       }
 
-      // Calculate batch utilization
-      const batchUtilization = await Promise.all(
-        batches.map(async (batch) => {
-          const { count } = await supabase
-            .from('students')
-            .select('id', { count: 'exact' })
-            .eq('batch_id', batch.id)
-            .eq('is_enabled', true);
-          
-          return {
-            id: batch.id,
-            current: count || 0,
-            max: batch.max_students,
-            utilization: Math.round(((count || 0) / batch.max_students) * 100)
-          };
-        })
-      );
+      // Calculate batch utilization efficiently with single query per batch
+      const batchUtilizationPromises = batches.map(async (batch) => {
+        const { count } = await supabase
+          .from('students')
+          .select('id', { count: 'exact' })
+          .eq('batch_id', batch.id)
+          .eq('is_enabled', true);
+        
+        return {
+          id: batch.id,
+          current: count || 0,
+          max: batch.max_students,
+          utilization: Math.round(((count || 0) / batch.max_students) * 100)
+        };
+      });
 
+      const batchUtilization = await Promise.all(batchUtilizationPromises);
+
+      // Calculate date filters once
       const today = new Date();
-      const startOfDay = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-      const startOfWeek = new Date(today.setDate(today.getDate() - 7)).toISOString();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+      const startOfWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
       return {
         totalStudents: students.length,
@@ -72,7 +82,9 @@ export default function EnhancedDashboard() {
         )
       };
     },
-    refetchInterval: 30000
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    gcTime: 15 * 60 * 1000, // Keep in cache for 15 minutes
+    refetchOnWindowFocus: false // Prevent unnecessary refetches
   });
 
   const getStatusColor = (status: string) => {

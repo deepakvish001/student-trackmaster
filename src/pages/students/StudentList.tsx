@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import { StudentDataDebugger } from '@/components/students/StudentDataDebugger';
 import { supabase } from '@/integrations/supabase/client';
 import { Student } from '@/types';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useOptimizedStudents } from '@/hooks/useOptimizedStudents';
 import { 
   Users, 
   Search, 
@@ -26,7 +27,9 @@ import {
   Database,
   Fingerprint,
   Plus,
-  AlertTriangle
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -42,6 +45,29 @@ export default function StudentList() {
   const queryClient = useQueryClient();
   const { profile } = useUserProfile();
 
+  // Use optimized data fetching hook with debounced search
+  const {
+    students,
+    batches,
+    stats,
+    isLoading,
+    currentPage,
+    totalPages,
+    hasNextPage,
+    hasPreviousPage,
+    goToNextPage,
+    goToPreviousPage,
+    goToPage,
+    refetch,
+    prefetchNextPage
+  } = useOptimizedStudents({
+    searchTerm,
+    selectedBatch,
+    sortBy,
+    sortOrder,
+    pageSize: 25
+  });
+
   // Real-time clock update
   useEffect(() => {
     const timer = setInterval(() => {
@@ -50,53 +76,12 @@ export default function StudentList() {
     return () => clearInterval(timer);
   }, []);
 
-  const { data: students = [], isLoading, refetch } = useQuery({
-    queryKey: ['students-list', searchTerm, selectedBatch, sortBy, sortOrder],
-    queryFn: async () => {
-      let query = supabase
-        .from('students')
-        .select(`
-          *,
-          batches:batch_id (
-            batch_name
-          )
-        `)
-        .eq('is_enabled', true);
-
-      if (searchTerm) {
-        query = query.ilike('student_name', `%${searchTerm}%`);
-      }
-
-      if (selectedBatch !== 'all') {
-        query = query.eq('batch_id', selectedBatch);
-      }
-
-      query = query.order(sortBy, { ascending: sortOrder === 'asc' });
-
-      const { data, error } = await query;
-      if (error) {
-        console.error('Error fetching students:', error);
-        throw error;
-      }
-      return data || [];
-    },
-    refetchInterval: 30000
-  });
-
-  const { data: batches = [] } = useQuery({
-    queryKey: ['batches-dropdown'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('batches')
-        .select('id, batch_name')
-        .eq('is_enabled', true);
-      if (error) {
-        console.error('Error fetching batches:', error);
-        throw error;
-      }
-      return data || [];
+  // Prefetch next page on hover for better UX
+  const handlePrefetchNext = useCallback(() => {
+    if (hasNextPage) {
+      prefetchNextPage();
     }
-  });
+  }, [hasNextPage, prefetchNextPage]);
 
   // Delete mutation
   const deleteMutation = useMutation({
@@ -170,16 +155,6 @@ export default function StudentList() {
     }
   };
 
-  // Real-time statistics
-  const stats = {
-    totalStudents: students.length,
-    completeBiometrics: students.filter(s => [s.finger_1, s.finger_2, s.finger_3, s.finger_4, s.finger_5].filter(Boolean).length === 5).length,
-    partialBiometrics: students.filter(s => {
-      const count = [s.finger_1, s.finger_2, s.finger_3, s.finger_4, s.finger_5].filter(Boolean).length;
-      return count > 0 && count < 5;
-    }).length,
-    noBiometrics: students.filter(s => [s.finger_1, s.finger_2, s.finger_3, s.finger_4, s.finger_5].filter(Boolean).length === 0).length
-  };
 
   if (isLoading) {
     return (
@@ -412,6 +387,59 @@ export default function StudentList() {
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                   />
+                  
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between px-4 py-4 bg-muted/20 rounded-xl border border-border/50">
+                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <span>Page {currentPage + 1} of {totalPages}</span>
+                        <span>•</span>
+                        <span>{stats.totalStudents} total students</span>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          onClick={goToPreviousPage}
+                          disabled={!hasPreviousPage}
+                          variant="outline"
+                          size="sm"
+                          className="h-10 px-4 border-border/50 hover:bg-electric-blue/5"
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-2" />
+                          Previous
+                        </Button>
+                        
+                        <div className="flex items-center space-x-1">
+                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                            const pageNum = Math.max(0, Math.min(totalPages - 5, currentPage - 2)) + i;
+                            return (
+                              <Button
+                                key={pageNum}
+                                onClick={() => goToPage(pageNum)}
+                                variant={pageNum === currentPage ? "default" : "outline"}
+                                size="sm"
+                                className="h-10 w-10"
+                              >
+                                {pageNum + 1}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                        
+                        <Button
+                          onClick={goToNextPage}
+                          disabled={!hasNextPage}
+                          variant="outline"
+                          size="sm"
+                          className="h-10 px-4 border-border/50 hover:bg-electric-blue/5"
+                          onMouseEnter={handlePrefetchNext}
+                        >
+                          Next
+                          <ChevronRight className="h-4 w-4 ml-2" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </TabsContent>
                 
                 <TabsContent value="debug" className="space-y-4">
