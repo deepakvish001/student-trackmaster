@@ -86,36 +86,55 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
     
     if (imageUrl) {
       return (
-        <div className="relative group">
-          <div className="w-24 h-28 border border-border rounded-lg overflow-hidden bg-muted/30 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer">
+        <div className="relative group cursor-pointer">
+          <div 
+            className="w-24 h-28 border-2 border-border rounded-xl overflow-hidden bg-muted/30 shadow-lg hover:shadow-2xl hover:border-electric-blue/50 transition-all duration-300 transform hover:scale-105"
+            onClick={() => setFingerprintPreview({
+              isVisible: true,
+              fingerName: fingerNames[index],
+              imageData: imageUrl,
+              quality: 95
+            })}
+          >
             <img 
               src={imageUrl}
               alt={`${fingerNames[index]} fingerprint`}
-              className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
+              className="w-full h-full object-contain transition-all duration-300 group-hover:brightness-110"
               style={{
                 filter: 'contrast(1.5) brightness(1.25) saturate(1.3)',
                 imageRendering: 'crisp-edges'
               }}
-              onClick={() => setFingerprintPreview({
-                isVisible: true,
-                fingerName: fingerNames[index],
-                imageData: imageUrl,
-                quality: 95 // Estimated quality for display
-              })}
             />
           </div>
           
-          {/* Hover overlay */}
-          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center rounded-lg">
-            <div className="text-center">
-              <ZoomIn className="h-6 w-6 text-white mx-auto mb-1" />
-              <span className="text-xs text-white font-medium">View Full</span>
+          {/* Enhanced Hover overlay with + sign and View Full button */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center rounded-xl">
+            {/* Plus Icon */}
+            <div className="bg-electric-blue/90 rounded-full p-2 mb-2 transform scale-75 group-hover:scale-100 transition-transform duration-300">
+              <ZoomIn className="h-4 w-4 text-white" />
             </div>
+            
+            {/* View Full Button */}
+            <Button 
+              size="sm" 
+              className="bg-white/90 hover:bg-white text-black text-xs px-3 py-1 h-6 rounded-full font-medium transform translate-y-2 group-hover:translate-y-0 transition-all duration-300"
+              onClick={(e) => {
+                e.stopPropagation();
+                setFingerprintPreview({
+                  isVisible: true,
+                  fingerName: fingerNames[index],
+                  imageData: imageUrl,
+                  quality: 95
+                });
+              }}
+            >
+              View Full
+            </Button>
           </div>
           
-          {/* Finger label */}
-          <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2">
-            <span className="text-xs bg-background/90 text-foreground px-2 py-1 rounded-full border border-border/50 font-medium">
+          {/* Enhanced Finger label */}
+          <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
+            <span className="text-xs bg-electric-blue/90 text-white px-3 py-1 rounded-full border border-electric-blue/30 font-bold shadow-lg">
               {index + 1}
             </span>
           </div>
@@ -123,10 +142,25 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
       );
     }
     
+    // Enhanced empty slot with hover effect
     return (
-      <div className="w-24 h-28 border border-border rounded-lg flex flex-col items-center justify-center bg-muted/20 hover:bg-muted/30 transition-colors duration-300">
-        <Fingerprint className="h-6 w-6 text-muted-foreground mb-1" />
-        <span className="text-xs text-muted-foreground font-medium">{index + 1}</span>
+      <div className="relative group cursor-pointer">
+        <div className="w-24 h-28 border-2 border-dashed border-border/50 rounded-xl flex flex-col items-center justify-center bg-muted/10 hover:bg-muted/20 hover:border-electric-blue/30 transition-all duration-300 transform hover:scale-105">
+          <Fingerprint className="h-6 w-6 text-muted-foreground/60 mb-1 group-hover:text-electric-blue/70 transition-colors duration-300" />
+          <span className="text-xs text-muted-foreground/60 font-medium group-hover:text-electric-blue/70 transition-colors duration-300">{index + 1}</span>
+        </div>
+        
+        {/* Hover overlay for empty slots */}
+        <div className="absolute inset-0 bg-gradient-to-t from-electric-blue/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center rounded-xl">
+          <span className="text-xs text-electric-blue font-medium bg-white/90 px-2 py-1 rounded-full">No Image</span>
+        </div>
+        
+        {/* Finger label for empty slots */}
+        <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
+          <span className="text-xs bg-muted text-muted-foreground px-3 py-1 rounded-full border border-border/50 font-bold shadow-sm">
+            {index + 1}
+          </span>
+        </div>
       </div>
     );
   };
