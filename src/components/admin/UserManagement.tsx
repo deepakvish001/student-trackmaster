@@ -86,7 +86,7 @@ export default function UserManagement() {
     }, 500);
   }, [state.createUserForm, updateState, toast]);
 
-  // Fetch available batches
+  // Fetch available batches with aggressive caching
   const { data: batches } = useQuery({
     queryKey: ['batches'],
     queryFn: async () => {
@@ -99,6 +99,11 @@ export default function UserManagement() {
       if (error) throw error;
       return data as Batch[];
     },
+    staleTime: Infinity, // Never consider data stale
+    gcTime: Infinity, // Keep in cache forever
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 
   // Fetch user batch access
@@ -124,7 +129,7 @@ export default function UserManagement() {
     enabled: !!selectedUserForBatchAccess,
   });
 
-  // Fetch all users with persistent caching
+  // Fetch all users with aggressive caching to prevent reloads
   const { data: users, isLoading, refetch } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
@@ -140,14 +145,16 @@ export default function UserManagement() {
       
       return data.users as UserProfile[];
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes - longer cache
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    refetchOnWindowFocus: false, // Prevent refresh when navigating back
-    refetchOnMount: false, // Use cached data when returning to page
-    refetchInterval: false, // Disable automatic refetching
+    staleTime: Infinity, // Never consider data stale
+    gcTime: Infinity, // Keep in cache forever
+    refetchOnWindowFocus: false, // Never refetch when window gains focus
+    refetchOnMount: false, // Never refetch when component mounts
+    refetchOnReconnect: false, // Never refetch on network reconnect
+    refetchInterval: false, // Disable interval refetching
+    retry: 1, // Only retry once on failure
   });
 
-  // Create user mutation
+  // Create user mutation with optimistic updates
   const createUserMutation = useMutation({
     mutationFn: async (userData: typeof state.createUserForm) => {
       console.log('Creating user with data:', userData);
@@ -176,6 +183,41 @@ export default function UserManagement() {
       
       return data;
     },
+    onMutate: async (userData) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['admin-users'] });
+      
+      // Snapshot the previous value
+      const previousUsers = queryClient.getQueryData(['admin-users']);
+      
+      // Optimistically update to the new value
+      const newUser: UserProfile = {
+        id: 'temp-' + Date.now(),
+        user_id: 'temp-' + Date.now(),
+        full_name: userData.full_name,
+        role: userData.role,
+        is_active: true,
+        max_batches_allowed: userData.max_batches_allowed,
+        last_login_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      
+      queryClient.setQueryData(['admin-users'], (old: UserProfile[] | undefined) => 
+        old ? [...old, newUser] : [newUser]
+      );
+      
+      // Return a context object with the snapshotted value
+      return { previousUsers };
+    },
+    onError: (err, userData, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      queryClient.setQueryData(['admin-users'], context?.previousUsers);
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure we have the correct data
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       updateState({ isCreateDialogOpen: false });
@@ -192,18 +234,10 @@ export default function UserManagement() {
         title: "Success",
         description: "User created successfully"
       });
-    },
-    onError: (error: Error) => {
-      console.error('Create user mutation error:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create user",
-        variant: "destructive"
-      });
     }
   });
 
-  // Delete user mutation
+  // Delete user mutation with optimistic updates
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
       const { data, error } = await supabase.functions.invoke('manage-users', {
@@ -215,10 +249,26 @@ export default function UserManagement() {
       
       return data;
     },
-    onSuccess: (data, userId) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    onMutate: async (userId) => {
+      await queryClient.cancelQueries({ queryKey: ['admin-users'] });
+      const previousUsers = queryClient.getQueryData(['admin-users']);
       
-      // Log user deletion event
+      // Optimistically remove user
+      queryClient.setQueryData(['admin-users'], (old: UserProfile[] | undefined) => 
+        old?.filter(user => user.user_id !== userId) || []
+      );
+      
+      return { previousUsers };
+    },
+    onError: (err, userId, context) => {
+      queryClient.setQueryData(['admin-users'], context?.previousUsers);
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive"
+      });
+    },
+    onSuccess: (data, userId) => {
       const deletedUser = users?.find(u => u.user_id === userId);
       logEvent('USER_DELETED', 'user_profiles', userId, {
         full_name: deletedUser?.full_name,
@@ -228,13 +278,6 @@ export default function UserManagement() {
       toast({
         title: "Success",
         description: "User deleted successfully"
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
       });
     }
   });
