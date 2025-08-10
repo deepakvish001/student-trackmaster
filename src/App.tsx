@@ -18,15 +18,22 @@ import { useGlobalPerformanceOptimization } from "./hooks/useGlobalPerformanceOp
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
-  // Initialize global performance optimization
+  return (
+    <QueryClient>
+      <AppWithQueryClient />
+    </QueryClient>
+  );
+}
+
+function AppWithQueryClient() {
+  // Initialize global performance optimization (now inside QueryClient provider)
   useGlobalPerformanceOptimization();
 
   return (
-    <QueryClient>
-      <BrowserRouter>
-        <EnhancedAuthProvider>
-          <Toaster />
-          <Routes>
+    <BrowserRouter>
+      <EnhancedAuthProvider>
+        <Toaster />
+        <Routes>
             <Route path="/login" element={<Login />} />
             <Route
               path="/"
@@ -103,8 +110,7 @@ function App() {
           </Routes>
         </EnhancedAuthProvider>
       </BrowserRouter>
-    </QueryClient>
-  );
+    );
 }
 
 const QueryClient = ({ children }: { children: React.ReactNode }) => {
