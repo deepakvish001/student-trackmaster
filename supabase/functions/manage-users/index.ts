@@ -101,7 +101,7 @@ serve(async (req) => {
 
         console.log('User created successfully:', newUser.user.id)
         return new Response(
-          JSON.stringify({ success: true, user: newUser.user }),
+          JSON.stringify({ success: true, user: newUser.user, user_id: newUser.user.id }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }

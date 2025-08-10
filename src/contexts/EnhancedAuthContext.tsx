@@ -230,7 +230,7 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
     try {
       setIsLoading(true);
       
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -250,6 +250,42 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
         });
         
         throw error;
+      }
+
+      // Check if user is active after successful authentication
+      if (data.user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('is_active, full_name')
+          .eq('user_id', data.user.id)
+          .single();
+
+        if (profileError) {
+          logSecurityEvent('PROFILE_CHECK_FAILED', {
+            userId: data.user.id,
+            error: profileError.message
+          });
+          await supabase.auth.signOut();
+          throw new Error('Failed to verify account status');
+        }
+
+        if (!profile.is_active) {
+          logSecurityEvent('DISABLED_USER_LOGIN_ATTEMPT', {
+            userId: data.user.id,
+            email: email.substring(0, 3) + '***',
+            fullName: profile.full_name
+          });
+          
+          // Sign out the user immediately
+          await supabase.auth.signOut();
+          throw new Error('Your account has been disabled. Please contact your administrator.');
+        }
+
+        // Update last login timestamp
+        await supabase
+          .from('user_profiles')
+          .update({ last_login_at: new Date().toISOString() })
+          .eq('user_id', data.user.id);
       }
 
       logSecurityEvent('LOGIN_SUCCESS', { 

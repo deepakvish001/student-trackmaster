@@ -9,11 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UserPlus, Trash2, Ban, Key, UserCheck, Power } from 'lucide-react';
+import { UserPlus, Trash2, Ban, Key, UserCheck, Power, Activity } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { UserRole } from '@/hooks/useUserProfile';
 import { useUserManagementState } from '@/hooks/useUserManagementState';
+import { useAuditLog } from '@/hooks/useAuditLog';
+import AuditLogViewer from './AuditLogViewer';
 
 interface UserProfile {
   id: string;
@@ -30,6 +32,8 @@ export default function UserManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { state, updateState, resetCreateForm } = useUserManagementState();
+  const { logEvent } = useAuditLog();
+  const [showAuditLogs, setShowAuditLogs] = React.useState(false);
 
   // Fetch all users with persistent caching
   const { data: users, isLoading, refetch } = useQuery({
@@ -80,10 +84,18 @@ export default function UserManagement() {
       
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       updateState({ isCreateDialogOpen: false });
       resetCreateForm();
+      
+      // Log user creation event
+      logEvent('USER_CREATED', 'user_profiles', data.user_id, null, {
+        email: state.createUserForm.email,
+        full_name: state.createUserForm.full_name,
+        role: state.createUserForm.role
+      });
+      
       toast({
         title: "Success",
         description: "User created successfully"
@@ -111,8 +123,16 @@ export default function UserManagement() {
       
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data, userId) => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      
+      // Log user deletion event
+      const deletedUser = users?.find(u => u.user_id === userId);
+      logEvent('USER_DELETED', 'user_profiles', userId, {
+        full_name: deletedUser?.full_name,
+        role: deletedUser?.role
+      }, null);
+      
       toast({
         title: "Success",
         description: "User deleted successfully"
@@ -139,8 +159,18 @@ export default function UserManagement() {
       
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, userId) => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      
+      // Log status change event
+      const targetUser = users?.find(u => u.user_id === userId);
+      const newStatus = !targetUser?.is_active;
+      logEvent(newStatus ? 'USER_ENABLED' : 'USER_DISABLED', 'user_profiles', userId, {
+        is_active: targetUser?.is_active
+      }, {
+        is_active: newStatus
+      });
+      
       toast({
         title: "Success",
         description: data.message
@@ -167,8 +197,17 @@ export default function UserManagement() {
       
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data, { userId, action }) => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      
+      // Log ban/unban event
+      const targetUser = users?.find(u => u.user_id === userId);
+      logEvent(action === 'ban_user' ? 'USER_BANNED' : 'USER_UNBANNED', 'user_profiles', userId, {
+        is_active: targetUser?.is_active
+      }, {
+        is_active: action === 'unban_user'
+      });
+      
       toast({
         title: "Success",
         description: "User status updated successfully"
@@ -195,12 +234,19 @@ export default function UserManagement() {
       
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data, { userId }) => {
       updateState({ 
         isPasswordDialogOpen: false,
         newPassword: '',
         selectedUserId: ''
       });
+      
+      // Log password change event
+      const targetUser = users?.find(u => u.user_id === userId);
+      logEvent('PASSWORD_CHANGED', 'user_profiles', userId, null, {
+        full_name: targetUser?.full_name
+      });
+      
       toast({
         title: "Success",
         description: "Password updated successfully"
@@ -257,13 +303,23 @@ export default function UserManagement() {
           <p className="text-muted-foreground">Manage system users and their permissions</p>
         </div>
         
-        <Dialog open={state.isCreateDialogOpen} onOpenChange={(open) => updateState({ isCreateDialogOpen: open })}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <UserPlus className="h-4 w-4" />
-              Add New User
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button
+            variant={showAuditLogs ? "default" : "outline"}
+            onClick={() => setShowAuditLogs(!showAuditLogs)}
+            className="gap-2"
+          >
+            <Activity className="h-4 w-4" />
+            {showAuditLogs ? 'Hide' : 'Show'} Audit Logs
+          </Button>
+          
+          <Dialog open={state.isCreateDialogOpen} onOpenChange={(open) => updateState({ isCreateDialogOpen: open })}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <UserPlus className="h-4 w-4" />
+                Add New User
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create New User</DialogTitle>
@@ -335,7 +391,12 @@ export default function UserManagement() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
+      {showAuditLogs && (
+        <AuditLogViewer />
+      )}
 
       <Card>
         <CardHeader>
