@@ -32,20 +32,25 @@ export default function UserManagement() {
   const { state, updateState, resetCreateForm } = useUserManagementState();
 
   // Fetch all users with persistent caching
-  const { data: users, isLoading } = useQuery({
+  const { data: users, isLoading, refetch } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
+      console.log('Fetching users...');
       const { data, error } = await supabase.functions.invoke('manage-users', {
         body: { action: 'get_users' }
       });
+      
+      console.log('Users fetch result:', { data, error });
       
       if (error) throw error;
       if (!data.success) throw new Error(data.error);
       
       return data.users as UserProfile[];
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+    staleTime: 30 * 1000, // 30 seconds - shorter for testing
+    gcTime: 2 * 60 * 1000, // 2 minutes
+    refetchOnWindowFocus: false, // Prevent refresh when navigating back
+    refetchOnMount: false, // Use cached data when returning to page
   });
 
   // Create user mutation

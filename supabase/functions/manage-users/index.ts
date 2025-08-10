@@ -66,6 +66,8 @@ serve(async (req) => {
           user_metadata: { full_name: full_name }
         })
 
+        console.log('User creation result:', { newUser, createError })
+
         if (createError) {
           console.error('User creation error:', createError)
           return new Response(
@@ -75,7 +77,7 @@ serve(async (req) => {
         }
 
         // Create profile for new user using service role key
-        const { error: profileError } = await supabaseClient
+        const { data: profileData, error: profileError } = await supabaseClient
           .from('user_profiles')
           .insert({
             user_id: newUser.user.id,
@@ -83,6 +85,9 @@ serve(async (req) => {
             role: role || 'user',
             is_active: true
           })
+          .select()
+
+        console.log('Profile creation result:', { profileData, profileError })
 
         if (profileError) {
           console.error('Profile creation error:', profileError)
