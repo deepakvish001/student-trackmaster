@@ -525,6 +525,14 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
+      log_auth_event: {
+        Args: { event_type: string; event_details?: Json }
+        Returns: undefined
+      }
+      log_file_operation: {
+        Args: { operation_type: string; file_details?: Json }
+        Returns: undefined
+      }
       log_high_risk_activity: {
         Args: {
           activity_type: string

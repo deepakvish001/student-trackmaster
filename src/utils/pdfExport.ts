@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Student } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 
 // Extend jsPDF type for autoTable
 declare module 'jspdf' {
@@ -256,6 +257,23 @@ export const exportStudentsToPDF = async (students: Student[], filters?: {
   
   if (filters?.batchName) {
     filename = `students-${filters.batchName.replace(/[^a-zA-Z0-9]/g, '_')}-${timestamp}.pdf`;
+  }
+  
+  // Log the PDF download activity
+  try {
+    await supabase.rpc('log_file_operation', {
+      operation_type: 'PDF_DOWNLOAD',
+      file_details: {
+        report_type: filters?.searchTerm || filters?.selectedBatch ? 'filtered' : 'complete',
+        student_count: students.length,
+        batch_name: filters?.batchName,
+        search_term: filters?.searchTerm,
+        total_pages: doc.getNumberOfPages(),
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (auditError) {
+    console.error('Failed to log PDF download:', auditError);
   }
   
   // Save the PDF
