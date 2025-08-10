@@ -49,30 +49,37 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     return <Navigate to="/dashboard" replace />;
   }
 
+  const menuItems = [
+    { 
+      title: 'Back to Dashboard', 
+      path: '/dashboard', 
+      icon: ArrowLeft, 
+      colorClass: 'icon-electric-blue hover:text-electric-blue',
+      bgClass: 'hover:bg-electric-blue/10'
+    },
+  ];
+
   const adminMenuItems = [
     { 
       title: 'Audit Logs', 
       path: '/admin/audit-logs', 
       icon: FileText, 
       colorClass: 'icon-electric-blue hover:text-electric-blue',
-      bgClass: 'hover:bg-electric-blue/10',
-      description: 'View system audit trails'
+      bgClass: 'hover:bg-electric-blue/10'
     },
     { 
       title: 'User Management', 
       path: '/admin/users', 
       icon: Users, 
       colorClass: 'icon-vibrant-purple hover:text-vibrant-purple',
-      bgClass: 'hover:bg-vibrant-purple/10',
-      description: 'Manage user accounts and roles'
+      bgClass: 'hover:bg-vibrant-purple/10'
     },
     { 
       title: 'System Settings', 
       path: '/admin/settings', 
       icon: Settings, 
       colorClass: 'icon-emerald-green hover:text-emerald-green',
-      bgClass: 'hover:bg-emerald-green/10',
-      description: 'Configure system parameters'
+      bgClass: 'hover:bg-emerald-green/10'
     },
   ];
 
@@ -103,25 +110,33 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </SidebarHeader>
 
           <SidebarContent className="px-4 py-6">
-            {/* Back to Dashboard */}
+            {/* Main Menu */}
             <SidebarGroup>
               <SidebarGroupContent>
-                <div className="px-2 mb-4">
-                  <Link to="/dashboard">
-                    <Button 
-                      variant="outline"
-                      className="w-full justify-start gap-3 h-12 font-medium transition-colors"
-                    >
-                      <ArrowLeft className="w-4 h-4" />
-                      <span>Back to Dashboard</span>
-                    </Button>
-                  </Link>
-                </div>
+                <SidebarMenu className="space-y-2">
+                  {menuItems.map((item) => (
+                    <SidebarMenuItem key={item.path}>
+                      <SidebarMenuButton asChild>
+                        <Link
+                          to={item.path}
+                          className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
+                            location.pathname === item.path
+                              ? 'bg-primary text-primary-foreground font-medium' 
+                              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                          }`}
+                        >
+                          <item.icon className="w-5 h-5 mr-3" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
 
             {/* Admin Menu */}
-            <SidebarGroup>
+            <SidebarGroup className="mt-6">
               <SidebarGroupContent>
                 <div className="px-4 py-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
                   Administration
@@ -132,19 +147,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                       <SidebarMenuButton asChild>
                         <Link
                           to={item.path}
-                          className={`flex flex-col items-start px-4 py-4 rounded-lg transition-colors ${
+                          className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
                             location.pathname === item.path
                               ? 'bg-primary text-primary-foreground font-medium' 
                               : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                           }`}
                         >
-                          <div className="flex items-center w-full">
-                            <item.icon className="w-5 h-5 mr-3" />
-                            <span>{item.title}</span>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1 ml-8">
-                            {item.description}
-                          </div>
+                          <item.icon className="w-5 h-5 mr-3" />
+                          <span>{item.title}</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -166,9 +176,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </SidebarFooter>
         </Sidebar>
 
-        <main className="flex-1 overflow-auto bg-background p-8">
-          <div className="max-w-7xl mx-auto">
-            {children}
+        <main className="flex-1 overflow-y-auto bg-background">
+          <div className="p-8">
+            <div className="max-w-7xl mx-auto">
+              {children}
+            </div>
           </div>
         </main>
       </div>
