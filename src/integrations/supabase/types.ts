@@ -243,6 +243,36 @@ export type Database = {
         }
         Relationships: []
       }
+      system_settings: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value: Json
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           avatar_url: string | null
@@ -292,6 +322,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      get_system_settings: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_user_profile: {
         Args: { target_user_id: string }
         Returns: Json
@@ -302,6 +336,14 @@ export type Database = {
       }
       toggle_user_status: {
         Args: { target_user_id: string }
+        Returns: Json
+      }
+      update_system_setting: {
+        Args: { key: string; value: Json }
+        Returns: Json
+      }
+      update_system_settings: {
+        Args: { settings: Json }
         Returns: Json
       }
       update_user_role: {

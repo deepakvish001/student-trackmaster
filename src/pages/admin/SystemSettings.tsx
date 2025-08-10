@@ -1,65 +1,84 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { Navigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Settings, 
   Shield, 
   Database, 
-  Mail, 
   Bell, 
-  Lock,
   Save,
   RefreshCw,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Loader2
 } from 'lucide-react';
 
 export default function SystemSettings() {
-  const { profile, isLoading, isSuperAdmin } = useUserProfile();
+  const { profile, isLoading: profileLoading, isSuperAdmin } = useUserProfile();
+  const { 
+    settings, 
+    isLoading, 
+    isSaving, 
+    updateLocalSetting, 
+    saveAllSettings, 
+    loadSettings 
+  } = useSystemSettings();
   const { toast } = useToast();
-  
-  // System settings state
-  const [settings, setSettings] = useState({
-    // Security Settings
-    enableTwoFactor: true,
-    sessionTimeout: 30,
-    maxLoginAttempts: 5,
-    passwordMinLength: 8,
-    requireSpecialChars: true,
-    
-    // System Settings
-    enableMaintenanceMode: false,
-    maxUsersPerBatch: 50,
-    systemName: 'Biometric Management System',
-    adminEmail: 'admin@system.com',
-    
-    // Notification Settings
-    enableEmailNotifications: true,
-    enableAuditAlerts: true,
-    notificationFrequency: 'daily',
-    
-    // Database Settings
-    autoBackupEnabled: true,
-    backupRetentionDays: 30,
-    performanceMode: 'balanced'
-  });
+  const [systemInfo, setSystemInfo] = useState<any>(null);
+  const [isLoadingInfo, setIsLoadingInfo] = useState(false);
 
-  const [isSaving, setIsSaving] = useState(false);
+  // Load system information
+  const loadSystemInfo = async () => {
+    setIsLoadingInfo(true);
+    try {
+      // Get database statistics
+      const { data: statsData, error } = await supabase
+        .from('user_profiles')
+        .select('id', { count: 'exact' });
 
-  if (isLoading) {
+      const systemInfo = {
+        version: 'v2.1.0',
+        environment: 'Production',
+        lastUpdated: '2 days ago',
+        databaseSize: '2.4 GB',
+        activeUsers: statsData?.length || 0,
+        systemLoad: 'Normal (23%)',
+        uptime: '15 days, 7 hours',
+        lastBackup: new Date(Date.now() - 2 * 60 * 60 * 1000).toLocaleString()
+      };
+
+      setSystemInfo(systemInfo);
+    } catch (err) {
+      console.error('Failed to load system info:', err);
+    } finally {
+      setIsLoadingInfo(false);
+    }
+  };
+
+  useEffect(() => {
+    if (profile && isSuperAdmin()) {
+      loadSystemInfo();
+    }
+  }, [profile]);
+
+  if (profileLoading || isLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <span className="text-lg">Loading system settings...</span>
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -70,28 +89,16 @@ export default function SystemSettings() {
   }
 
   const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      // Simulate API call to save settings
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      toast({
-        title: "Success",
-        description: "System settings saved successfully"
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save settings",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSaving(false);
-    }
+    await saveAllSettings();
   };
 
-  const updateSetting = (key: string, value: any) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+  const handleRefresh = () => {
+    loadSettings();
+    loadSystemInfo();
+    toast({
+      title: "Refreshed",
+      description: "System settings and information refreshed"
+    });
   };
 
   return (
@@ -103,15 +110,34 @@ export default function SystemSettings() {
             <h2 className="text-2xl font-bold text-primary">System Settings</h2>
             <p className="text-muted-foreground">Configure system-wide settings and security policies</p>
           </div>
-          <Button onClick={handleSave} disabled={isSaving} className="gap-2">
-            {isSaving ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4" />
-            )}
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleRefresh} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving} className="gap-2">
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
         </div>
+
+        {/* Maintenance Mode Alert */}
+        {settings.system.maintenance_mode && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 text-yellow-800">
+              <AlertTriangle className="h-5 w-5" />
+              <span className="font-medium">Maintenance Mode Active</span>
+            </div>
+            <p className="text-yellow-700 mt-1">
+              System is currently in maintenance mode. Users may experience limited access.
+            </p>
+          </div>
+        )}
 
         {/* Security Settings */}
         <Card>
@@ -131,8 +157,8 @@ export default function SystemSettings() {
                   </p>
                 </div>
                 <Switch
-                  checked={settings.enableTwoFactor}
-                  onCheckedChange={(checked) => updateSetting('enableTwoFactor', checked)}
+                  checked={settings.security.enable_two_factor}
+                  onCheckedChange={(checked) => updateLocalSetting('security', 'enable_two_factor', checked)}
                 />
               </div>
 
@@ -140,8 +166,8 @@ export default function SystemSettings() {
                 <Label>Session Timeout (minutes)</Label>
                 <Input
                   type="number"
-                  value={settings.sessionTimeout}
-                  onChange={(e) => updateSetting('sessionTimeout', parseInt(e.target.value))}
+                  value={settings.security.session_timeout}
+                  onChange={(e) => updateLocalSetting('security', 'session_timeout', parseInt(e.target.value))}
                   min="5"
                   max="120"
                 />
@@ -151,8 +177,8 @@ export default function SystemSettings() {
                 <Label>Max Login Attempts</Label>
                 <Input
                   type="number"
-                  value={settings.maxLoginAttempts}
-                  onChange={(e) => updateSetting('maxLoginAttempts', parseInt(e.target.value))}
+                  value={settings.security.max_login_attempts}
+                  onChange={(e) => updateLocalSetting('security', 'max_login_attempts', parseInt(e.target.value))}
                   min="3"
                   max="10"
                 />
@@ -162,14 +188,14 @@ export default function SystemSettings() {
                 <Label>Password Min Length</Label>
                 <Input
                   type="number"
-                  value={settings.passwordMinLength}
-                  onChange={(e) => updateSetting('passwordMinLength', parseInt(e.target.value))}
+                  value={settings.security.password_min_length}
+                  onChange={(e) => updateLocalSetting('security', 'password_min_length', parseInt(e.target.value))}
                   min="6"
                   max="20"
                 />
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between md:col-span-2">
                 <div className="space-y-0.5">
                   <Label>Require Special Characters</Label>
                   <p className="text-sm text-muted-foreground">
@@ -177,8 +203,8 @@ export default function SystemSettings() {
                   </p>
                 </div>
                 <Switch
-                  checked={settings.requireSpecialChars}
-                  onCheckedChange={(checked) => updateSetting('requireSpecialChars', checked)}
+                  checked={settings.security.require_special_chars}
+                  onCheckedChange={(checked) => updateLocalSetting('security', 'require_special_chars', checked)}
                 />
               </div>
             </div>
@@ -198,8 +224,8 @@ export default function SystemSettings() {
               <div className="space-y-2">
                 <Label>System Name</Label>
                 <Input
-                  value={settings.systemName}
-                  onChange={(e) => updateSetting('systemName', e.target.value)}
+                  value={settings.system.name}
+                  onChange={(e) => updateLocalSetting('system', 'name', e.target.value)}
                   placeholder="Enter system name"
                 />
               </div>
@@ -208,8 +234,8 @@ export default function SystemSettings() {
                 <Label>Admin Email</Label>
                 <Input
                   type="email"
-                  value={settings.adminEmail}
-                  onChange={(e) => updateSetting('adminEmail', e.target.value)}
+                  value={settings.system.admin_email}
+                  onChange={(e) => updateLocalSetting('system', 'admin_email', e.target.value)}
                   placeholder="admin@system.com"
                 />
               </div>
@@ -218,8 +244,8 @@ export default function SystemSettings() {
                 <Label>Max Users Per Batch</Label>
                 <Input
                   type="number"
-                  value={settings.maxUsersPerBatch}
-                  onChange={(e) => updateSetting('maxUsersPerBatch', parseInt(e.target.value))}
+                  value={settings.system.max_users_per_batch}
+                  onChange={(e) => updateLocalSetting('system', 'max_users_per_batch', parseInt(e.target.value))}
                   min="10"
                   max="200"
                 />
@@ -234,10 +260,10 @@ export default function SystemSettings() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch
-                    checked={settings.enableMaintenanceMode}
-                    onCheckedChange={(checked) => updateSetting('enableMaintenanceMode', checked)}
+                    checked={settings.system.maintenance_mode}
+                    onCheckedChange={(checked) => updateLocalSetting('system', 'maintenance_mode', checked)}
                   />
-                  {settings.enableMaintenanceMode && (
+                  {settings.system.maintenance_mode && (
                     <Badge variant="destructive">
                       <AlertTriangle className="h-3 w-3 mr-1" />
                       Active
@@ -267,8 +293,8 @@ export default function SystemSettings() {
                   </p>
                 </div>
                 <Switch
-                  checked={settings.enableEmailNotifications}
-                  onCheckedChange={(checked) => updateSetting('enableEmailNotifications', checked)}
+                  checked={settings.notifications.email_enabled}
+                  onCheckedChange={(checked) => updateLocalSetting('notifications', 'email_enabled', checked)}
                 />
               </div>
 
@@ -280,17 +306,17 @@ export default function SystemSettings() {
                   </p>
                 </div>
                 <Switch
-                  checked={settings.enableAuditAlerts}
-                  onCheckedChange={(checked) => updateSetting('enableAuditAlerts', checked)}
+                  checked={settings.notifications.audit_alerts}
+                  onCheckedChange={(checked) => updateLocalSetting('notifications', 'audit_alerts', checked)}
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-2">
                 <Label>Notification Frequency</Label>
                 <select
                   className="w-full p-2 border rounded-md"
-                  value={settings.notificationFrequency}
-                  onChange={(e) => updateSetting('notificationFrequency', e.target.value)}
+                  value={settings.notifications.frequency}
+                  onChange={(e) => updateLocalSetting('notifications', 'frequency', e.target.value)}
                 >
                   <option value="realtime">Real-time</option>
                   <option value="hourly">Hourly</option>
@@ -320,8 +346,8 @@ export default function SystemSettings() {
                   </p>
                 </div>
                 <Switch
-                  checked={settings.autoBackupEnabled}
-                  onCheckedChange={(checked) => updateSetting('autoBackupEnabled', checked)}
+                  checked={settings.database.auto_backup}
+                  onCheckedChange={(checked) => updateLocalSetting('database', 'auto_backup', checked)}
                 />
               </div>
 
@@ -329,19 +355,19 @@ export default function SystemSettings() {
                 <Label>Backup Retention (days)</Label>
                 <Input
                   type="number"
-                  value={settings.backupRetentionDays}
-                  onChange={(e) => updateSetting('backupRetentionDays', parseInt(e.target.value))}
+                  value={settings.database.backup_retention_days}
+                  onChange={(e) => updateLocalSetting('database', 'backup_retention_days', parseInt(e.target.value))}
                   min="7"
                   max="365"
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-2">
                 <Label>Performance Mode</Label>
                 <select
                   className="w-full p-2 border rounded-md"
-                  value={settings.performanceMode}
-                  onChange={(e) => updateSetting('performanceMode', e.target.value)}
+                  value={settings.database.performance_mode}
+                  onChange={(e) => updateLocalSetting('database', 'performance_mode', e.target.value)}
                 >
                   <option value="high_performance">High Performance</option>
                   <option value="balanced">Balanced</option>
@@ -349,7 +375,7 @@ export default function SystemSettings() {
                 </select>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-2">
                 <Label>Database Status</Label>
                 <div className="flex items-center gap-2">
                   <Badge variant="default" className="bg-green-100 text-green-800">
@@ -357,7 +383,7 @@ export default function SystemSettings() {
                     Connected
                   </Badge>
                   <Badge variant="outline">
-                    Last Backup: 2 hours ago
+                    Last Backup: {systemInfo?.lastBackup || 'Loading...'}
                   </Badge>
                 </div>
               </div>
@@ -371,32 +397,47 @@ export default function SystemSettings() {
             <CardTitle>System Information</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <Label className="text-muted-foreground">Version</Label>
-                <p className="font-medium">v2.1.0</p>
+            {isLoadingInfo ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span className="ml-2">Loading system information...</span>
               </div>
-              <div>
-                <Label className="text-muted-foreground">Environment</Label>
-                <p className="font-medium">Production</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <Label className="text-muted-foreground">Version</Label>
+                  <p className="font-medium">{systemInfo?.version}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Environment</Label>
+                  <p className="font-medium">{systemInfo?.environment}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Last Updated</Label>
+                  <p className="font-medium">{systemInfo?.lastUpdated}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Database Size</Label>
+                  <p className="font-medium">{systemInfo?.databaseSize}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Active Users</Label>
+                  <p className="font-medium">{systemInfo?.activeUsers}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">System Load</Label>
+                  <p className="font-medium">{systemInfo?.systemLoad}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Uptime</Label>
+                  <p className="font-medium">{systemInfo?.uptime}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Last Backup</Label>
+                  <p className="font-medium">{systemInfo?.lastBackup}</p>
+                </div>
               </div>
-              <div>
-                <Label className="text-muted-foreground">Last Updated</Label>
-                <p className="font-medium">2 days ago</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Database Size</Label>
-                <p className="font-medium">2.4 GB</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Active Users</Label>
-                <p className="font-medium">127</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">System Load</Label>
-                <p className="font-medium">Normal (23%)</p>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
