@@ -197,227 +197,198 @@ export default function StudentList() {
   return (
     <DashboardLayout>
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-electric-blue/5 p-6">
-        <div className="max-w-7xl mx-auto space-y-8">
-          {/* Premium Header */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-            <div className="space-y-4">
-              <div className="flex items-center space-x-4">
-                <div className="w-14 h-14 bg-electric-blue/10 border border-electric-blue/20 rounded-2xl flex items-center justify-center">
-                  <Users className="w-7 h-7 text-electric-blue" />
-                </div>
-                <div>
-                  <h1 className="text-4xl font-bold text-branded-gradient">Student Management</h1>
-                  <p className="text-lg text-muted-foreground">{stats.totalStudents} active enrollments across all batches</p>
-                </div>
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Clean Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-electric-blue/10 border border-electric-blue/20 rounded-xl flex items-center justify-center">
+                <Users className="w-6 h-6 text-electric-blue" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-foreground">Student List</h1>
+                <p className="text-muted-foreground">{stats.totalStudents} total students</p>
               </div>
             </div>
-
-            <div className="flex items-center gap-4">
+            
+            <div className="flex items-center gap-3">
               <Button
                 onClick={() => window.location.href = '/students/enhanced-add'}
-                className="h-12 px-6 bg-electric-blue hover:bg-electric-blue/90 text-white rounded-2xl font-semibold transition-all duration-300 hover:scale-105 shadow-glow"
+                className="h-10 px-4 bg-electric-blue hover:bg-electric-blue/90 text-white font-medium"
               >
-                <Plus className="h-5 w-5 mr-3" />
-                Add New Student
+                <Plus className="h-4 w-4 mr-2" />
+                Add Student
               </Button>
               <Button
                 onClick={() => refetch()}
                 variant="outline"
-                className="h-12 px-6 border-2 border-vibrant-purple/30 text-vibrant-purple hover:bg-vibrant-purple/5 rounded-2xl font-semibold transition-all duration-300 hover:scale-105"
+                className="h-10 px-4 border border-border hover:bg-muted/50"
               >
-                <RefreshCw className="h-5 w-5 mr-3" />
-                Refresh Data
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
               </Button>
             </div>
           </div>
 
-          {/* Premium Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="premium-card group interactive-card">
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="w-14 h-14 bg-emerald-green/10 border border-emerald-green/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                      <Fingerprint className="h-7 w-7 text-emerald-green" />
-                    </div>
-                    <Activity className="h-5 w-5 text-emerald-green" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-emerald-green uppercase tracking-wider">
-                      Complete Biometrics
-                    </h3>
-                    <p className="text-3xl font-bold text-foreground">{stats.completeBiometrics}</p>
-                    <p className="text-sm text-muted-foreground">Fully enrolled students</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="premium-card group interactive-card">
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="w-14 h-14 bg-sunset-orange/10 border border-sunset-orange/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                      <Shield className="h-7 w-7 text-sunset-orange" />
-                    </div>
-                    <Clock className="h-5 w-5 text-sunset-orange" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-sunset-orange uppercase tracking-wider">
-                      Partial Biometrics
-                    </h3>
-                    <p className="text-3xl font-bold text-foreground">{stats.partialBiometrics}</p>
-                    <p className="text-sm text-muted-foreground">In progress</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="premium-card group interactive-card">
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="w-14 h-14 bg-pink-rose/10 border border-pink-rose/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                      <Activity className="h-7 w-7 text-pink-rose" />
-                    </div>
-                    <AlertTriangle className="h-5 w-5 text-pink-rose" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-pink-rose uppercase tracking-wider">
-                      Incomplete
-                    </h3>
-                    <p className="text-3xl font-bold text-foreground">{stats.noBiometrics}</p>
-                    <p className="text-sm text-muted-foreground">Requires enrollment</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="premium-card group interactive-card">
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="w-14 h-14 bg-electric-blue/10 border border-electric-blue/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                      <Users className="h-7 w-7 text-electric-blue" />
-                    </div>
-                    <Database className="h-5 w-5 text-electric-blue" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-electric-blue uppercase tracking-wider">
-                      Total Students
-                    </h3>
-                    <p className="text-3xl font-bold text-foreground">{stats.totalStudents}</p>
-                    <p className="text-sm text-muted-foreground">System-wide</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Premium Filters */}
+          {/* Main Content Card */}
           <Card className="premium-card">
             <CardContent className="p-6">
-              <div className="space-y-6">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-vibrant-purple/10 border border-vibrant-purple/20 rounded-xl flex items-center justify-center">
-                    <Search className="h-5 w-5 text-vibrant-purple" />
+              {/* Batch Filter */}
+              <div className="space-y-4 mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-64">
+                    <label className="text-sm font-semibold text-foreground mb-2 block">
+                      Batch Name
+                    </label>
+                    <select
+                      value={selectedBatch}
+                      onChange={(e) => setSelectedBatch(e.target.value)}
+                      className="w-full h-10 px-3 bg-background border border-border rounded-md text-foreground focus:border-electric-blue focus:outline-none"
+                    >
+                      <option value="all">-- Select Batch --</option>
+                      {batches.map((batch) => (
+                        <option key={batch.id} value={batch.id}>
+                          {batch.batch_name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-foreground">Advanced Search & Filters</h3>
-                    <p className="text-sm text-muted-foreground">Find students quickly with powerful filtering options</p>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-3">
-                    <Label className="text-sm font-bold text-electric-blue uppercase tracking-wider">Search Students</Label>
-                    <div className="relative group">
-                      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-electric-blue group-focus-within:scale-110 transition-transform duration-300" />
-                      <Input
-                        placeholder="Search by name, mobile, or email..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-12 h-12 bg-muted/20 border-2 border-border/50 focus:border-electric-blue focus:bg-background rounded-xl transition-all duration-300"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <Label className="text-sm font-bold text-vibrant-purple uppercase tracking-wider">Filter by Batch</Label>
-                    <div className="relative group">
-                      <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-vibrant-purple group-focus-within:scale-110 transition-transform duration-300" />
-                      <select
-                        value={selectedBatch}
-                        onChange={(e) => setSelectedBatch(e.target.value)}
-                        className="pl-12 pr-4 h-12 w-full bg-muted/20 border-2 border-border/50 focus:border-vibrant-purple focus:bg-background rounded-xl transition-all duration-300 text-foreground"
-                      >
-                        <option value="all">All Batches</option>
-                        {batches.map((batch) => (
-                          <option key={batch.id} value={batch.id}>
-                            {batch.batch_name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <Label className="text-sm font-bold text-emerald-green uppercase tracking-wider">Sort By</Label>
-                    <div className="relative group">
-                      <Database className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-emerald-green group-focus-within:scale-110 transition-transform duration-300" />
-                      <select
-                        value={`${sortBy}-${sortOrder}`}
-                        onChange={(e) => {
-                          const [field, order] = e.target.value.split('-');
-                          setSortBy(field as any);
-                          setSortOrder(order as any);
-                        }}
-                        className="pl-12 pr-4 h-12 w-full bg-muted/20 border-2 border-border/50 focus:border-emerald-green focus:bg-background rounded-xl transition-all duration-300 text-foreground"
-                      >
-                        <option value="created_at-desc">Newest First</option>
-                        <option value="created_at-asc">Oldest First</option>
-                        <option value="student_name-asc">Name A-Z</option>
-                        <option value="student_name-desc">Name Z-A</option>
-                      </select>
-                    </div>
+                  <div className="pt-6">
+                    <Button
+                      onClick={() => refetch()}
+                      className="h-10 px-6 bg-electric-blue hover:bg-electric-blue/90 text-white font-medium"
+                    >
+                      Submit
+                    </Button>
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Premium Student Table */}
-          <Card className="premium-card">
-            <CardHeader className="pb-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-electric-blue/10 border border-electric-blue/20 rounded-xl flex items-center justify-center">
-                  <Users className="h-5 w-5 text-electric-blue" />
+              {/* Student List Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-foreground">Student List</h3>
+                
+                {/* Table Controls */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Show</span>
+                    <select className="h-8 px-2 bg-background border border-border rounded text-sm">
+                      <option value="10">10</option>
+                      <option value="25">25</option>
+                      <option value="50">50</option>
+                    </select>
+                    <span className="text-sm text-muted-foreground">entries</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Search:</span>
+                    <Input
+                      placeholder=""
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-48 h-8 text-sm"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-xl font-bold text-foreground">Student Database</CardTitle>
-                  <p className="text-sm text-muted-foreground">{students.length} active student records</p>
+
+                {/* Data Table */}
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-muted/30">
+                      <tr>
+                        <th className="text-left p-3 font-semibold text-foreground border-r border-border">StudentName</th>
+                        <th className="text-left p-3 font-semibold text-foreground border-r border-border">Batch</th>
+                        <th className="text-center p-3 font-semibold text-foreground border-r border-border">Finger 1</th>
+                        <th className="text-center p-3 font-semibold text-foreground border-r border-border">Finger 2</th>
+                        <th className="text-center p-3 font-semibold text-foreground border-r border-border">Finger 3</th>
+                        <th className="text-center p-3 font-semibold text-foreground border-r border-border">Finger 4</th>
+                        <th className="text-center p-3 font-semibold text-foreground border-r border-border">Finger 5</th>
+                        <th className="text-center p-3 font-semibold text-foreground">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {students.map((student, index) => (
+                        <tr key={student.id} className={index % 2 === 0 ? 'bg-background' : 'bg-muted/10'}>
+                          <td className="p-3 border-r border-border">
+                            <div>
+                              <div className="font-medium text-foreground">{student.student_name}</div>
+                              <div className="text-sm text-muted-foreground">ID: {student.id}</div>
+                            </div>
+                          </td>
+                          <td className="p-3 border-r border-border">
+                            <div className="text-foreground">
+                              {student.batches?.batch_name || 'No Batch'}
+                            </div>
+                          </td>
+                          {[1, 2, 3, 4, 5].map((fingerIndex) => (
+                            <td key={fingerIndex} className="p-3 border-r border-border text-center">
+                              <div className="w-16 h-16 mx-auto bg-muted/20 border border-border rounded flex items-center justify-center overflow-hidden">
+                                {student[`finger_${fingerIndex}_image` as keyof typeof student] ? (
+                                  <img 
+                                    src={student[`finger_${fingerIndex}_image` as keyof typeof student] as string}
+                                    alt={`Finger ${fingerIndex}`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : student[`finger_${fingerIndex}` as keyof typeof student] ? (
+                                  <div className="w-12 h-12 bg-electric-blue/10 rounded flex items-center justify-center">
+                                    <Shield className="w-6 h-6 text-electric-blue" />
+                                  </div>
+                                ) : (
+                                  <div className="text-xs text-muted-foreground">No Data</div>
+                                )}
+                              </div>
+                            </td>
+                          ))}
+                          <td className="p-3 text-center">
+                            <select 
+                              className="h-8 px-3 bg-sunset-orange hover:bg-sunset-orange/90 text-white rounded font-medium cursor-pointer"
+                              onChange={(e) => {
+                                if (e.target.value === 'edit') {
+                                  handleEdit(student);
+                                } else if (e.target.value === 'delete') {
+                                  handleDelete(student.id);
+                                }
+                                e.target.value = 'action'; // Reset selection
+                              }}
+                              defaultValue="action"
+                            >
+                              <option value="action">Action</option>
+                              <option value="edit">Edit</option>
+                              <option value="delete">Delete</option>
+                            </select>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  
+                  {students.length === 0 && (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-muted/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Database className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                      <p className="text-muted-foreground">No students found</p>
+                    </div>
+                  )}
                 </div>
+
+                {/* Pagination Info */}
+                {students.length > 0 && (
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <div>
+                      Showing 1 to {students.length} of {stats.totalStudents} entries
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button variant="outline" size="sm" disabled>
+                        Previous
+                      </Button>
+                      <span className="px-3 py-1 bg-electric-blue text-white rounded text-sm">1</span>
+                      <Button variant="outline" size="sm" disabled>
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <Tabs defaultValue="table" className="space-y-4">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="table">Student List</TabsTrigger>
-                  <TabsTrigger value="debug">Debug Data</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="table" className="space-y-4">
-                  <EnhancedStudentTable
-                    students={students}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="debug" className="space-y-4">
-                  <StudentDataDebugger />
-                </TabsContent>
-              </Tabs>
             </CardContent>
           </Card>
 
