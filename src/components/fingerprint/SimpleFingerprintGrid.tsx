@@ -119,15 +119,15 @@ export function SimpleFingerprintGrid({
   };
 
   return (
-    <div className="grid grid-cols-5 gap-10 justify-items-center px-8">
+    <div className="grid grid-cols-5 gap-12 justify-items-center px-12 max-w-7xl mx-auto">
       {fingerprints.map((fingerprint, index) => (
         <Card 
           key={index}
-          className={`w-full max-w-[220px] transition-all duration-300 hover:scale-105 ${getStatusColor(fingerprint.status)} border-2 bg-gray-900/80 backdrop-blur-sm shadow-xl rounded-3xl`}
+          className={`w-full max-w-[200px] transition-all duration-300 hover:scale-[1.02] ${getStatusColor(fingerprint.status)} border-2 bg-gray-900/80 backdrop-blur-sm shadow-xl rounded-2xl overflow-hidden`}
         >
-          <CardContent className="p-6 text-center space-y-4">
+          <CardContent className="p-5 text-center space-y-3">
             {/* Fingerprint Display */}
-            <div className={`mx-auto w-36 h-44 border-2 rounded-2xl flex items-center justify-center transition-all duration-300 ${
+            <div className={`mx-auto w-32 h-40 border-2 rounded-xl flex items-center justify-center transition-all duration-300 overflow-hidden ${
               fingerprint.status === 'capturing' || fingerprint.status === 'retrying'
                 ? 'border-orange-500 border-dashed animate-pulse bg-orange-500/15' 
                 : fingerprint.status === 'captured'
@@ -140,16 +140,18 @@ export function SimpleFingerprintGrid({
                 <img 
                   src={fingerprint.imageData} 
                   alt={`${fingerNames[index]} preview`}
-                  className="w-full h-full object-contain rounded"
+                  className="w-full h-full object-contain rounded-lg"
                   style={{
                     filter: 'contrast(1.3) brightness(1.15)',
-                    imageRendering: 'crisp-edges'
+                    imageRendering: 'crisp-edges',
+                    maxWidth: '100%',
+                    maxHeight: '100%'
                   }}
                 />
               ) : (
                 <div className="flex flex-col items-center space-y-2">
                   {getStatusIcon(fingerprint.status)}
-                  <span className="text-sm font-medium text-gray-300">
+                  <span className="text-xs font-medium text-gray-300">
                     {fingerprint.status === 'capturing' ? 'Capturing...' :
                      fingerprint.status === 'retrying' ? 'Retrying...' :
                      fingerprint.status === 'failed' ? 'Failed' :
@@ -165,12 +167,12 @@ export function SimpleFingerprintGrid({
             </div>
 
             {/* Action Button */}
-            <div>
+            <div className="w-full">
               {fingerprint.status === 'captured' ? (
                 <Button
                   size="sm"
                   variant="outline"
-                  className="w-full py-3 text-sm font-bold bg-orange-500/20 border-orange-500/60 text-orange-300 hover:bg-orange-500/30 hover:text-orange-200 transition-all duration-200 rounded-xl"
+                  className="w-full py-2 text-sm font-bold bg-orange-500/20 border-orange-500/60 text-orange-300 hover:bg-orange-500/30 hover:text-orange-200 transition-all duration-200 rounded-lg"
                   onClick={() => handleRetry(index)}
                   disabled={disabled || isCapturing}
                 >
@@ -181,7 +183,7 @@ export function SimpleFingerprintGrid({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="w-full py-3 text-sm font-bold bg-yellow-500/20 border-yellow-500/60 text-yellow-300 hover:bg-yellow-500/30 hover:text-yellow-200 transition-all duration-200 rounded-xl"
+                  className="w-full py-2 text-sm font-bold bg-yellow-500/20 border-yellow-500/60 text-yellow-300 hover:bg-yellow-500/30 hover:text-yellow-200 transition-all duration-200 rounded-lg"
                   onClick={() => handleRetry(index)}
                   disabled={disabled || isCapturing}
                 >
@@ -192,7 +194,7 @@ export function SimpleFingerprintGrid({
                 <Button
                   size="sm"
                   variant={fingerprint.status === 'capturing' || fingerprint.status === 'retrying' ? "default" : "outline"}
-                  className="w-full py-3 text-sm font-bold bg-gray-700/80 border-gray-500 text-white hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-all duration-200 rounded-xl"
+                  className="w-full py-2 text-sm font-bold bg-gray-700/80 border-gray-500 text-white hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-all duration-200 rounded-lg"
                   onClick={() => handleCapture(index)}
                   disabled={disabled || isCapturing || fingerprint.status === 'capturing' || fingerprint.status === 'retrying'}
                 >
