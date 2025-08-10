@@ -338,9 +338,12 @@ export default function EnhancedDashboard() {
                 </div>
               </CardHeader>
               <CardContent className="p-8">
+                {/* Debug: {console.log('Dashboard stats:', stats)} */}
                 {stats?.batchUtilization && stats.batchUtilization.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {stats.batchUtilization.map((batch, index) => (
+                     {stats.batchUtilization.map((batch, index) => {
+                       console.log('Rendering batch:', batch);
+                       return (
                       <div key={batch.id} className="bg-black/60 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-6 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 group">
                         <div className="space-y-4">
                           <div className="flex justify-between items-start">
@@ -349,7 +352,10 @@ export default function EnhancedDashboard() {
                                 <span className="text-sm font-bold text-blue-400">{index + 1}</span>
                               </div>
                               <div>
-                                <h3 className="font-bold text-orange-200 text-xl leading-tight">{batch.name}</h3>
+                                <h3 className="font-bold text-orange-200 text-xl leading-tight">
+                                  {batch.name || 'No Name'} 
+                                  <span className="text-xs text-red-400 ml-2">({typeof batch.name})</span>
+                                </h3>
                                 <p className="text-sm text-gray-400 mt-1">{batch.serialNumber}</p>
                               </div>
                             </div>
@@ -381,10 +387,11 @@ export default function EnhancedDashboard() {
                               <span>{batch.max - batch.current} slots available</span>
                             </div>
                           </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                         </div>
+                       </div>
+                       );
+                     })}
+                   </div>
                 ) : (
                   <div className="text-center py-16">
                     <div className="w-20 h-20 bg-black/80 rounded-3xl flex items-center justify-center mx-auto mb-6">
