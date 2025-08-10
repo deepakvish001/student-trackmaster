@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ChevronDown, Check } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -94,10 +96,11 @@ export default function UserManagement() {
       
       return data.users as UserProfile[];
     },
-    staleTime: 30 * 1000, // 30 seconds - shorter for testing
-    gcTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 5 * 60 * 1000, // 5 minutes - longer cache
+    gcTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: false, // Prevent refresh when navigating back
     refetchOnMount: false, // Use cached data when returning to page
+    refetchInterval: false, // Disable automatic refetching
   });
 
   // Create user mutation
@@ -365,7 +368,7 @@ export default function UserManagement() {
                 Add New User
               </Button>
             </DialogTrigger>
-          <DialogContent>
+          <DialogContent onPointerDownOutside={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle>Create New User</DialogTitle>
             </DialogHeader>
@@ -444,32 +447,78 @@ export default function UserManagement() {
               {state.createUserForm.role === 'user' && (
                 <div>
                   <Label>Batch Access (Optional - User can always access their own created batches)</Label>
-                  <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
-                    {batches?.map((batch) => (
-                      <div key={batch.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`batch-${batch.id}`}
-                          checked={(state.createUserForm.batch_access || []).includes(batch.id)}
-                          onCheckedChange={(checked) => {
-                            const currentBatchAccess = state.createUserForm.batch_access || [];
-                            const newBatchAccess = checked
-                              ? [...currentBatchAccess, batch.id]
-                              : currentBatchAccess.filter(id => id !== batch.id);
-                            updateState({
-                              createUserForm: { ...state.createUserForm, batch_access: newBatchAccess }
-                            });
-                          }}
-                        />
-                        <Label htmlFor={`batch-${batch.id}`} className="text-sm">
-                          {batch.batch_name} - {batch.admin_name}
-                        </Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between"
+                      >
+                        {state.createUserForm.batch_access?.length > 0
+                          ? `${state.createUserForm.batch_access.length} batches selected`
+                          : "Select batches"}
+                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent 
+                      className="w-full p-0 bg-background border shadow-lg z-50" 
+                      align="start"
+                      onPointerDownOutside={(e) => e.preventDefault()}
+                      onInteractOutside={(e) => e.preventDefault()}
+                    >
+                      <div className="p-3 space-y-2 max-h-60 overflow-y-auto">
+                        {/* Select All option */}
+                        <div className="flex items-center space-x-2 p-2 hover:bg-accent rounded">
+                          <Checkbox
+                            id="select-all-batches"
+                            checked={
+                              batches?.length > 0 && 
+                              (state.createUserForm.batch_access || []).length === batches.length
+                            }
+                            onCheckedChange={(checked) => {
+                              const newBatchAccess = checked 
+                                ? batches?.map(b => b.id) || []
+                                : [];
+                              updateState({
+                                createUserForm: { ...state.createUserForm, batch_access: newBatchAccess }
+                              });
+                            }}
+                          />
+                          <Label htmlFor="select-all-batches" className="text-sm font-medium">
+                            Select All
+                          </Label>
+                        </div>
+                        
+                        {batches?.map((batch) => (
+                          <div key={batch.id} className="flex items-center space-x-2 p-2 hover:bg-accent rounded">
+                            <Checkbox
+                              id={`batch-${batch.id}`}
+                              checked={(state.createUserForm.batch_access || []).includes(batch.id)}
+                              onCheckedChange={(checked) => {
+                                const currentBatchAccess = state.createUserForm.batch_access || [];
+                                const newBatchAccess = checked
+                                  ? [...currentBatchAccess, batch.id]
+                                  : currentBatchAccess.filter(id => id !== batch.id);
+                                updateState({
+                                  createUserForm: { ...state.createUserForm, batch_access: newBatchAccess }
+                                });
+                              }}
+                            />
+                            <Label htmlFor={`batch-${batch.id}`} className="text-sm flex-1">
+                              {batch.batch_name} - {batch.admin_name}
+                            </Label>
+                            {(state.createUserForm.batch_access || []).includes(batch.id) && (
+                              <Check className="h-4 w-4 text-primary" />
+                            )}
+                          </div>
+                        ))}
+                        {(!batches || batches.length === 0) && (
+                          <p className="text-sm text-muted-foreground p-2">No batches available</p>
+                        )}
                       </div>
-                    ))}
-                    {(!batches || batches.length === 0) && (
-                      <p className="text-sm text-muted-foreground">No batches available</p>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
+                    </PopoverContent>
+                  </Popover>
+                  <p className="text-xs text-muted-foreground mt-1">
                     Select which batches this user can access
                   </p>
                 </div>
