@@ -135,24 +135,24 @@ export default function SystemSettings() {
 
   return (
     <AdminLayout>
-      <div className="min-h-screen bg-background p-6">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <div className="min-h-screen bg-background p-8">
+        <div className="max-w-6xl mx-auto space-y-8">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <h1 className="text-2xl font-semibold text-foreground">System Settings</h1>
-              <p className="text-sm text-muted-foreground">Configure system-wide settings and security policies</p>
+            <div className="space-y-2">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-electric-blue to-vibrant-purple bg-clip-text text-transparent">System Settings</h1>
+              <p className="text-lg text-muted-foreground">Configure system-wide settings and security policies</p>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleRefresh} size="sm">
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={handleRefresh} className="modern-button-outline h-12 px-6">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
-              <Button onClick={handleSave} disabled={isSaving} size="sm" className="modern-button">
+              <Button onClick={handleSave} disabled={isSaving} className="modern-button h-12 px-8">
                 {isSaving ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
                 ) : (
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="h-5 w-5 mr-2" />
                 )}
                 {isSaving ? 'Saving...' : 'Save'}
               </Button>
@@ -173,10 +173,12 @@ export default function SystemSettings() {
           )}
 
           {/* Security Settings */}
-          <Card className="modern-card">
+          <Card className="premium-card">
             <CardHeader>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Shield className="h-4 w-4" />
+              <CardTitle className="text-2xl font-semibold flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-emerald-green to-teal-cyan rounded-xl">
+                  <Shield className="h-6 w-6 text-white" />
+                </div>
                 Security Settings
               </CardTitle>
             </CardHeader>
@@ -248,10 +250,12 @@ export default function SystemSettings() {
           </Card>
 
           {/* System Configuration */}
-          <Card className="modern-card">
+          <Card className="premium-card">
             <CardHeader>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Settings className="h-4 w-4" />
+              <CardTitle className="text-2xl font-semibold flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-primary to-electric-blue rounded-xl">
+                  <Settings className="h-6 w-6 text-white" />
+                </div>
                 System Configuration
               </CardTitle>
             </CardHeader>
@@ -315,10 +319,12 @@ export default function SystemSettings() {
           </Card>
 
           {/* Database Settings */}
-          <Card className="modern-card">
+          <Card className="premium-card">
             <CardHeader>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Database className="h-4 w-4" />
+              <CardTitle className="text-2xl font-semibold flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-vibrant-purple to-indigo-deep rounded-xl">
+                  <Database className="h-6 w-6 text-white" />
+                </div>
                 Database Settings
               </CardTitle>
             </CardHeader>
@@ -366,9 +372,14 @@ export default function SystemSettings() {
           </Card>
 
           {/* System Information */}
-          <Card className="modern-card">
+          <Card className="premium-card">
             <CardHeader>
-              <CardTitle className="text-base font-semibold">System Information</CardTitle>
+              <CardTitle className="text-2xl font-semibold flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-sunset-orange to-coral-red rounded-xl">
+                  <Settings className="h-6 w-6 text-white" />
+                </div>
+                System Information
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {isLoadingInfo ? (

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { User, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FingerprintDisplay } from "@/components/FingerprintDisplay";
 import { RDServiceStatusIndicator } from "@/components/rd/RDServiceStatusIndicator";
@@ -223,18 +224,18 @@ export default function AddStudent() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-foreground">Add Student</h1>
-          <p className="text-sm text-muted-foreground">Enter student details and capture biometric data</p>
+    <div className="min-h-screen bg-background p-8">
+      <div className="max-w-6xl mx-auto space-y-8">
+        <div className="space-y-3">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-electric-blue to-vibrant-purple bg-clip-text text-transparent">Add Student</h1>
+          <p className="text-lg text-muted-foreground">Enter student details and capture biometric data</p>
         </div>
 
         <RDServiceStatusIndicator />
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-7 modern-tabs">
+            <TabsList className="grid w-full grid-cols-7 h-14 rounded-2xl bg-muted/50 p-2">
               <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="finger-0" className="relative">
               Finger 1
@@ -271,14 +272,19 @@ export default function AddStudent() {
 
           {/* Student Details Tab */}
           <TabsContent value="details">
-            <Card className="modern-card">
+            <Card className="premium-card">
               <CardHeader>
-                <CardTitle className="text-base font-semibold">Student Information</CardTitle>
+                <CardTitle className="text-2xl font-semibold flex items-center space-x-3">
+                  <div className="p-2 bg-gradient-to-br from-primary to-electric-blue rounded-xl">
+                    <User className="h-6 w-6 text-white" />
+                  </div>
+                  <span>Student Information</span>
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name" className="text-sm font-medium">Full Name *</Label>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <Label htmlFor="name" className="text-sm font-semibold text-foreground">Full Name *</Label>
                     <Controller
                       name="name"
                       control={control}
@@ -286,15 +292,15 @@ export default function AddStudent() {
                         <Input
                           {...field}
                           placeholder="Enter full name"
-                          className={`modern-input ${errors.name ? 'border-destructive' : ''}`}
+                          className={`modern-input h-12 ${errors.name ? 'border-destructive' : ''}`}
                         />
                       )}
                     />
                     {errors.name && <p className="text-destructive text-xs">{errors.name.message}</p>}
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="mobile">Mobile Number *</Label>
+                  <div className="space-y-3">
+                    <Label htmlFor="mobile" className="text-sm font-semibold text-foreground">Mobile Number *</Label>
                     <Controller
                       name="mobile"
                       control={control}
@@ -302,15 +308,15 @@ export default function AddStudent() {
                         <Input
                           {...field}
                           placeholder="10-digit mobile number"
-                          className={errors.mobile ? 'border-red-500' : ''}
+                          className={`modern-input h-12 ${errors.mobile ? 'border-destructive' : ''}`}
                         />
                       )}
                     />
-                    {errors.mobile && <p className="text-red-500 text-sm">{errors.mobile.message}</p>}
+                    {errors.mobile && <p className="text-destructive text-sm">{errors.mobile.message}</p>}
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                  <div className="space-y-3">
+                    <Label htmlFor="email" className="text-sm font-semibold text-foreground">Email</Label>
                     <Controller
                       name="email"
                       control={control}
@@ -319,22 +325,22 @@ export default function AddStudent() {
                           {...field}
                           type="email"
                           placeholder="Enter email address"
-                          className={errors.email ? 'border-red-500' : ''}
+                          className={`modern-input h-12 ${errors.email ? 'border-destructive' : ''}`}
                         />
                       )}
                     />
-                    {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
+                    {errors.email && <p className="text-destructive text-sm">{errors.email.message}</p>}
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="batchId">Batch *</Label>
+                  <div className="space-y-3">
+                    <Label htmlFor="batchId" className="text-sm font-semibold text-foreground">Batch *</Label>
                     <Controller
                       name="batchId"
                       control={control}
                       render={({ field }) => (
                         <select
                           {...field}
-                          className={`w-full p-2 border rounded-md ${errors.batchId ? 'border-red-500' : 'border-gray-300'}`}
+                          className={`modern-input h-12 ${errors.batchId ? 'border-destructive' : ''}`}
                         >
                           <option value="">Select a batch</option>
                           {batches.map((batch) => (
@@ -345,12 +351,12 @@ export default function AddStudent() {
                         </select>
                       )}
                     />
-                    {errors.batchId && <p className="text-red-500 text-sm">{errors.batchId.message}</p>}
+                    {errors.batchId && <p className="text-destructive text-sm">{errors.batchId.message}</p>}
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="address">Address *</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="address" className="text-sm font-semibold text-foreground">Address *</Label>
                   <Controller
                     name="address"
                     control={control}
@@ -358,11 +364,11 @@ export default function AddStudent() {
                       <Input
                         {...field}
                         placeholder="Enter address"
-                        className={errors.address ? 'border-red-500' : ''}
+                        className={`modern-input h-12 ${errors.address ? 'border-destructive' : ''}`}
                       />
                     )}
                   />
-                  {errors.address && <p className="text-red-500 text-sm">{errors.address.message}</p>}
+                  {errors.address && <p className="text-destructive text-sm">{errors.address.message}</p>}
                 </div>
               </CardContent>
             </Card>
@@ -387,16 +393,21 @@ export default function AddStudent() {
 
           {/* Summary Tab */}
           <TabsContent value="summary">
-            <Card>
+            <Card className="premium-card">
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Capture Summary</span>
-                  <div className="flex space-x-2">
-                    <Badge variant="outline">
+                <CardTitle className="flex items-center justify-between text-2xl">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-gradient-to-br from-emerald-green to-teal-cyan rounded-xl">
+                      <Eye className="h-6 w-6 text-white" />
+                    </div>
+                    <span>Capture Summary</span>
+                  </div>
+                  <div className="flex space-x-3">
+                    <Badge variant="outline" className="text-sm px-3 py-1">
                       {getTotalCaptured()}/5 Captured
                     </Badge>
                     {getTotalCaptured() > 0 && (
-                      <Badge variant="secondary">
+                      <Badge variant="secondary" className="text-sm px-3 py-1">
                         Avg Quality: {getAverageQuality()}%
                       </Badge>
                     )}
@@ -434,13 +445,14 @@ export default function AddStudent() {
                       setCapturedFingerprints({});
                       setActiveTab("details");
                     }}
+                    className="modern-button-outline h-12 px-8 text-base"
                   >
                     Reset Form
                   </Button>
                   <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="min-w-32"
+                    className="modern-button h-12 px-8 text-base min-w-40"
                   >
                     {isSubmitting ? 'Adding Student...' : 'Add Student'}
                   </Button>
