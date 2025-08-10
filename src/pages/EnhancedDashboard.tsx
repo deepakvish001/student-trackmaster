@@ -11,28 +11,29 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useSystemHealthMonitoring } from '@/hooks/useSystemHealthMonitoring';
 import { useAuditLog } from '@/hooks/useAuditLog';
-
 export default function EnhancedDashboard() {
-  const { profile, hasRole } = useUserProfile();
-  const { metrics, isChecking, performHealthCheck } = useSystemHealthMonitoring();
-  const { logEvent } = useAuditLog();
+  const {
+    profile,
+    hasRole
+  } = useUserProfile();
+  const {
+    metrics,
+    isChecking,
+    performHealthCheck
+  } = useSystemHealthMonitoring();
+  const {
+    logEvent
+  } = useAuditLog();
 
   // Enhanced dashboard statistics with real-time batch updates
-  const { data: stats, refetch: refetchStats } = useQuery({
+  const {
+    data: stats,
+    refetch: refetchStats
+  } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       // Use parallel queries with detailed batch information
-      const [studentsRes, batchesRes] = await Promise.all([
-        supabase
-          .from('students')
-          .select('id, created_at, batch_id')
-          .eq('is_enabled', true),
-        supabase
-          .from('batches')
-          .select('id, created_at, max_students, batch_name, serial_number, admin_name, is_enabled')
-          .eq('is_enabled', true)
-      ]);
-      
+      const [studentsRes, batchesRes] = await Promise.all([supabase.from('students').select('id, created_at, batch_id').eq('is_enabled', true), supabase.from('batches').select('id, created_at, max_students, batch_name, serial_number, admin_name, is_enabled').eq('is_enabled', true)]);
       const students = studentsRes.data || [];
       const batches = batchesRes.data || [];
       console.log('Dashboard batches data:', batches);
@@ -40,43 +41,38 @@ export default function EnhancedDashboard() {
       // Get user profiles data with minimal selection and error handling
       let profiles = [];
       try {
-        const profilesRes = await supabase
-          .from('user_profiles')
-          .select('id, role, last_login_at');
+        const profilesRes = await supabase.from('user_profiles').select('id, role, last_login_at');
         profiles = profilesRes.data || [];
       } catch (err) {
         console.warn('Could not fetch user profiles:', err);
       }
 
       // Calculate enhanced batch utilization with names
-      const batchUtilizationPromises = batches.map(async (batch) => {
-        const { count } = await supabase
-          .from('students')
-          .select('id', { count: 'exact' })
-          .eq('batch_id', batch.id)
-          .eq('is_enabled', true);
-        
+      const batchUtilizationPromises = batches.map(async batch => {
+        const {
+          count
+        } = await supabase.from('students').select('id', {
+          count: 'exact'
+        }).eq('batch_id', batch.id).eq('is_enabled', true);
         const batchData = {
           id: batch.id,
           name: batch.batch_name || `Batch ${batch.serial_number}`,
           serialNumber: batch.serial_number,
           current: count || 0,
           max: batch.max_students,
-          utilization: Math.round(((count || 0) / batch.max_students) * 100),
+          utilization: Math.round((count || 0) / batch.max_students * 100),
           isEnabled: batch.is_enabled,
           adminName: batch.admin_name
         };
         console.log('Batch utilization data:', batchData);
         return batchData;
       });
-
       const batchUtilization = await Promise.all(batchUtilizationPromises);
 
       // Calculate date filters once
       const today = new Date();
       const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
       const startOfWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-
       return {
         totalStudents: students.length,
         totalBatches: batches.length,
@@ -84,55 +80,44 @@ export default function EnhancedDashboard() {
         studentsToday: students.filter(s => s.created_at >= startOfDay).length,
         studentsThisWeek: students.filter(s => s.created_at >= startOfWeek).length,
         batchUtilization,
-        avgUtilization: Math.round(
-          batchUtilization.reduce((sum, b) => sum + b.utilization, 0) / (batchUtilization.length || 1)
-        )
+        avgUtilization: Math.round(batchUtilization.reduce((sum, b) => sum + b.utilization, 0) / (batchUtilization.length || 1))
       };
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    refetchOnWindowFocus: true, // Refetch when window gains focus
-    refetchOnMount: true, // Always refetch on mount
-    refetchOnReconnect: true, // Refetch on reconnect
+    staleTime: 5 * 60 * 1000,
+    // 5 minutes
+    gcTime: 10 * 60 * 1000,
+    // 10 minutes
+    refetchOnWindowFocus: true,
+    // Refetch when window gains focus
+    refetchOnMount: true,
+    // Always refetch on mount
+    refetchOnReconnect: true // Refetch on reconnect
   });
 
   // Real-time updates for batch data
   React.useEffect(() => {
-    const channel = supabase
-      .channel('dashboard-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-          schema: 'public',
-          table: 'batches'
-        },
-        (payload) => {
-          console.log('Batch data changed:', payload);
-          // Refetch stats when batch data changes
-          refetchStats();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public', 
-          table: 'students'
-        },
-        (payload) => {
-          console.log('Student data changed:', payload);
-          // Refetch stats when student data changes
-          refetchStats();
-        }
-      )
-      .subscribe();
-
+    const channel = supabase.channel('dashboard-realtime').on('postgres_changes', {
+      event: '*',
+      // Listen to all events (INSERT, UPDATE, DELETE)
+      schema: 'public',
+      table: 'batches'
+    }, payload => {
+      console.log('Batch data changed:', payload);
+      // Refetch stats when batch data changes
+      refetchStats();
+    }).on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'students'
+    }, payload => {
+      console.log('Student data changed:', payload);
+      // Refetch stats when student data changes
+      refetchStats();
+    }).subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
   }, [refetchStats]);
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'healthy':
@@ -145,7 +130,6 @@ export default function EnhancedDashboard() {
         return 'text-gray-600';
     }
   };
-
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'healthy':
@@ -158,9 +142,7 @@ export default function EnhancedDashboard() {
         return <Clock className="h-4 w-4" />;
     }
   };
-
-  return (
-    <DashboardLayout>
+  return <DashboardLayout>
       <div className="min-h-screen bg-black text-white">
         <div className="max-w-7xl mx-auto space-y-10 p-8">
           {/* Enhanced Premium Header */}
@@ -204,18 +186,7 @@ export default function EnhancedDashboard() {
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
-                  <Button
-                    onClick={() => {
-                      console.log('Manual refresh clicked');
-                      refetchStats();
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:text-white"
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Refresh Data
-                  </Button>
+                  
                 </div>
               </div>
             </div>
@@ -344,12 +315,10 @@ export default function EnhancedDashboard() {
               </CardHeader>
               <CardContent className="p-8">
                 {/* Debug: {console.log('Dashboard stats:', stats)} */}
-                {stats?.batchUtilization && stats.batchUtilization.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {stats?.batchUtilization && stats.batchUtilization.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                      {stats.batchUtilization.map((batch, index) => {
-                       console.log('Rendering batch:', batch);
-                       return (
-                      <div key={batch.id} className="bg-black/60 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-6 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 group">
+                  console.log('Rendering batch:', batch);
+                  return <div key={batch.id} className="bg-black/60 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-6 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 group">
                         <div className="space-y-4">
                           <div className="flex justify-between items-start">
                             <div className="flex items-center space-x-3">
@@ -361,13 +330,7 @@ export default function EnhancedDashboard() {
                                   <h3 className="font-bold text-orange-200 text-xl leading-tight">
                                     {batch.name || 'No Name'}
                                   </h3>
-                                  <Badge 
-                                    className={`${
-                                      batch.isEnabled 
-                                        ? 'bg-emerald-green/20 text-emerald-green border-emerald-green/30' 
-                                        : 'bg-pink-rose/20 text-pink-rose border-pink-rose/30'
-                                    } text-xs`}
-                                  >
+                                  <Badge className={`${batch.isEnabled ? 'bg-emerald-green/20 text-emerald-green border-emerald-green/30' : 'bg-pink-rose/20 text-pink-rose border-pink-rose/30'} text-xs`}>
                                     {batch.isEnabled ? 'Active' : 'Inactive'}
                                   </Badge>
                                 </div>
@@ -388,14 +351,10 @@ export default function EnhancedDashboard() {
                               <span className="text-sm font-bold text-blue-400">{batch.utilization}%</span>
                             </div>
                             <div className="relative">
-                              <Progress 
-                                value={batch.utilization} 
-                                className="h-3 bg-gray-700/50" 
-                              />
-                              <div 
-                                className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full"
-                                style={{ width: `${batch.utilization}%` }}
-                              />
+                              <Progress value={batch.utilization} className="h-3 bg-gray-700/50" />
+                              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full" style={{
+                            width: `${batch.utilization}%`
+                          }} />
                             </div>
                             <div className="flex justify-between text-xs text-gray-500">
                               <span>{batch.utilization < 50 ? 'Low utilization' : batch.utilization < 80 ? 'Moderate usage' : 'High capacity'}</span>
@@ -403,24 +362,19 @@ export default function EnhancedDashboard() {
                             </div>
                           </div>
                          </div>
-                       </div>
-                       );
-                     })}
-                   </div>
-                ) : (
-                  <div className="text-center py-16">
+                       </div>;
+                })}
+                   </div> : <div className="text-center py-16">
                     <div className="w-20 h-20 bg-black/80 rounded-3xl flex items-center justify-center mx-auto mb-6">
                       <Database className="h-10 w-10 text-gray-500" />
                     </div>
                     <h3 className="text-xl font-bold text-gray-400 mb-2">No Batch Data Available</h3>
                     <p className="text-gray-500">Create your first batch to see analytics here</p>
-                  </div>
-                )}
+                  </div>}
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
-    </DashboardLayout>
-  );
+    </DashboardLayout>;
 }
