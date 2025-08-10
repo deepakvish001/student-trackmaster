@@ -127,8 +127,8 @@ export const exportStudentsToPDF = async (students: Student[], filters?: {
       6: { halign: 'center', cellWidth: 25, minCellHeight: 35 }, // Created
     },
     didDrawCell: function(data) {
-      // Add fingerprint images to the fingerprint column (column index 3)
-      if (data.column.index === 3 && data.row.index >= 0) {
+      // Only add fingerprint images to data rows (not header), column index 3
+      if (data.column.index === 3 && data.row.index >= 0 && data.section === 'body') {
         const student = students[data.row.index];
         if (!student) return;
         
