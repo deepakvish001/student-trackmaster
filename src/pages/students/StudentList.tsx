@@ -57,7 +57,7 @@ export default function StudentList() {
     selectedBatch,
     sortBy,
     sortOrder,
-    pageSize: 25
+    pageSize: 10
   });
 
   // Real-time clock update
