@@ -26,7 +26,9 @@ export const BatchTable = ({
         {currentBatches.map((batch) => (
           <TableRow 
             key={batch.id}
-            className={!batch.is_enabled ? "bg-red-50" : ""}
+            className={`hover:bg-muted/50 hover:text-foreground transition-colors duration-300 ${
+              !batch.is_enabled ? "bg-destructive/10" : ""
+            }`}
           >
             <TableCell>{batch.serial_number}</TableCell>
             <TableCell className="font-medium">{batch.batch_name}</TableCell>
