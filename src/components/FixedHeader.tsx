@@ -1,9 +1,6 @@
 import React from 'react';
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { Fingerprint, LogOut } from "lucide-react";
-import { useNavigate } from 'react-router-dom';
-import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
+import { Fingerprint } from "lucide-react";
 
 interface FixedHeaderProps {
   showSidebarTrigger?: boolean;
@@ -16,17 +13,6 @@ export default function FixedHeader({
   title = "BiometricHub",
   subtitle = "Enterprise Platform"
 }: FixedHeaderProps) {
-  const navigate = useNavigate();
-  const { logout } = useEnhancedAuth();
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/login');
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-b border-border shadow-sm">
@@ -49,17 +35,9 @@ export default function FixedHeader({
           </div>
         </div>
 
-        {/* Right Section */}
+        {/* Right Section - Empty for now, logout handled in sidebar */}
         <div className="flex items-center">
-          <Button
-            onClick={handleLogout}
-            variant="ghost"
-            size="sm"
-            className="gap-2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Logout</span>
-          </Button>
+          {/* Logout functionality moved to sidebar footer */}
         </div>
       </div>
     </header>
