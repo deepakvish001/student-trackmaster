@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useDebounce } from './useDebounce';
 
 interface UseOptimizedStudentsOptions {
@@ -136,6 +136,57 @@ export function useOptimizedStudents(options: UseOptimizedStudentsOptions = {}) 
     staleTime: 15 * 60 * 1000, // 15 minutes
     gcTime: 30 * 60 * 1000, // 30 minutes
   });
+
+  // Real-time subscriptions for live updates
+  useEffect(() => {
+    console.log('🔴 Setting up real-time subscriptions for students');
+    
+    // Subscribe to students table changes
+    const studentsChannel = supabase
+      .channel('students-realtime-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'students'
+        },
+        (payload) => {
+          console.log('📡 Real-time student update received:', payload);
+          
+          // Invalidate and refetch student queries
+          queryClient.invalidateQueries({ queryKey: ['students-optimized'] });
+          queryClient.invalidateQueries({ queryKey: ['students-count'] });
+          
+          // Show a brief notification (optional)
+          console.log('✅ Student data updated in real-time');
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public', 
+          table: 'batches'
+        },
+        (payload) => {
+          console.log('📡 Real-time batch update received:', payload);
+          
+          // Invalidate batch queries when batches change
+          queryClient.invalidateQueries({ queryKey: ['batches-optimized'] });
+          queryClient.invalidateQueries({ queryKey: ['students-optimized'] });
+        }
+      )
+      .subscribe((status) => {
+        console.log('🔗 Real-time subscription status:', status);
+      });
+
+    // Cleanup subscription on unmount
+    return () => {
+      console.log('🔴 Cleaning up real-time subscriptions');
+      supabase.removeChannel(studentsChannel);
+    };
+  }, [queryClient]);
 
   // Computed stats for better performance
   const stats = useMemo(() => {
