@@ -5,14 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { BatchTable } from '@/components/batches/BatchTable';
 import { BatchListSkeleton } from '@/components/batches/BatchListSkeleton';
+import { CreateBatchDialog } from '@/components/batches/CreateBatchDialog';
 import { useOptimizedBatches } from '@/hooks/useOptimizedBatches';
 import { useRealTimeBatchAccess } from '@/hooks/useRealTimeBatchAccess';
-import { Batch } from '@/types/index';
-import { GraduationCap, Home, ChevronRight, Plus, Edit } from 'lucide-react';
+import { Batch } from '@/types/batch';
+import { GraduationCap, Home, ChevronRight, Plus } from 'lucide-react';
 
 export default function Batches() {
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
-  const [batchName, setBatchName] = useState('');
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   // Enable real-time batch access updates
   const { isSubscribed } = useRealTimeBatchAccess();
@@ -32,19 +33,15 @@ export default function Batches() {
 
   const handleEdit = (batch: Batch) => {
     setSelectedBatch(batch);
-    // Add edit logic here
+    // Edit functionality is now handled by BatchActions component
   };
 
   const handleStatusChange = (batch: Batch) => {
-    // Add status change logic here
+    // Status change functionality is now handled by BatchActions component
   };
 
   const handleCreateBatch = () => {
-    if (batchName.trim()) {
-      // Add create batch logic here
-      console.log('Creating batch:', batchName);
-      setBatchName('');
-    }
+    setShowCreateDialog(true);
   };
 
   if (loading) {
@@ -79,27 +76,18 @@ export default function Batches() {
           {/* Add Batch Form */}
           <Card className="glass-card border-foreground/10">
             <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-foreground">Batch Name</label>
-                  <Input 
-                    placeholder="Enter Batch Name" 
-                    value={batchName}
-                    onChange={(e) => setBatchName(e.target.value)}
-                    className="max-w-md glass bg-background border-foreground/20 focus:border-electric-blue"
-                  />
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h2 className="text-lg font-semibold text-foreground">Batch Management</h2>
+                  <p className="text-sm text-muted-foreground">Create and manage your batches</p>
                 </div>
-                <div className="flex space-x-3">
-                  <Button 
-                    onClick={handleCreateBatch}
-                    className="bg-electric-blue hover:bg-electric-blue/90 text-white"
-                  >
-                    Create
-                  </Button>
-                  <Button variant="outline" className="glass-card">
-                    Edit
-                  </Button>
-                </div>
+                <Button 
+                  onClick={handleCreateBatch}
+                  className="bg-emerald-green hover:bg-emerald-green/90 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Batch
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -135,13 +123,11 @@ export default function Batches() {
                 </div>
               ) : (
                 <>
-                  <div className="overflow-x-auto">
-                    <BatchTable 
-                      currentBatches={batches}
-                      onEdit={handleEdit}
-                      onStatusChange={handleStatusChange}
-                    />
-                  </div>
+                  <BatchTable 
+                    currentBatches={batches}
+                    onEdit={handleEdit}
+                    onStatusChange={handleStatusChange}
+                  />
                   
                   {/* Pagination */}
                   {pagination.totalPages > 1 && (
@@ -194,6 +180,12 @@ export default function Batches() {
               )}
             </CardContent>
           </Card>
+
+          {/* Create Batch Dialog */}
+          <CreateBatchDialog 
+            open={showCreateDialog} 
+            onOpenChange={setShowCreateDialog}
+          />
         </div>
       </div>
     </DashboardLayout>
