@@ -100,17 +100,17 @@ export function SimpleFingerprintGrid({
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'captured': return 'border-green-500 bg-green-500/10';
-      case 'capturing': return 'border-orange-500 bg-orange-500/10 animate-pulse';
+      case 'captured': return 'border-orange-500 bg-orange-500/10';
+      case 'capturing': return 'border-orange-400 bg-orange-400/10 animate-pulse';
       case 'retrying': return 'border-yellow-500 bg-yellow-500/10 animate-pulse';
       case 'failed': return 'border-red-500 bg-red-500/10';
-      default: return 'border-gray-600 bg-gray-800/30 hover:border-orange-500';
+      default: return 'border-gray-700 bg-gray-900/50 hover:border-orange-500';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'captured': return <CheckCircle2 className="h-8 w-8 text-green-400" />;
+      case 'captured': return <CheckCircle2 className="h-8 w-8 text-orange-400" />;
       case 'capturing': return <Activity className="h-8 w-8 text-orange-400 animate-pulse" />;
       case 'retrying': return <RotateCcw className="h-8 w-8 text-yellow-400 animate-spin" />;
       case 'failed': return <AlertCircle className="h-8 w-8 text-red-400" />;
@@ -119,22 +119,22 @@ export function SimpleFingerprintGrid({
   };
 
   return (
-    <div className="grid grid-cols-5 gap-8 justify-items-center">
+    <div className="grid grid-cols-5 gap-8 justify-items-center px-4">
       {fingerprints.map((fingerprint, index) => (
         <Card 
           key={index}
-          className={`w-full max-w-[220px] transition-all duration-300 hover:scale-105 ${getStatusColor(fingerprint.status)} border-2 bg-gray-800/50`}
+          className={`w-full max-w-[200px] transition-all duration-300 hover:scale-105 ${getStatusColor(fingerprint.status)} border-2 bg-gray-900/70 backdrop-blur-sm`}
         >
-          <CardContent className="p-6 text-center space-y-4">
+          <CardContent className="p-4 text-center space-y-3">
             {/* Fingerprint Display */}
-            <div className={`mx-auto w-40 h-48 border-2 rounded-lg flex items-center justify-center transition-all duration-300 ${
+            <div className={`mx-auto w-32 h-40 border-2 rounded-lg flex items-center justify-center transition-all duration-300 ${
               fingerprint.status === 'capturing' || fingerprint.status === 'retrying'
                 ? 'border-orange-500 border-dashed animate-pulse bg-orange-500/10' 
                 : fingerprint.status === 'captured'
-                  ? 'border-green-500 bg-green-500/10'
+                  ? 'border-orange-500 bg-orange-500/10'
                   : fingerprint.status === 'failed'
                     ? 'border-red-500 bg-red-500/10'
-                    : 'border-gray-600 bg-gray-800/30'
+                    : 'border-gray-700 bg-gray-900/50'
             }`}>
               {fingerprint.imageData ? (
                 <img 
@@ -170,33 +170,33 @@ export function SimpleFingerprintGrid({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="w-full py-2 text-sm font-bold bg-orange-500/10 border-orange-500/50 text-orange-400 hover:bg-orange-500/20"
+                  className="w-full py-2 text-xs font-bold bg-orange-500/20 border-orange-500/50 text-orange-400 hover:bg-orange-500/30 transition-all duration-200"
                   onClick={() => handleRetry(index)}
                   disabled={disabled || isCapturing}
                 >
-                  <RotateCcw className="mr-2 h-4 w-4" />
+                  <RotateCcw className="mr-1 h-3 w-3" />
                   Recapture
                 </Button>
               ) : fingerprint.status === 'failed' ? (
                 <Button
                   size="sm"
                   variant="outline"
-                  className="w-full py-2 text-sm font-bold bg-yellow-500/10 border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/20"
+                  className="w-full py-2 text-xs font-bold bg-yellow-500/20 border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/30 transition-all duration-200"
                   onClick={() => handleRetry(index)}
                   disabled={disabled || isCapturing}
                 >
-                  <RotateCcw className="mr-2 h-4 w-4" />
+                  <RotateCcw className="mr-1 h-3 w-3" />
                   Retry
                 </Button>
               ) : (
                 <Button
                   size="sm"
                   variant={fingerprint.status === 'capturing' || fingerprint.status === 'retrying' ? "default" : "outline"}
-                  className="w-full py-2 text-sm font-bold bg-gray-700 border-gray-600 text-white hover:bg-orange-500 hover:border-orange-500 transition-all duration-200"
+                  className="w-full py-2 text-xs font-bold bg-gray-800/80 border-gray-600 text-white hover:bg-orange-500 hover:border-orange-500 transition-all duration-200"
                   onClick={() => handleCapture(index)}
                   disabled={disabled || isCapturing || fingerprint.status === 'capturing' || fingerprint.status === 'retrying'}
                 >
-                  <Fingerprint className="mr-2 h-4 w-4" />
+                  <Fingerprint className="mr-1 h-3 w-3" />
                   {fingerprint.status === 'capturing' ? 'Capturing...' :
                    fingerprint.status === 'retrying' ? 'Retrying...' : 'Capture'}
                 </Button>
