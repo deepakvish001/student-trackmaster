@@ -79,11 +79,18 @@ export function useSystemSettings() {
       }
 
       // Type assertion for the response data
-      const response = data as { success?: boolean; settings?: SystemSettings; error?: string };
+      const response = data as { success?: boolean; settings?: Partial<SystemSettings>; error?: string };
 
       if (response?.success && response?.settings) {
         console.log('Loaded settings:', response.settings);
-        setSettings(response.settings);
+        // Merge with default settings to ensure all properties exist
+        const mergedSettings = {
+          security: { ...defaultSettings.security, ...response.settings.security },
+          system: { ...defaultSettings.system, ...response.settings.system },
+          notifications: { ...defaultSettings.notifications, ...response.settings.notifications },
+          database: { ...defaultSettings.database, ...response.settings.database },
+        };
+        setSettings(mergedSettings);
       } else if (response?.error) {
         console.error('Settings error:', response.error);
         toast({
@@ -91,6 +98,10 @@ export function useSystemSettings() {
           description: response.error,
           variant: "destructive"
         });
+        // Keep default settings on error
+      } else {
+        console.log('No settings found, using defaults');
+        // Keep default settings if no settings are returned
       }
     } catch (err) {
       console.error('Failed to load settings:', err);

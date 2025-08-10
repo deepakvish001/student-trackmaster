@@ -123,7 +123,7 @@ export default function SystemSettings() {
         </div>
 
         {/* Maintenance Mode Alert */}
-        {settings.system.maintenance_mode && (
+        {settings?.system?.maintenance_mode && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <div className="flex items-center gap-2 text-yellow-800">
               <AlertTriangle className="h-5 w-5" />
@@ -153,7 +153,7 @@ export default function SystemSettings() {
                   </p>
                 </div>
                 <Switch
-                  checked={settings.security.enable_two_factor}
+                  checked={settings?.security?.enable_two_factor || false}
                   onCheckedChange={(checked) => updateLocalSetting('security', 'enable_two_factor', checked)}
                 />
               </div>
@@ -162,7 +162,7 @@ export default function SystemSettings() {
                 <Label>Session Timeout (minutes)</Label>
                 <Input
                   type="number"
-                  value={settings.security.session_timeout}
+                  value={settings?.security?.session_timeout || 30}
                   onChange={(e) => updateLocalSetting('security', 'session_timeout', parseInt(e.target.value))}
                   min="5"
                   max="120"
@@ -173,7 +173,7 @@ export default function SystemSettings() {
                 <Label>Max Login Attempts</Label>
                 <Input
                   type="number"
-                  value={settings.security.max_login_attempts}
+                  value={settings?.security?.max_login_attempts || 5}
                   onChange={(e) => updateLocalSetting('security', 'max_login_attempts', parseInt(e.target.value))}
                   min="3"
                   max="10"
@@ -184,7 +184,7 @@ export default function SystemSettings() {
                 <Label>Password Min Length</Label>
                 <Input
                   type="number"
-                  value={settings.security.password_min_length}
+                  value={settings?.security?.password_min_length || 8}
                   onChange={(e) => updateLocalSetting('security', 'password_min_length', parseInt(e.target.value))}
                   min="6"
                   max="20"
@@ -199,7 +199,7 @@ export default function SystemSettings() {
                   </p>
                 </div>
                 <Switch
-                  checked={settings.security.require_special_chars}
+                  checked={settings?.security?.require_special_chars || false}
                   onCheckedChange={(checked) => updateLocalSetting('security', 'require_special_chars', checked)}
                 />
               </div>
@@ -220,7 +220,7 @@ export default function SystemSettings() {
               <div className="space-y-2">
                 <Label>System Name</Label>
                 <Input
-                  value={settings.system.name}
+                  value={settings?.system?.name || 'Biometric Management System'}
                   onChange={(e) => updateLocalSetting('system', 'name', e.target.value)}
                   placeholder="Enter system name"
                 />
@@ -230,7 +230,7 @@ export default function SystemSettings() {
                 <Label>Admin Email</Label>
                 <Input
                   type="email"
-                  value={settings.system.admin_email}
+                  value={settings?.system?.admin_email || 'admin@system.com'}
                   onChange={(e) => updateLocalSetting('system', 'admin_email', e.target.value)}
                   placeholder="admin@system.com"
                 />
@@ -240,7 +240,7 @@ export default function SystemSettings() {
                 <Label>Max Users Per Batch</Label>
                 <Input
                   type="number"
-                  value={settings.system.max_users_per_batch}
+                  value={settings?.system?.max_users_per_batch || 50}
                   onChange={(e) => updateLocalSetting('system', 'max_users_per_batch', parseInt(e.target.value))}
                   min="10"
                   max="200"
@@ -256,10 +256,10 @@ export default function SystemSettings() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch
-                    checked={settings.system.maintenance_mode}
+                    checked={settings?.system?.maintenance_mode || false}
                     onCheckedChange={(checked) => updateLocalSetting('system', 'maintenance_mode', checked)}
                   />
-                  {settings.system.maintenance_mode && (
+                  {settings?.system?.maintenance_mode && (
                     <Badge variant="destructive">
                       <AlertTriangle className="h-3 w-3 mr-1" />
                       Active
@@ -289,7 +289,7 @@ export default function SystemSettings() {
                   </p>
                 </div>
                 <Switch
-                  checked={settings.notifications.email_enabled}
+                  checked={settings?.notifications?.email_enabled || false}
                   onCheckedChange={(checked) => updateLocalSetting('notifications', 'email_enabled', checked)}
                 />
               </div>
@@ -302,7 +302,7 @@ export default function SystemSettings() {
                   </p>
                 </div>
                 <Switch
-                  checked={settings.notifications.audit_alerts}
+                  checked={settings?.notifications?.audit_alerts || false}
                   onCheckedChange={(checked) => updateLocalSetting('notifications', 'audit_alerts', checked)}
                 />
               </div>
@@ -311,7 +311,7 @@ export default function SystemSettings() {
                 <Label>Notification Frequency</Label>
                 <select
                   className="w-full p-2 border rounded-md"
-                  value={settings.notifications.frequency}
+                  value={settings?.notifications?.frequency || 'daily'}
                   onChange={(e) => updateLocalSetting('notifications', 'frequency', e.target.value)}
                 >
                   <option value="realtime">Real-time</option>
@@ -342,7 +342,7 @@ export default function SystemSettings() {
                   </p>
                 </div>
                 <Switch
-                  checked={settings.database.auto_backup}
+                  checked={settings?.database?.auto_backup || false}
                   onCheckedChange={(checked) => updateLocalSetting('database', 'auto_backup', checked)}
                 />
               </div>
@@ -351,7 +351,7 @@ export default function SystemSettings() {
                 <Label>Backup Retention (days)</Label>
                 <Input
                   type="number"
-                  value={settings.database.backup_retention_days}
+                  value={settings?.database?.backup_retention_days || 30}
                   onChange={(e) => updateLocalSetting('database', 'backup_retention_days', parseInt(e.target.value))}
                   min="7"
                   max="365"
@@ -362,7 +362,7 @@ export default function SystemSettings() {
                 <Label>Performance Mode</Label>
                 <select
                   className="w-full p-2 border rounded-md"
-                  value={settings.database.performance_mode}
+                  value={settings?.database?.performance_mode || 'balanced'}
                   onChange={(e) => updateLocalSetting('database', 'performance_mode', e.target.value)}
                 >
                   <option value="high_performance">High Performance</option>
