@@ -32,81 +32,75 @@ export default function AuditLogViewer() {
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Super fast audit logs with aggressive caching
-  const { data: logs = [], isLoading, refetch, error } = useQuery({
-    queryKey: ['audit-logs', actionFilter, searchTerm],
+  // Optimized audit logs query with proper error handling
+  const { data: logs = [], isLoading, refetch, error, isFetching } = useQuery({
+    queryKey: ['audit-logs'],
     queryFn: async () => {
-      console.log('🔍 Fetching audit logs with filter:', { actionFilter, searchTerm });
-      console.log('🔍 Current user auth state:', { uid: (await supabase.auth.getUser()).data.user?.id });
+      console.log('🔍 Fetching audit logs...');
       
-      // First test a simple query to check access
-      const testQuery = await supabase.from('audit_logs').select('count').limit(1);
-      console.log('🧪 Test query result:', testQuery);
-      
-      // Get audit logs without user_profiles join
-      let query = supabase
-        .from('audit_logs')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      // Apply database-level filtering for better performance
-      if (actionFilter !== 'all') {
-        query = query.ilike('action', `%${actionFilter}%`);
-      }
-
-      if (searchTerm) {
-        query = query.or(`action.ilike.%${searchTerm}%,table_name.ilike.%${searchTerm}%`);
-      }
-
-      const { data: auditData, error } = await query.limit(200);
-      
-      console.log('📊 Audit logs result:', { data: auditData?.length, error });
-      
-      if (error) {
-        console.error('❌ Error fetching audit logs:', error);
-        throw error;
-      }
-
-      // Get unique user IDs from audit logs
-      const userIds = [...new Set(auditData?.map(log => log.user_id).filter(Boolean) || [])];
-      console.log('👤 Found user IDs:', userIds.length);
-      
-      // Fetch user profiles for these users
-      let userData: any[] = [];
-      if (userIds.length > 0) {
-        const { data: userProfiles, error: userError } = await supabase
-          .from('user_profiles')
-          .select('user_id, full_name')
-          .in('user_id', userIds);
+      try {
+        // Get audit logs first
+        const { data: auditData, error } = await supabase
+          .from('audit_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(200);
         
-        console.log('👥 User profiles result:', { data: userProfiles?.length, error: userError });
+        console.log('📊 Audit logs result:', { data: auditData?.length, error });
         
-        if (!userError) {
-          userData = userProfiles || [];
+        if (error) {
+          console.error('❌ Error fetching audit logs:', error);
+          throw error;
         }
+
+        if (!auditData || auditData.length === 0) {
+          console.log('ℹ️ No audit logs found');
+          return [];
+        }
+
+        // Get unique user IDs from audit logs
+        const userIds = [...new Set(auditData.map(log => log.user_id).filter(Boolean))];
+        console.log('👤 Found user IDs:', userIds.length);
+        
+        // Fetch user profiles for these users
+        let userData: any[] = [];
+        if (userIds.length > 0) {
+          const { data: userProfiles, error: userError } = await supabase
+            .from('user_profiles')
+            .select('user_id, full_name')
+            .in('user_id', userIds);
+          
+          console.log('👥 User profiles result:', { data: userProfiles?.length, error: userError });
+          
+          if (!userError && userProfiles) {
+            userData = userProfiles;
+          }
+        }
+        
+        // Combine audit logs with user data
+        const transformedData = auditData.map(log => ({
+          ...log,
+          user_profiles: userData.find(user => user.user_id === log.user_id) || null
+        }));
+        
+        console.log('✅ Transformed data:', transformedData.length, 'logs');
+        return transformedData as AuditLogEntry[];
+      } catch (err) {
+        console.error('❌ Error in audit logs query:', err);
+        throw err;
       }
-      
-      // Combine audit logs with user data
-      const transformedData = (auditData || []).map(log => ({
-        ...log,
-        user_profiles: userData.find(user => user.user_id === log.user_id) || null
-      }));
-      
-      console.log('✅ Transformed data:', transformedData.length, 'logs', transformedData.slice(0, 2));
-      return transformedData as AuditLogEntry[];
     },
-    staleTime: 5 * 1000, // 5 seconds for faster debugging
-    gcTime: 30 * 1000, // 30 seconds
-    refetchOnWindowFocus: true,
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
     refetchOnMount: true,
-    refetchOnReconnect: true,
-    retry: 3,
+    retry: 2,
   });
 
   // Debug: Log query state
   console.log('🔍 Query state:', { logs: logs?.length, isLoading, error });
 
-  // Enhanced real-time subscription for audit logs
+  // Real-time subscription for audit logs
   useEffect(() => {
     console.log('🔔 Setting up real-time subscription for audit logs');
     
@@ -116,21 +110,10 @@ export default function AuditLogViewer() {
         { event: 'INSERT', schema: 'public', table: 'audit_logs' },
         (payload) => {
           console.log('📥 New audit log received:', payload);
-          queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
-        }
-      )
-      .on('postgres_changes', 
-        { event: 'UPDATE', schema: 'public', table: 'audit_logs' },
-        (payload) => {
-          console.log('📝 Audit log updated:', payload);
-          queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
-        }
-      )
-      .on('postgres_changes', 
-        { event: 'DELETE', schema: 'public', table: 'audit_logs' },
-        (payload) => {
-          console.log('🗑️ Audit log deleted:', payload);
-          queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+          // Add a small delay to avoid rapid refreshes
+          setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+          }, 500);
         }
       )
       .subscribe((status) => {
@@ -143,8 +126,32 @@ export default function AuditLogViewer() {
     };
   }, [queryClient]);
 
-  // Logs are now pre-filtered at database level for better performance
-  const filteredLogs = logs;
+  // Apply client-side filtering for better user experience
+  const filteredLogs = React.useMemo(() => {
+    if (!logs || logs.length === 0) return [];
+    
+    let filtered = [...logs];
+    
+    // Apply action filter
+    if (actionFilter !== 'all') {
+      filtered = filtered.filter(log => 
+        log.action.toLowerCase().includes(actionFilter.toLowerCase())
+      );
+    }
+    
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter(log => 
+        log.action.toLowerCase().includes(searchLower) ||
+        log.table_name?.toLowerCase().includes(searchLower) ||
+        log.user_profiles?.full_name?.toLowerCase().includes(searchLower) ||
+        formatActionMessage(log).toLowerCase().includes(searchLower)
+      );
+    }
+    
+    return filtered;
+  }, [logs, actionFilter, searchTerm]);
 
   const getActionIcon = (action: string) => {
     if (action.includes('LOGIN') || action.includes('SIGNUP')) {
@@ -251,9 +258,16 @@ export default function AuditLogViewer() {
               <SelectItem value="security">Security Events</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={() => refetch()} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              console.log('🔄 Manual refresh triggered');
+              refetch();
+            }} 
+            disabled={isLoading || isFetching}
+          >
+            <RefreshCw className={`h-4 w-4 ${(isLoading || isFetching) ? 'animate-spin' : ''}`} />
+            {(isLoading || isFetching) ? 'Loading...' : 'Refresh'}
           </Button>
         </div>
       </CardHeader>
@@ -304,23 +318,44 @@ export default function AuditLogViewer() {
               ))}
             </TableBody>
           </Table>
-          {filteredLogs.length === 0 && (
+          {isLoading || isFetching ? (
             <div className="text-center py-8">
-              {isLoading ? (
-                <div className="text-muted-foreground">Loading audit logs...</div>
-              ) : (
-                <div>
-                  <div className="text-muted-foreground mb-2">No audit logs found</div>
-                  <div className="text-sm text-muted-foreground">
-                    {searchTerm || actionFilter !== 'all' 
-                      ? 'Try adjusting your filters' 
-                      : 'Start using the system to generate audit logs'
-                    }
-                  </div>
-                </div>
+              <div className="text-muted-foreground">Loading audit logs...</div>
+            </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <div className="text-red-600 mb-2">Error loading audit logs</div>
+              <div className="text-sm text-muted-foreground mb-4">{error.message}</div>
+              <Button variant="outline" onClick={() => refetch()}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+            </div>
+          ) : filteredLogs.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-muted-foreground mb-2">
+                {logs.length === 0 ? 'No audit logs found' : 'No logs match your filters'}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {logs.length === 0 
+                  ? 'Start using the system to generate audit logs'
+                  : 'Try adjusting your search term or filter'
+                }
+              </div>
+              {(searchTerm || actionFilter !== 'all') && (
+                <Button 
+                  variant="outline" 
+                  className="mt-4" 
+                  onClick={() => {
+                    setSearchTerm('');
+                    setActionFilter('all');
+                  }}
+                >
+                  Clear Filters
+                </Button>
               )}
             </div>
-          )}
+          ) : null}
         </ScrollArea>
       </CardContent>
     </Card>
