@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,10 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UserPlus, Eye, Trash2, Ban, Key, UserCheck } from 'lucide-react';
+import { UserPlus, Trash2, Ban, Key, UserCheck, Power } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { UserRole } from '@/hooks/useUserProfile';
+import { useUserManagementState } from '@/hooks/useUserManagementState';
 
 interface UserProfile {
   id: string;
@@ -25,28 +26,12 @@ interface UserProfile {
   updated_at: string;
 }
 
-interface CreateUserForm {
-  email: string;
-  password: string;
-  full_name: string;
-  role: UserRole;
-}
-
 export default function UserManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string>('');
-  const [newPassword, setNewPassword] = useState('');
-  const [createUserForm, setCreateUserForm] = useState<CreateUserForm>({
-    email: '',
-    password: '',
-    full_name: '',
-    role: 'user'
-  });
+  const { state, updateState, resetCreateForm } = useUserManagementState();
 
-  // Fetch all users
+  // Fetch all users with persistent caching
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
@@ -58,12 +43,16 @@ export default function UserManagement() {
       if (!data.success) throw new Error(data.error);
       
       return data.users as UserProfile[];
-    }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
   });
 
   // Create user mutation
   const createUserMutation = useMutation({
-    mutationFn: async (userData: CreateUserForm) => {
+    mutationFn: async (userData: typeof state.createUserForm) => {
+      console.log('Creating user with data:', userData);
+      
       const { data, error } = await supabase.functions.invoke('manage-users', {
         body: {
           action: 'create_user',
@@ -74,24 +63,32 @@ export default function UserManagement() {
         }
       });
       
-      if (error) throw error;
-      if (!data.success) throw new Error(data.error);
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
+      
+      if (!data.success) {
+        console.error('Function returned error:', data.error);
+        throw new Error(data.error);
+      }
       
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      setIsCreateDialogOpen(false);
-      setCreateUserForm({ email: '', password: '', full_name: '', role: 'user' });
+      updateState({ isCreateDialogOpen: false });
+      resetCreateForm();
       toast({
         title: "Success",
         description: "User created successfully"
       });
     },
     onError: (error: Error) => {
+      console.error('Create user mutation error:', error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to create user",
         variant: "destructive"
       });
     }
@@ -114,6 +111,34 @@ export default function UserManagement() {
       toast({
         title: "Success",
         description: "User deleted successfully"
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Toggle user status mutation
+  const toggleStatusMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data, error } = await supabase.functions.invoke('manage-users', {
+        body: { action: 'toggle_status', user_id: userId }
+      });
+      
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+      
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      toast({
+        title: "Success",
+        description: data.message
       });
     },
     onError: (error: Error) => {
@@ -166,9 +191,11 @@ export default function UserManagement() {
       return data;
     },
     onSuccess: () => {
-      setIsPasswordDialogOpen(false);
-      setNewPassword('');
-      setSelectedUserId('');
+      updateState({ 
+        isPasswordDialogOpen: false,
+        newPassword: '',
+        selectedUserId: ''
+      });
       toast({
         title: "Success",
         description: "Password updated successfully"
@@ -184,7 +211,7 @@ export default function UserManagement() {
   });
 
   const handleCreateUser = () => {
-    if (!createUserForm.email || !createUserForm.password || !createUserForm.full_name) {
+    if (!state.createUserForm.email || !state.createUserForm.password || !state.createUserForm.full_name) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -192,11 +219,11 @@ export default function UserManagement() {
       });
       return;
     }
-    createUserMutation.mutate(createUserForm);
+    createUserMutation.mutate(state.createUserForm);
   };
 
   const handleUpdatePassword = () => {
-    if (!newPassword || newPassword.length < 6) {
+    if (!state.newPassword || state.newPassword.length < 6) {
       toast({
         title: "Error",
         description: "Password must be at least 6 characters long",
@@ -204,7 +231,7 @@ export default function UserManagement() {
       });
       return;
     }
-    updatePasswordMutation.mutate({ userId: selectedUserId, password: newPassword });
+    updatePasswordMutation.mutate({ userId: state.selectedUserId, password: state.newPassword });
   };
 
   if (isLoading) {
@@ -225,7 +252,7 @@ export default function UserManagement() {
           <p className="text-muted-foreground">Manage system users and their permissions</p>
         </div>
         
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <Dialog open={state.isCreateDialogOpen} onOpenChange={(open) => updateState({ isCreateDialogOpen: open })}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <UserPlus className="h-4 w-4" />
@@ -242,8 +269,10 @@ export default function UserManagement() {
                 <Input
                   id="email"
                   type="email"
-                  value={createUserForm.email}
-                  onChange={(e) => setCreateUserForm(prev => ({ ...prev, email: e.target.value }))}
+                  value={state.createUserForm.email}
+                  onChange={(e) => updateState({ 
+                    createUserForm: { ...state.createUserForm, email: e.target.value }
+                  })}
                   placeholder="user@example.com"
                 />
               </div>
@@ -252,8 +281,10 @@ export default function UserManagement() {
                 <Input
                   id="password"
                   type="password"
-                  value={createUserForm.password}
-                  onChange={(e) => setCreateUserForm(prev => ({ ...prev, password: e.target.value }))}
+                  value={state.createUserForm.password}
+                  onChange={(e) => updateState({ 
+                    createUserForm: { ...state.createUserForm, password: e.target.value }
+                  })}
                   placeholder="Minimum 6 characters"
                 />
               </div>
@@ -261,16 +292,20 @@ export default function UserManagement() {
                 <Label htmlFor="full_name">Full Name</Label>
                 <Input
                   id="full_name"
-                  value={createUserForm.full_name}
-                  onChange={(e) => setCreateUserForm(prev => ({ ...prev, full_name: e.target.value }))}
+                  value={state.createUserForm.full_name}
+                  onChange={(e) => updateState({ 
+                    createUserForm: { ...state.createUserForm, full_name: e.target.value }
+                  })}
                   placeholder="John Doe"
                 />
               </div>
               <div>
                 <Label htmlFor="role">Role</Label>
                 <Select
-                  value={createUserForm.role}
-                  onValueChange={(value: UserRole) => setCreateUserForm(prev => ({ ...prev, role: value }))}
+                  value={state.createUserForm.role}
+                  onValueChange={(value: UserRole) => updateState({ 
+                    createUserForm: { ...state.createUserForm, role: value }
+                  })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -282,7 +317,7 @@ export default function UserManagement() {
                 </Select>
               </div>
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                <Button variant="outline" onClick={() => updateState({ isCreateDialogOpen: false })}>
                   Cancel
                 </Button>
                 <Button 
@@ -324,7 +359,7 @@ export default function UserManagement() {
                   </TableCell>
                   <TableCell>
                     <Badge variant={user.is_active ? 'default' : 'destructive'}>
-                      {user.is_active ? 'Active' : 'Banned'}
+                      {user.is_active ? 'Enabled' : 'Disabled'}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -342,11 +377,24 @@ export default function UserManagement() {
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          setSelectedUserId(user.user_id);
-                          setIsPasswordDialogOpen(true);
+                          updateState({
+                            selectedUserId: user.user_id,
+                            isPasswordDialogOpen: true
+                          });
                         }}
+                        title="Change Password"
                       >
                         <Key className="h-4 w-4" />
+                      </Button>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleStatusMutation.mutate(user.user_id)}
+                        disabled={toggleStatusMutation.isPending}
+                        title={user.is_active ? 'Disable User' : 'Enable User'}
+                      >
+                        <Power className={`h-4 w-4 ${user.is_active ? 'text-green-600' : 'text-red-600'}`} />
                       </Button>
                       
                       <Button
@@ -359,13 +407,14 @@ export default function UserManagement() {
                           })
                         }
                         disabled={toggleBanMutation.isPending}
+                        title={user.is_active ? 'Ban User' : 'Unban User'}
                       >
                         {user.is_active ? <Ban className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
                       </Button>
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" title="Delete User">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </AlertDialogTrigger>
@@ -397,7 +446,7 @@ export default function UserManagement() {
       </Card>
 
       {/* Update Password Dialog */}
-      <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+      <Dialog open={state.isPasswordDialogOpen} onOpenChange={(open) => updateState({ isPasswordDialogOpen: open })}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Update Password</DialogTitle>
@@ -408,13 +457,13 @@ export default function UserManagement() {
               <Input
                 id="new_password"
                 type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                value={state.newPassword}
+                onChange={(e) => updateState({ newPassword: e.target.value })}
                 placeholder="Minimum 6 characters"
               />
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsPasswordDialogOpen(false)}>
+              <Button variant="outline" onClick={() => updateState({ isPasswordDialogOpen: false })}>
                 Cancel
               </Button>
               <Button 

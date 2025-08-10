@@ -43,11 +43,22 @@ serve(async (req) => {
       )
     }
 
-    const { method, action, email, password, full_name, user_id, new_password, role } = await req.json()
+    const body = await req.json()
+    const { action, email, password, full_name, user_id, new_password, role } = body
 
     switch (action) {
       case 'create_user': {
-        // Create new user
+        console.log('Creating user with data:', { email, full_name, role })
+        
+        // Validate required fields
+        if (!email || !password || !full_name) {
+          return new Response(
+            JSON.stringify({ error: 'Email, password, and full name are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        // Create new user using service role key (bypasses RLS)
         const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
           email: email,
           password: password,
@@ -56,19 +67,21 @@ serve(async (req) => {
         })
 
         if (createError) {
+          console.error('User creation error:', createError)
           return new Response(
             JSON.stringify({ error: createError.message }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
 
-        // Create profile for new user
+        // Create profile for new user using service role key
         const { error: profileError } = await supabaseClient
           .from('user_profiles')
           .insert({
             user_id: newUser.user.id,
             full_name: full_name,
-            role: role || 'user'
+            role: role || 'user',
+            is_active: true
           })
 
         if (profileError) {
@@ -76,11 +89,12 @@ serve(async (req) => {
           // Try to clean up the created user
           await supabaseClient.auth.admin.deleteUser(newUser.user.id)
           return new Response(
-            JSON.stringify({ error: 'Failed to create user profile' }),
+            JSON.stringify({ error: `Failed to create user profile: ${profileError.message}` }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
 
+        console.log('User created successfully:', newUser.user.id)
         return new Response(
           JSON.stringify({ success: true, user: newUser.user }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -156,6 +170,53 @@ serve(async (req) => {
 
         return new Response(
           JSON.stringify({ success: true, message: 'Password updated successfully' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      case 'toggle_status': {
+        // Prevent self-status toggle
+        if (user_id === user.id) {
+          return new Response(
+            JSON.stringify({ error: 'Cannot change your own account status' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        // Get current user status
+        const { data: currentUser, error: getUserError } = await supabaseClient
+          .from('user_profiles')
+          .select('is_active')
+          .eq('user_id', user_id)
+          .single()
+
+        if (getUserError) {
+          return new Response(
+            JSON.stringify({ error: getUserError.message }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        // Toggle status
+        const newStatus = !currentUser.is_active
+        const { error: toggleError } = await supabaseClient
+          .from('user_profiles')
+          .update({ is_active: newStatus })
+          .eq('user_id', user_id)
+
+        if (toggleError) {
+          return new Response(
+            JSON.stringify({ error: toggleError.message }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: `User ${newStatus ? 'enabled' : 'disabled'} successfully`,
+            newStatus 
+          }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
