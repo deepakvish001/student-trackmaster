@@ -20,8 +20,6 @@ import {
   LayoutDashboard,
   Users,
   GraduationCap,
-  Download,
-  TestTube,
   LogOut,
   User,
   Plus,
@@ -71,20 +69,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       icon: GraduationCap, 
       colorClass: 'icon-sunset-orange hover:text-sunset-orange',
       bgClass: 'hover:bg-sunset-orange/10'
-    },
-    { 
-      title: 'Downloads', 
-      path: '/downloads', 
-      icon: Download, 
-      colorClass: 'icon-pink-rose hover:text-pink-rose',
-      bgClass: 'hover:bg-pink-rose/10'
-    },
-    { 
-      title: 'Testing', 
-      path: '/testing', 
-      icon: TestTube, 
-      colorClass: 'icon-lime-green hover:text-lime-green',
-      bgClass: 'hover:bg-lime-green/10'
     },
   ];
 
