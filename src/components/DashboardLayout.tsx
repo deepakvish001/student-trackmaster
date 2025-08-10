@@ -201,9 +201,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </SidebarFooter>
         </Sidebar>
 
-        {/* Modern Industry-Level Header */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <header className="relative bg-gradient-to-r from-surface-1 via-surface-1/95 to-surface-1 border-b border-surface-3/50 backdrop-blur-xl shadow-2xl z-50">
+        {/* Modern Industry-Level Header - Fixed */}
+        <div className="flex-1 flex flex-col h-screen">
+          <header className="sticky top-0 relative bg-gradient-to-r from-surface-1 via-surface-1/95 to-surface-1 border-b border-surface-3/50 backdrop-blur-xl shadow-2xl z-50">
             <div className="absolute inset-0 bg-gradient-to-r from-electric-blue/5 via-transparent to-emerald-green/5 opacity-50"></div>
             <div className="relative px-8 py-6">
               <div className="flex items-center justify-between">
@@ -260,9 +260,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </header>
           
-          <main className="flex-1 overflow-auto bg-background p-8 animate-fade-in">
-            <div className="max-w-7xl mx-auto">
-              {children}
+          <main className="flex-1 overflow-y-auto bg-background animate-fade-in">
+            <div className="p-8">
+              <div className="max-w-7xl mx-auto">
+                {children}
+              </div>
             </div>
           </main>
         </div>
