@@ -50,18 +50,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       bgClass: 'hover:bg-electric-blue/10'
     },
     { 
-      title: 'Student List', 
-      path: '/students/list', 
-      icon: Users, 
-      colorClass: 'icon-vibrant-purple hover:text-vibrant-purple',
-      bgClass: 'hover:bg-vibrant-purple/10'
+      title: 'Add Student', 
+      path: '/students/enhanced-add', 
+      icon: Plus, 
+      colorClass: 'icon-emerald-green hover:text-emerald-green',
+      bgClass: 'hover:bg-emerald-green/10'
     },
     { 
       title: 'View Students', 
       path: '/students', 
       icon: Users, 
-      colorClass: 'icon-emerald-green hover:text-emerald-green',
-      bgClass: 'hover:bg-emerald-green/10'
+      colorClass: 'icon-vibrant-purple hover:text-vibrant-purple',
+      bgClass: 'hover:bg-vibrant-purple/10'
     },
     { 
       title: 'Batches', 
@@ -183,25 +183,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </SidebarGroup>
             )}
 
-            {/* Add New Student Button */}
-            <SidebarGroup className="mt-8">
-              <SidebarGroupContent>
-                <div className="px-2">
-                  <Link to="/students/enhanced-add">
-                    <Button 
-                      className={`w-full justify-start gap-3 h-14 font-semibold transition-all duration-300 rounded-xl ${
-                        location.pathname === '/students/enhanced-add' 
-                          ? 'gradient-primary shadow-glow hover:shadow-glow-lg' 
-                          : 'glass-card border border-primary/20 text-primary hover:bg-primary/10 hover:shadow-purple-glow'
-                      }`}
-                    >
-                      <Plus className="w-5 h-5" />
-                      <span className="font-poppins">Add New Student</span>
-                    </Button>
-                  </Link>
-                </div>
-              </SidebarGroupContent>
-            </SidebarGroup>
           </SidebarContent>
 
           <SidebarFooter className="p-6 border-t border-surface-3">
