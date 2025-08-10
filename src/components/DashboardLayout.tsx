@@ -21,7 +21,7 @@ import {
   LogOut,
   User,
   Plus,
-  Download,
+  Shield,
   Menu,
   Home,
   ChevronRight
@@ -48,21 +48,30 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       icon: LayoutDashboard
     },
     { 
-      title: 'Student List', 
+      title: 'Add Student', 
+      path: '/students/enhanced-add', 
+      icon: Plus
+    },
+    { 
+      title: 'View Students', 
       path: '/students', 
       icon: Users
     },
     { 
-      title: 'Batch List', 
+      title: 'Batches', 
       path: '/batches', 
       icon: GraduationCap
     },
-    { 
-      title: 'Download', 
-      path: '/download', 
-      icon: Download
-    },
   ];
+
+  // Admin menu items
+  const adminMenuItems = isSuperAdmin() ? [
+    { 
+      title: 'Administration', 
+      path: '/admin/audit-logs', 
+      icon: Shield
+    },
+  ] : [];
 
   const handleLogout = async () => {
     try {
@@ -114,6 +123,34 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
+
+              {/* Administration section for super admins */}
+              {adminMenuItems.length > 0 && (
+                <div className="mt-6">
+                  <div className="text-white/70 text-xs font-medium mb-3 uppercase tracking-wide">
+                    Administration
+                  </div>
+                  <SidebarMenu>
+                    {adminMenuItems.map((item) => (
+                      <SidebarMenuItem key={item.path}>
+                        <SidebarMenuButton asChild>
+                          <Link
+                            to={item.path}
+                            className={`flex items-center px-3 py-2 text-sm rounded transition-colors ${
+                              location.pathname === item.path
+                                ? 'bg-blue-600 text-white' 
+                                : 'text-white/80 hover:bg-white/10 hover:text-white'
+                            }`}
+                          >
+                            <item.icon className="w-4 h-4 mr-3" />
+                            <span>{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </div>
+              )}
             </div>
           </SidebarContent>
 
