@@ -17,11 +17,11 @@ export default function EnhancedDashboard() {
   const { metrics, isChecking, performHealthCheck } = useSystemHealthMonitoring();
   const { getAuditLogs } = useAuditLog();
 
-  // Super-fast dashboard statistics with aggressive caching
+  // Enhanced dashboard statistics with batch names
   const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
-      // Use parallel queries with minimal data selection for speed
+      // Use parallel queries with detailed batch information
       const [studentsRes, batchesRes] = await Promise.all([
         supabase
           .from('students')
@@ -29,7 +29,7 @@ export default function EnhancedDashboard() {
           .eq('is_enabled', true),
         supabase
           .from('batches')
-          .select('id, created_at, max_students')
+          .select('id, created_at, max_students, batch_name, serial_number')
           .eq('is_enabled', true)
       ]);
       
@@ -47,7 +47,7 @@ export default function EnhancedDashboard() {
         console.warn('Could not fetch user profiles:', err);
       }
 
-      // Calculate batch utilization efficiently with single query per batch
+      // Calculate enhanced batch utilization with names
       const batchUtilizationPromises = batches.map(async (batch) => {
         const { count } = await supabase
           .from('students')
@@ -57,6 +57,8 @@ export default function EnhancedDashboard() {
         
         return {
           id: batch.id,
+          name: batch.batch_name,
+          serialNumber: batch.serial_number,
           current: count || 0,
           max: batch.max_students,
           utilization: Math.round(((count || 0) / batch.max_students) * 100)
@@ -117,44 +119,82 @@ export default function EnhancedDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-background p-6">
-        <div className="max-w-7xl mx-auto space-y-8">
-          {/* Premium Header */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 branded-gradient rounded-2xl flex items-center justify-center shadow-glow-lg">
-                <LayoutDashboard className="w-6 h-6 text-white" />
+      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-white">
+        <div className="max-w-7xl mx-auto space-y-10 p-8">
+          {/* Enhanced Premium Header */}
+          <div className="space-y-6">
+            <div className="flex items-center space-x-6">
+              <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-3xl flex items-center justify-center shadow-2xl shadow-orange-500/30">
+                <LayoutDashboard className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-4xl font-bold text-branded-gradient">
-                  Welcome to BiometricHub
+                <h1 className="text-5xl font-extrabold bg-gradient-to-r from-white via-orange-200 to-orange-400 bg-clip-text text-transparent mb-2">
+                  BiometricHub Dashboard
                 </h1>
-                <p className="text-lg text-muted-foreground">
-                  Enterprise-grade biometric management at your fingertips
+                <p className="text-xl text-gray-300 font-medium">
+                  Advanced biometric management & analytics platform
                 </p>
+              </div>
+            </div>
+            
+            {/* Enhanced Stats Summary Bar */}
+            <div className="bg-gray-900/50 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 shadow-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-8">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-orange-400">{stats?.totalStudents || 0}</div>
+                    <div className="text-sm text-gray-400 uppercase tracking-wider">Students</div>
+                  </div>
+                  <div className="w-px h-12 bg-gray-700"></div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-blue-400">{stats?.totalBatches || 0}</div>
+                    <div className="text-sm text-gray-400 uppercase tracking-wider">Batches</div>
+                  </div>
+                  <div className="w-px h-12 bg-gray-700"></div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-emerald-400">{stats?.totalUsers || 0}</div>
+                    <div className="text-sm text-gray-400 uppercase tracking-wider">Users</div>
+                  </div>
+                  <div className="w-px h-12 bg-gray-700"></div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-purple-400">+{stats?.studentsThisWeek || 0}</div>
+                    <div className="text-sm text-gray-400 uppercase tracking-wider">This Week</div>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <Button
+                    onClick={() => refetchStats()}
+                    variant="outline"
+                    size="sm"
+                    className="bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:text-white"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Key Statistics - Only the 4 requested metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="premium-card group interactive-card">
-              <CardContent className="p-6">
-                <div className="space-y-4">
+          {/* Enhanced Key Statistics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <Card className="bg-gradient-to-br from-gray-900/80 to-gray-800/60 border-gray-700/50 shadow-2xl hover:shadow-orange-500/20 transition-all duration-500 group backdrop-blur-xl">
+              <CardContent className="p-8">
+                <div className="space-y-6">
                   <div className="flex items-center justify-between">
-                    <div className="w-14 h-14 bg-electric-blue/10 border border-electric-blue/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                      <Users className="h-7 w-7 text-electric-blue" />
+                    <div className="w-16 h-16 bg-gradient-to-br from-orange-500/20 to-orange-600/30 border border-orange-500/30 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Users className="h-8 w-8 text-orange-400" />
                     </div>
-                    <TrendingUp className="h-5 w-5 text-emerald-green" />
+                    <TrendingUp className="h-6 w-6 text-emerald-400" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-electric-blue uppercase tracking-wider">
+                    <h3 className="text-sm font-bold text-orange-400 uppercase tracking-wider mb-2">
                       Total Students
                     </h3>
-                    <p className="text-3xl font-bold text-foreground">
+                    <p className="text-4xl font-bold text-white mb-1">
                       {stats?.totalStudents || 0}
                     </p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-gray-400">
                       Active enrollments
                     </p>
                   </div>
@@ -162,23 +202,23 @@ export default function EnhancedDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="premium-card group interactive-card">
-              <CardContent className="p-6">
-                <div className="space-y-4">
+            <Card className="bg-gradient-to-br from-gray-900/80 to-gray-800/60 border-gray-700/50 shadow-2xl hover:shadow-emerald-500/20 transition-all duration-500 group backdrop-blur-xl">
+              <CardContent className="p-8">
+                <div className="space-y-6">
                   <div className="flex items-center justify-between">
-                    <div className="w-14 h-14 bg-emerald-green/10 border border-emerald-green/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                      <Shield className="h-7 w-7 text-emerald-green" />
+                    <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/20 to-emerald-600/30 border border-emerald-500/30 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Shield className="h-8 w-8 text-emerald-400" />
                     </div>
-                    <CheckCircle className="h-5 w-5 text-emerald-green" />
+                    <CheckCircle className="h-6 w-6 text-emerald-400" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-emerald-green uppercase tracking-wider">
+                    <h3 className="text-sm font-bold text-emerald-400 uppercase tracking-wider mb-2">
                       System Users
                     </h3>
-                    <p className="text-3xl font-bold text-foreground">
+                    <p className="text-4xl font-bold text-white mb-1">
                       {stats?.totalUsers || 0}
                     </p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-gray-400">
                       Admin accounts
                     </p>
                   </div>
@@ -186,23 +226,23 @@ export default function EnhancedDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="premium-card group interactive-card">
-              <CardContent className="p-6">
-                <div className="space-y-4">
+            <Card className="bg-gradient-to-br from-gray-900/80 to-gray-800/60 border-gray-700/50 shadow-2xl hover:shadow-blue-500/20 transition-all duration-500 group backdrop-blur-xl">
+              <CardContent className="p-8">
+                <div className="space-y-6">
                   <div className="flex items-center justify-between">
-                    <div className="w-14 h-14 bg-vibrant-purple/10 border border-vibrant-purple/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                      <GraduationCap className="h-7 w-7 text-vibrant-purple" />
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500/20 to-blue-600/30 border border-blue-500/30 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <GraduationCap className="h-8 w-8 text-blue-400" />
                     </div>
-                    <Activity className="h-5 w-5 text-emerald-green" />
+                    <Activity className="h-6 w-6 text-emerald-400" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-vibrant-purple uppercase tracking-wider">
+                    <h3 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-2">
                       Active Batches
                     </h3>
-                    <p className="text-3xl font-bold text-foreground">
+                    <p className="text-4xl font-bold text-white mb-1">
                       {stats?.totalBatches || 0}
                     </p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-gray-400">
                       Learning groups
                     </p>
                   </div>
@@ -210,23 +250,23 @@ export default function EnhancedDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="premium-card group interactive-card">
-              <CardContent className="p-6">
-                <div className="space-y-4">
+            <Card className="bg-gradient-to-br from-gray-900/80 to-gray-800/60 border-gray-700/50 shadow-2xl hover:shadow-purple-500/20 transition-all duration-500 group backdrop-blur-xl">
+              <CardContent className="p-8">
+                <div className="space-y-6">
                   <div className="flex items-center justify-between">
-                    <div className="w-14 h-14 bg-sunset-orange/10 border border-sunset-orange/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                      <TrendingUp className="h-7 w-7 text-sunset-orange" />
+                    <div className="w-16 h-16 bg-gradient-to-br from-purple-500/20 to-purple-600/30 border border-purple-500/30 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <TrendingUp className="h-8 w-8 text-purple-400" />
                     </div>
-                    <Clock className="h-5 w-5 text-emerald-green" />
+                    <Clock className="h-6 w-6 text-emerald-400" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-sunset-orange uppercase tracking-wider">
+                    <h3 className="text-sm font-bold text-purple-400 uppercase tracking-wider mb-2">
                       This Week
                     </h3>
-                    <p className="text-3xl font-bold text-foreground">
+                    <p className="text-4xl font-bold text-white mb-1">
                       +{stats?.studentsThisWeek || 0}
                     </p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-gray-400">
                       New enrollments
                     </p>
                   </div>
@@ -235,55 +275,83 @@ export default function EnhancedDashboard() {
             </Card>
           </div>
 
-          {/* Batch Analytics - Single card taking full width */}
-          <div className="grid grid-cols-1 gap-6">
-            <Card className="premium-card">
-              <CardHeader className="pb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-vibrant-purple/10 border border-vibrant-purple/20 rounded-xl flex items-center justify-center">
-                    <LayoutDashboard className="h-5 w-5 text-vibrant-purple" />
+          {/* Enhanced Batch Analytics - Full Width */}
+          <div className="grid grid-cols-1 gap-8">
+            <Card className="bg-gradient-to-br from-gray-900/80 to-gray-800/60 border-gray-700/50 shadow-2xl backdrop-blur-xl">
+              <CardHeader className="pb-6 border-b border-gray-700/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500/20 to-purple-600/30 border border-blue-500/30 rounded-xl flex items-center justify-center">
+                      <LayoutDashboard className="h-6 w-6 text-blue-400" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-2xl font-bold text-white">Batch Analytics</CardTitle>
+                      <p className="text-gray-400">Real-time utilization tracking & performance metrics</p>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-xl font-bold text-foreground">Batch Analytics</CardTitle>
-                    <p className="text-sm text-muted-foreground">Real-time utilization tracking</p>
+                  <div className="flex items-center space-x-4">
+                    <div className="text-right">
+                      <div className="text-sm text-gray-400">Average Utilization</div>
+                      <div className="text-2xl font-bold text-blue-400">{stats?.avgUtilization || 0}%</div>
+                    </div>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="p-8">
                 {stats?.batchUtilization && stats.batchUtilization.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {stats.batchUtilization.map((batch, index) => (
-                      <div key={batch.id} className="space-y-3 p-4 bg-muted/20 rounded-xl border border-border/50">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-8 h-8 bg-electric-blue/10 border border-electric-blue/20 rounded-lg flex items-center justify-center">
-                              <span className="text-sm font-bold text-electric-blue">{index + 1}</span>
+                      <div key={batch.id} className="bg-gray-800/40 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-6 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 group">
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-start">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 bg-gradient-to-br from-blue-500/20 to-blue-600/30 border border-blue-500/30 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                                <span className="text-sm font-bold text-blue-400">{index + 1}</span>
+                              </div>
+                              <div>
+                                <h3 className="font-bold text-white text-lg">{batch.name}</h3>
+                                <p className="text-xs text-gray-400">#{batch.serialNumber}</p>
+                              </div>
                             </div>
-                            <span className="font-semibold text-foreground">Batch {batch.id}</span>
+                            <div className="text-right">
+                              <div className="text-lg font-bold text-white">
+                                {batch.current}/{batch.max}
+                              </div>
+                              <p className="text-xs text-gray-400 uppercase tracking-wider">Students</p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <span className="text-sm font-bold text-foreground">
-                              {batch.current}/{batch.max}
-                            </span>
-                            <p className="text-xs text-muted-foreground">capacity</p>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Progress value={batch.utilization} className="h-3" />
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs text-muted-foreground">Utilization</span>
-                            <span className="text-sm font-bold text-vibrant-purple">{batch.utilization}%</span>
+                          
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-400">Capacity Usage</span>
+                              <span className="text-sm font-bold text-blue-400">{batch.utilization}%</span>
+                            </div>
+                            <div className="relative">
+                              <Progress 
+                                value={batch.utilization} 
+                                className="h-3 bg-gray-700/50" 
+                              />
+                              <div 
+                                className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full"
+                                style={{ width: `${batch.utilization}%` }}
+                              />
+                            </div>
+                            <div className="flex justify-between text-xs text-gray-500">
+                              <span>{batch.utilization < 50 ? 'Low utilization' : batch.utilization < 80 ? 'Moderate usage' : 'High capacity'}</span>
+                              <span>{batch.max - batch.current} slots available</span>
+                            </div>
                           </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <div className="w-16 h-16 bg-muted/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <Database className="h-8 w-8 text-muted-foreground" />
+                  <div className="text-center py-16">
+                    <div className="w-20 h-20 bg-gray-800/50 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                      <Database className="h-10 w-10 text-gray-500" />
                     </div>
-                    <p className="text-muted-foreground">No batch data available</p>
+                    <h3 className="text-xl font-bold text-gray-400 mb-2">No Batch Data Available</h3>
+                    <p className="text-gray-500">Create your first batch to see analytics here</p>
                   </div>
                 )}
               </CardContent>
