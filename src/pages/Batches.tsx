@@ -9,6 +9,8 @@ import { BatchCRUD } from '@/components/batches/BatchCRUD';
 import { BatchListSkeleton } from '@/components/batches/BatchListSkeleton';
 import { BatchPagination } from '@/components/batches/BatchPagination';
 import { useOptimizedBatches } from '@/hooks/useOptimizedBatches';
+import { useRealTimeBatchAccess } from '@/hooks/useRealTimeBatchAccess';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Batch } from '@/types/index';
 import { 
   GraduationCap, 
@@ -25,12 +27,16 @@ import {
   RefreshCw,
   BarChart3,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Shield
 } from 'lucide-react';
 
 export default function Batches() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
+  
+  // Enable real-time batch access updates
+  const { isSubscribed } = useRealTimeBatchAccess();
   
   const {
     batches,
@@ -92,10 +98,19 @@ export default function Batches() {
                 <div>
                   <h1 className="text-4xl font-bold text-branded-gradient">Batch Management</h1>
                   <p className="text-lg text-muted-foreground">
-                    {stats.totalBatches} active batches • {stats.utilizationRate}% system utilization
+                    Manage your accessible batches • {stats.utilizationRate}% system utilization
                   </p>
                 </div>
               </div>
+              
+              {isSubscribed && (
+                <Alert className="bg-primary/10 border-primary/20">
+                  <Shield className="h-4 w-4" />
+                  <AlertDescription>
+                    Real-time batch access monitoring is active. You'll be notified of any changes to your permissions.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -219,10 +234,9 @@ export default function Batches() {
                   <GraduationCap className="h-12 w-12 text-pink-rose" />
                 </div>
                 <div>
-                  <h3 className="text-3xl font-bold text-pink-rose mb-2">No Batches Found</h3>
-                  <p className="text-muted-foreground text-lg">Create your first batch to get started with student management.</p>
+                  <h3 className="text-3xl font-bold text-pink-rose mb-2">No Accessible Batches</h3>
+                  <p className="text-muted-foreground text-lg">You don't have access to any batches yet. Contact your administrator to get batch access.</p>
                 </div>
-                <BatchCRUD batches={[]} />
               </div>
             </Card>
           ) : (
@@ -351,106 +365,8 @@ export default function Batches() {
           
           {/* Results Info */}
           <div className="text-center text-muted-foreground mt-4">
-            Showing {((pagination.currentPage - 1) * 12) + 1} to {Math.min(pagination.currentPage * 12, pagination.totalCount)} of {pagination.totalCount} batches
+            Showing {((pagination.currentPage - 1) * 12) + 1} to {Math.min(pagination.currentPage * 12, pagination.totalCount)} of {pagination.totalCount} accessible batches
           </div>
-
-          {/* Batch Detail Modal */}
-          {selectedBatch && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-              <Card className="glass-card border-foreground/20 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                <CardHeader className="bg-gradient-to-r from-electric-blue/10 via-emerald-green/10 to-pink-rose/10">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-electric-blue to-vibrant-purple rounded-2xl flex items-center justify-center">
-                        <BookOpen className="h-8 w-8 text-white" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-3xl text-foreground font-bold">{selectedBatch.batch_name}</CardTitle>
-                        <p className="text-lg text-muted-foreground font-mono">{selectedBatch.serial_number}</p>
-                      </div>
-                    </div>
-                    <Button
-                      onClick={() => setSelectedBatch(null)}
-                      variant="ghost"
-                      className="text-foreground hover:bg-foreground/10 text-2xl"
-                    >
-                      ✕
-                    </Button>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="p-8 space-y-8">
-                  {/* Batch Statistics */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="space-y-3 glass-card p-6 border-electric-blue/20">
-                      <div className="flex items-center space-x-2">
-                        <Users className="h-5 w-5 text-electric-blue" />
-                        <h3 className="text-lg font-bold text-electric-blue">Enrollment</h3>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-foreground">Current Students:</span>
-                          <span className="text-2xl font-bold text-electric-blue">{selectedBatch.student_count || 0}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-foreground">Max Capacity:</span>
-                          <span className="text-xl font-semibold text-muted-foreground">{selectedBatch.max_students}</span>
-                        </div>
-                        <Progress 
-                          value={((selectedBatch.student_count || 0) / selectedBatch.max_students) * 100} 
-                          className="h-3 mt-3" 
-                        />
-                        <p className="text-sm text-center text-muted-foreground">
-                          {Math.round(((selectedBatch.student_count || 0) / selectedBatch.max_students) * 100)}% Utilized
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 glass-card p-6 border-emerald-green/20">
-                      <div className="flex items-center space-x-2">
-                        <Activity className="h-5 w-5 text-emerald-green" />
-                        <h3 className="text-lg font-bold text-emerald-green">Status</h3>
-                      </div>
-                      <div className="space-y-3">
-                        <Badge className={selectedBatch.is_enabled 
-                          ? "bg-emerald-green/20 text-emerald-green border-emerald-green/30 text-lg px-4 py-2" 
-                          : "bg-muted/20 text-muted-foreground border-muted/30 text-lg px-4 py-2"
-                        }>
-                          {selectedBatch.is_enabled ? '✅ Active' : '⏸️ Inactive'}
-                        </Badge>
-                        <p className="text-sm text-muted-foreground">
-                          {selectedBatch.is_enabled ? 'Accepting new enrollments' : 'Not accepting enrollments'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 glass-card p-6 border-sunset-orange/20">
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="h-5 w-5 text-sunset-orange" />
-                        <h3 className="text-lg font-bold text-sunset-orange">Created</h3>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="text-2xl font-bold text-sunset-orange">
-                          {new Date(selectedBatch.created_at).toLocaleDateString()}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {new Date(selectedBatch.created_at).toLocaleTimeString()}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {Math.ceil((Date.now() - new Date(selectedBatch.created_at).getTime()) / (1000 * 60 * 60 * 24))} days ago
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex flex-wrap gap-4 pt-6 border-t border-foreground/10">
-                    <BatchCRUD batches={[selectedBatch]} />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
         </div>
       </div>
     </DashboardLayout>

@@ -15,6 +15,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Student } from '@/types';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useOptimizedStudents } from '@/hooks/useOptimizedStudents';
+import { useRealTimeBatchAccess } from '@/hooks/useRealTimeBatchAccess';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { StudentListSkeleton } from '@/components/students/StudentListSkeleton';
 import { 
   Users, 
@@ -45,6 +47,9 @@ export default function StudentList() {
 
   const queryClient = useQueryClient();
   const { profile } = useUserProfile();
+  
+  // Enable real-time batch access updates
+  const { isSubscribed } = useRealTimeBatchAccess();
 
   // Use optimized data fetching hook with debounced search
   const {
@@ -178,9 +183,18 @@ export default function StudentList() {
                 </div>
                 <div>
                   <h1 className="text-4xl font-bold text-branded-gradient">Student Management</h1>
-                  <p className="text-lg text-muted-foreground">{stats.totalStudents} active enrollments across all batches</p>
+                  <p className="text-lg text-muted-foreground">View and manage students in your accessible batches</p>
                 </div>
               </div>
+              
+              {isSubscribed && (
+                <Alert className="bg-primary/10 border-primary/20 mt-4">
+                  <Shield className="h-4 w-4" />
+                  <AlertDescription>
+                    Real-time access monitoring is active. Your view will update automatically if batch permissions change.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
 
             <div className="flex items-center gap-4">

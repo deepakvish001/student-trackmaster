@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { useRealTimeBatchAccess } from '@/hooks/useRealTimeBatchAccess';
 import { Batch } from '@/types/index';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
@@ -37,6 +38,9 @@ export function BatchCRUD({ batches }: BatchCRUDProps) {
   });
 
   const queryClient = useQueryClient();
+  
+  // Enable real-time batch access updates
+  useRealTimeBatchAccess();
 
   // Generate next serial number
   const generateNextSerialNumber = async (): Promise<string> => {

@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Batch } from "@/types";
+import { useRealTimeBatchAccess } from "@/hooks/useRealTimeBatchAccess";
 
 interface BatchSelectorProps {
   value: string;
@@ -17,9 +18,13 @@ interface BatchSelectorProps {
 }
 
 export function BatchSelector({ value, onChange, disabled = false }: BatchSelectorProps) {
+  // Enable real-time updates
+  useRealTimeBatchAccess();
+  
   const { data: batches, isLoading } = useQuery({
-    queryKey: ['batches'],
+    queryKey: ['restricted-batches-selector'],
     queryFn: async () => {
+      // This will automatically respect user's batch access permissions
       const { data, error } = await supabase
         .from('batches')
         .select('*')
