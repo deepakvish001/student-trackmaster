@@ -284,8 +284,8 @@ export default function EnhancedAddStudent() {
 
   return (
     <DashboardLayout>
-      <div className="h-screen overflow-hidden bg-gradient-to-br from-background via-muted/10 to-emerald-green/5">
-        <div className="h-full p-6 flex flex-col">
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-emerald-green/5">
+        <div className="p-6 space-y-6">
           {/* Compact Header */}
           <div className="text-center mb-6">
             <div className="flex items-center justify-center space-x-3">
@@ -416,39 +416,37 @@ export default function EnhancedAddStudent() {
               />
             </div>
 
-            {/* Fingerprint Capture Section */}
-            <div className="flex-1 flex flex-col">
-              <h2 className="text-lg font-bold text-center mb-4 text-branded-gradient">Biometric Fingerprint Capture</h2>
-              
-              <div className="flex-1">
-                <MultiFingerCaptureInterface
-                  onAllCaptured={handleAllFingerprintsCaptured}
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              {/* Submit Button */}
-              <div className="mt-6 text-center">
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  onClick={form.handleSubmit(onSubmit)}
-                  className="h-14 px-12 text-lg font-bold bg-gradient-to-r from-emerald-green to-electric-blue hover:shadow-glow-lg transition-all duration-300 rounded-xl"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Saving Student...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="mr-2 h-5 w-5" />
-                      Submit to Save
-                    </>
-                  )}
-                </Button>
-              </div>
+          {/* Fingerprint Capture Section */}
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-center text-branded-gradient">Biometric Fingerprint Capture</h2>
+            
+            <MultiFingerCaptureInterface
+              onAllCaptured={handleAllFingerprintsCaptured}
+              disabled={isSubmitting}
+            />
+            
+            {/* Submit Button */}
+            <div className="text-center pt-6">
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                onClick={form.handleSubmit(onSubmit)}
+                className="h-14 px-12 text-lg font-bold bg-gradient-to-r from-emerald-green to-electric-blue hover:shadow-glow-lg transition-all duration-300 rounded-xl"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Saving Student...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="mr-2 h-5 w-5" />
+                    Submit to Save
+                  </>
+                )}
+              </Button>
             </div>
+          </div>
           </Form>
         </div>
       </div>
