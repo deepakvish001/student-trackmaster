@@ -23,7 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BatchSelector } from "@/components/BatchSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { MultiFingerCaptureInterface } from "@/components/fingerprint/MultiFingerCaptureInterface";
+import { SimpleFingerprintGrid } from "@/components/fingerprint/SimpleFingerprintGrid";
 import { validateStudentDataWithBiometrics } from "@/utils/enhancedSecurityValidation";
 import { encryptFingerprintData, auditBiometricAccess } from "@/utils/biometricSecurity";
 import { sanitizeTextInput, sanitizeEmail, sanitizePhoneNumber } from "@/utils/inputSanitization";
@@ -284,39 +284,23 @@ export default function EnhancedAddStudent() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-emerald-green/5">
-        <div className="p-6 space-y-6">
-          {/* Compact Header */}
-          <div className="text-center mb-6">
-            <div className="flex items-center justify-center space-x-3">
-              <div className="w-12 h-12 branded-gradient rounded-2xl flex items-center justify-center">
-                <User className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-branded-gradient">Add New Student</h1>
-                <p className="text-sm text-muted-foreground">Complete form and capture fingerprints</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Single Row Form */}
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
+        <div className="h-screen p-8 flex flex-col">
+          
+          {/* Single Row Form Fields */}
           <Form {...form}>
-            <div className="grid grid-cols-5 gap-4 mb-6">
+            <div className="grid grid-cols-5 gap-6 mb-8">
               {/* Student Name */}
               <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-bold text-electric-blue uppercase">
-                      <User className="h-3 w-3 inline mr-1" />
-                      Name
-                    </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Full name"
+                        placeholder="Enter full name"
                         {...field}
-                        className="h-10 bg-muted/20 border border-border/50 focus:border-electric-blue rounded-lg"
+                        className="h-12 bg-gray-800/50 border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400 font-medium"
                       />
                     </FormControl>
                     <FormMessage />
@@ -330,15 +314,11 @@ export default function EnhancedAddStudent() {
                 name="mobile"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-bold text-vibrant-purple uppercase">
-                      <Phone className="h-3 w-3 inline mr-1" />
-                      Mobile
-                    </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Mobile number"
+                        placeholder="Enter mobile number"
                         {...field}
-                        className="h-10 bg-muted/20 border border-border/50 focus:border-vibrant-purple rounded-lg"
+                        className="h-12 bg-gray-800/50 border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400 font-medium"
                       />
                     </FormControl>
                     <FormMessage />
@@ -352,16 +332,12 @@ export default function EnhancedAddStudent() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-bold text-emerald-green uppercase">
-                      <Mail className="h-3 w-3 inline mr-1" />
-                      Email
-                    </FormLabel>
                     <FormControl>
                       <Input
                         type="email"
-                        placeholder="Email (optional)"
+                        placeholder="Enter email address"
                         {...field}
-                        className="h-10 bg-muted/20 border border-border/50 focus:border-emerald-green rounded-lg"
+                        className="h-12 bg-gray-800/50 border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400 font-medium"
                       />
                     </FormControl>
                     <FormMessage />
@@ -375,12 +351,8 @@ export default function EnhancedAddStudent() {
                 name="batchId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-bold text-sunset-orange uppercase">
-                      <GraduationCap className="h-3 w-3 inline mr-1" />
-                      Batch
-                    </FormLabel>
                     <FormControl>
-                      <div className="h-10 bg-muted/20 border border-border/50 focus-within:border-sunset-orange rounded-lg">
+                      <div className="h-12 bg-gray-800/50 border border-gray-600 focus-within:border-orange-500 rounded-lg">
                         <BatchSelector 
                           value={field.value} 
                           onChange={field.onChange}
@@ -399,15 +371,11 @@ export default function EnhancedAddStudent() {
                 name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-bold text-pink-rose uppercase">
-                      <MapPin className="h-3 w-3 inline mr-1" />
-                      Address
-                    </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Full address"
+                        placeholder="Enter address"
                         {...field}
-                        className="h-10 bg-muted/20 border border-border/50 focus:border-pink-rose rounded-lg"
+                        className="h-12 bg-gray-800/50 border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400 font-medium"
                       />
                     </FormControl>
                     <FormMessage />
@@ -416,37 +384,35 @@ export default function EnhancedAddStudent() {
               />
             </div>
 
-          {/* Fingerprint Capture Section */}
-          <div className="space-y-6">
-            <h2 className="text-xl font-bold text-center text-branded-gradient">Biometric Fingerprint Capture</h2>
-            
-            <MultiFingerCaptureInterface
-              onAllCaptured={handleAllFingerprintsCaptured}
-              disabled={isSubmitting}
-            />
-            
-            {/* Submit Button */}
-            <div className="text-center pt-6">
-              <Button
-                type="submit"
+            {/* Simplified Fingerprint Capture */}
+            <div className="flex-1 flex flex-col">
+              <SimpleFingerprintGrid
+                onAllCaptured={handleAllFingerprintsCaptured}
                 disabled={isSubmitting}
-                onClick={form.handleSubmit(onSubmit)}
-                className="h-14 px-12 text-lg font-bold bg-gradient-to-r from-emerald-green to-electric-blue hover:shadow-glow-lg transition-all duration-300 rounded-xl"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Saving Student...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="mr-2 h-5 w-5" />
-                    Submit to Save
-                  </>
-                )}
-              </Button>
+              />
+              
+              {/* Submit Button */}
+              <div className="text-center pt-8">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  onClick={form.handleSubmit(onSubmit)}
+                  className="h-16 px-16 text-xl font-bold bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white shadow-2xl hover:shadow-orange-500/25 transition-all duration-300 rounded-xl border-0"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+                      Saving Student...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="mr-3 h-6 w-6" />
+                      Submit to Save
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
-          </div>
           </Form>
         </div>
       </div>
