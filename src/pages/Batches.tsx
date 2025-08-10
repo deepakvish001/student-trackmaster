@@ -82,12 +82,7 @@ export default function Batches() {
                 </div>
               </div>
               
-              {isSubscribed && <Alert className="bg-primary/10 border-primary/20">
-                  <Shield className="h-4 w-4" />
-                  <AlertDescription>
-                    Real-time batch access monitoring is active. You'll be notified of any changes to your permissions.
-                  </AlertDescription>
-                </Alert>}
+              {isSubscribed}
             </div>
 
             
