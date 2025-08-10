@@ -393,6 +393,26 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: Json
       }
+      gtrgm_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_decompress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_in: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_options: {
+        Args: { "": unknown }
+        Returns: undefined
+      }
+      gtrgm_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
       handle_failed_login: {
         Args: { target_user_id: string }
         Returns: Json
@@ -421,6 +441,18 @@ export type Database = {
       reset_system_settings_to_defaults: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      set_limit: {
+        Args: { "": number }
+        Returns: number
+      }
+      show_limit: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      show_trgm: {
+        Args: { "": string }
+        Returns: string[]
       }
       toggle_user_status: {
         Args: { target_user_id: string }
