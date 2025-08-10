@@ -19,6 +19,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
+import { OfflineCapableForm } from "@/components/OfflineCapableForm";
+import { useOfflineStudent } from "@/hooks/useOfflineStudent";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BatchSelector } from "@/components/BatchSelector";
 import { supabase } from "@/integrations/supabase/client";
@@ -61,6 +63,8 @@ export default function EnhancedAddStudent() {
   const navigate = useNavigate();
   const { user, encryptionKey } = useEnhancedAuth();
   const { logEvent } = useAuditLog();
+  const { useCreateStudent } = useOfflineStudent();
+  const createStudentMutation = useCreateStudent();
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -285,9 +289,12 @@ export default function EnhancedAddStudent() {
   return (
     <DashboardLayout>
       <div className="min-h-screen bg-black text-white">
-        <div className="p-8 max-w-7xl mx-auto">
-          
-          {/* Page Heading */}
+        <OfflineCapableForm 
+          className="p-8 max-w-7xl mx-auto bg-transparent border-0"
+          formData={form.getValues()}
+          isDirty={form.formState.isDirty}
+          isSubmitting={isSubmitting}
+        >
           <div className="mb-8">
             <h1 className="text-4xl font-bold text-white">
               Add <span className="text-orange-500">Student</span>
@@ -423,7 +430,7 @@ export default function EnhancedAddStudent() {
               </Button>
             </div>
           </Form>
-        </div>
+        </OfflineCapableForm>
       </div>
     </DashboardLayout>
   );
