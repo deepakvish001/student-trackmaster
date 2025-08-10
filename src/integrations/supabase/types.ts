@@ -146,6 +146,13 @@ export type Database = {
             referencedRelation: "students"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "student_fingerprints_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "vw_students_optimized"
+            referencedColumns: ["id"]
+          },
         ]
       }
       students: {
@@ -218,6 +225,13 @@ export type Database = {
             columns: ["batch_id"]
             isOneToOne: false
             referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "vw_batches_optimized"
             referencedColumns: ["id"]
           },
         ]
@@ -315,6 +329,13 @@ export type Database = {
             referencedRelation: "batches"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_batch_access_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "vw_batches_optimized"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_profiles: {
@@ -382,6 +403,63 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_batches_optimized: {
+        Row: {
+          admin_name: string | null
+          batch_name: string | null
+          complete_biometrics: number | null
+          created_at: string | null
+          id: string | null
+          is_enabled: boolean | null
+          max_students: number | null
+          partial_biometrics: number | null
+          serial_number: string | null
+          student_count: number | null
+          updated_at: string | null
+          user_id: string | null
+          username: string | null
+          utilization_rate: number | null
+        }
+        Relationships: []
+      }
+      vw_students_optimized: {
+        Row: {
+          address: string | null
+          admin_name: string | null
+          batch_id: string | null
+          batch_name: string | null
+          biometric_status: string | null
+          created_at: string | null
+          finger_1: string | null
+          finger_2: string | null
+          finger_3: string | null
+          finger_4: string | null
+          finger_5: string | null
+          fingerprint_count: number | null
+          id: string | null
+          is_enabled: boolean | null
+          mobile_number: string | null
+          student_name: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "students_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "vw_batches_optimized"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       delete_user_account: {
@@ -391,6 +469,13 @@ export type Database = {
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      get_student_count_by_batch: {
+        Args: { batch_ids: string[] }
+        Returns: {
+          batch_id: string
+          student_count: number
+        }[]
       }
       get_system_settings: {
         Args: Record<PropertyKey, never>
