@@ -346,8 +346,8 @@ export default function EnhancedDashboard() {
                                 <span className="text-sm font-bold text-blue-400">{index + 1}</span>
                               </div>
                               <div>
-                                <h3 className="font-bold text-orange-200 text-xl mb-1">{batch.name}</h3>
-                                <p className="text-sm text-gray-400">Serial: {batch.serialNumber}</p>
+                                <h3 className="font-bold text-orange-200 text-xl leading-tight">{batch.name}</h3>
+                                <p className="text-sm text-gray-400 mt-1">{batch.serialNumber}</p>
                               </div>
                             </div>
                             <div className="text-right">
