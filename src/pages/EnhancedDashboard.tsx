@@ -103,137 +103,88 @@ export default function EnhancedDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-background p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
-          {/* Header */}
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
-            <p className="text-sm text-muted-foreground">System overview and health monitoring</p>
+      <div className="space-y-6">
+        {/* Dashboard Title */}
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+        </div>
+
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Total Batches Card */}
+          <div className="stat-card-cyan rounded-lg p-6 relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-bold text-white">
+                  {stats?.totalBatches || 0}
+                </div>
+                <div className="text-white opacity-90 font-medium">
+                  Total Batches
+                </div>
+              </div>
+              <div className="opacity-30">
+                <GraduationCap className="h-16 w-16 text-white" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <Button 
+                variant="ghost" 
+                className="text-white hover:text-cyan-100 hover:bg-white/10 border border-white/20 text-sm"
+              >
+                More info →
+              </Button>
+            </div>
           </div>
 
-          {/* System Health Status */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {(['database', 'auth', 'network', 'overall'] as const).map((service) => {
-              const status = metrics?.[service as keyof typeof metrics] || 'unknown';
-              return (
-                <Card key={service} className="modern-card">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                          {service}
-                        </p>
-                        <p className={`text-sm font-semibold ${getStatusColor(status)}`}>
-                          {status}
-                        </p>
-                      </div>
-                      <div className={`p-2 rounded ${getStatusColor(status).replace('text-', 'bg-').replace('foreground', 'primary/10')}`}>
-                        {getStatusIcon(status)}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+          {/* Total Students Card */}
+          <div className="stat-card-green rounded-lg p-6 relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-bold text-white">
+                  {stats?.totalStudents || 0}
+                </div>
+                <div className="text-white opacity-90 font-medium">
+                  Total Students
+                </div>
+              </div>
+              <div className="opacity-30">
+                <Users className="h-16 w-16 text-white" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <Button 
+                variant="ghost" 
+                className="text-white hover:text-green-100 hover:bg-white/10 border border-white/20 text-sm"
+              >
+                More info →
+              </Button>
+            </div>
           </div>
 
-          {/* Key Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="modern-card">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Students</p>
-                    <p className="text-lg font-semibold text-foreground">
-                      {stats?.totalStudents || 0}
-                    </p>
-                  </div>
-                  <Users className="h-4 w-4 text-muted-foreground" />
+          {/* Remaining Batches Card */}
+          <div className="stat-card-yellow rounded-lg p-6 relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-bold text-white">
+                  -1
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card className="modern-card">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Batches</p>
-                    <p className="text-lg font-semibold text-foreground">
-                      {stats?.totalBatches || 0}
-                    </p>
-                  </div>
-                  <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                <div className="text-white opacity-90 font-medium">
+                  Remaining Batches
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card className="modern-card">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Users</p>
-                    <p className="text-lg font-semibold text-foreground">
-                      {stats?.totalUsers || 0}
-                    </p>
-                  </div>
-                  <Shield className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="modern-card">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">This Week</p>
-                    <p className="text-lg font-semibold text-foreground">
-                      +{stats?.studentsThisWeek || 0}
-                    </p>
-                  </div>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+              <div className="opacity-30">
+                <Activity className="h-16 w-16 text-white" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <Button 
+                variant="ghost" 
+                className="text-white hover:text-yellow-100 hover:bg-white/10 border border-white/20 text-sm"
+              >
+                More info →
+              </Button>
+            </div>
           </div>
-
-          {/* Batch Utilization */}
-          <Card className="modern-card">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">Batch Utilization</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {stats?.batchUtilization && stats.batchUtilization.length > 0 ? (
-                stats.batchUtilization.map((batch) => (
-                  <div key={batch.id} className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-foreground">Batch {batch.id}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {batch.current}/{batch.max}
-                      </span>
-                    </div>
-                    <div className="w-full bg-muted/30 rounded-full h-1.5">
-                      <div
-                        className="bg-primary h-1.5 rounded-full transition-all duration-300"
-                        style={{ width: `${batch.utilization}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">No batch data available</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Security Alert */}
-          {metrics?.overall === 'critical' && (
-            <Alert className="border-destructive/20 bg-destructive/10">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-              <AlertDescription className="text-destructive">
-                Critical system issues detected. Please check system health monitoring for details.
-              </AlertDescription>
-            </Alert>
-          )}
         </div>
       </div>
     </DashboardLayout>

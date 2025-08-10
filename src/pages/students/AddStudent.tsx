@@ -17,6 +17,7 @@ import { RDServiceStatusIndicator } from "@/components/rd/RDServiceStatusIndicat
 import { EnhancedRDServiceCapture } from "@/components/rd/EnhancedRDServiceCapture";
 import { shouldSkipFingerprintValidation } from '@/utils/rdServiceValidator';
 import { validateStudentData } from '@/utils/securityValidation';
+import DashboardLayout from '@/components/DashboardLayout';
 
 const formSchema = yup.object().shape({
   name: yup.string().required('Name is required'),
@@ -223,11 +224,11 @@ export default function AddStudent() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-foreground">Add Student</h1>
-          <p className="text-sm text-muted-foreground">Enter student details and capture biometric data</p>
+    <DashboardLayout>
+      <div className="space-y-6">
+        {/* Page Title */}
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Add Student</h1>
         </div>
 
         <RDServiceStatusIndicator />
@@ -451,6 +452,6 @@ export default function AddStudent() {
         </Tabs>
         </form>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

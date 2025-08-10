@@ -1,5 +1,5 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Geist:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,49 +7,53 @@
 
 @layer base {
   :root {
-    /* Modern High Contrast Design System */
-    --background: 0 0% 100%; /* Pure white */
-    --foreground: 220 15% 15%; /* Rich dark text */
-    --card: 0 0% 100%;
-    --card-foreground: 220 15% 15%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 15% 15%;
-    --primary: 230 100% 60%; /* Modern blue */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 250 95% 65%; /* Rich purple */
-    --secondary-foreground: 0 0% 100%;
-    --muted: 210 40% 98%;
-    --muted-foreground: 220 15% 35%;
-    --accent: 160 80% 50%; /* Fresh green */
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 85% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 220 13% 91%;
-    --input: 220 13% 95%;
-    --ring: 230 100% 60%;
+    /* AdminLTE Color Scheme */
+    --background: 245 245 245; /* Light gray background #f5f5f5 */
+    --foreground: 33 37 41; /* Dark text */
     
-    /* Modern Color Palette */
-    --electric-blue: 230 100% 60%;
-    --vibrant-purple: 250 95% 65%;
-    --emerald-green: 160 80% 50%;
-    --sunset-orange: 30 100% 60%;
-    --pink-rose: 335 85% 65%;
-    --lime-green: 90 80% 55%;
+    /* Sidebar */
+    --sidebar-bg: 52 58 64; /* Dark sidebar #343a40 */
+    --sidebar-text: 248 249 250; /* Light sidebar text */
+    --sidebar-hover: 73 80 87; /* Sidebar hover */
     
-    /* Modern Surfaces with subtle depth */
-    --surface-1: 0 0% 99%;
-    --surface-2: 220 13% 98%;
-    --surface-3: 220 13% 94%;
-    --surface-dark: 220 30% 8%;
-    --surface-darker: 220 35% 5%;
+    /* Cards and surfaces */
+    --card: 255 255 255; /* White cards */
+    --card-foreground: 33 37 41; /* Dark text on cards */
+    --popover: 255 255 255;
+    --popover-foreground: 33 37 41;
     
-    /* Typography hierarchy */
-    --text-primary: 220 15% 15%;
-    --text-secondary: 220 15% 25%;
-    --text-tertiary: 220 15% 35%;
-    --text-muted: 220 15% 50%;
+    /* Primary (Blue) */
+    --primary: 13 110 253; /* Bootstrap blue #0d6efd */
+    --primary-foreground: 255 255 255;
     
-    --radius: 0.875rem; /* 14px - modern radius */
+    /* Secondary */
+    --secondary: 108 117 125; /* Bootstrap secondary #6c757d */
+    --secondary-foreground: 255 255 255;
+    
+    /* Muted */
+    --muted: 233 236 239; /* Light gray #e9ecef */
+    --muted-foreground: 108 117 125;
+    
+    /* Accent */
+    --accent: 13 202 240; /* Cyan #0dcaf0 */
+    --accent-foreground: 255 255 255;
+    
+    /* Destructive */
+    --destructive: 220 53 69; /* Bootstrap danger #dc3545 */
+    --destructive-foreground: 255 255 255;
+    
+    /* Border */
+    --border: 222 226 230; /* Light border #dee2e6 */
+    --input: 206 212 218; /* Input border #ced4da */
+    --ring: 13 110 253; /* Focus ring */
+    
+    /* AdminLTE specific colors from screenshots */
+    --adminlte-cyan: 23 162 184; /* #17a2b8 */
+    --adminlte-green: 40 167 69; /* #28a745 */
+    --adminlte-yellow: 255 193 7; /* #ffc107 */
+    --adminlte-orange: 253 126 20; /* #fd7e14 */
+    
+    --radius: 0.375rem;
   }
 
   .dark {
@@ -85,11 +89,8 @@
   }
   
   body {
-    @apply bg-background text-foreground antialiased;
-    font-family: 'Geist', 'Inter', system-ui, -apple-system, sans-serif;
-    font-feature-settings: "rlig" 1, "calt" 1;
-    line-height: 1.6;
-    letter-spacing: -0.01em;
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
   
   /* Modern Typography Scale */
