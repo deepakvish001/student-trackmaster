@@ -156,7 +156,7 @@ export default function StudentList() {
   };
 
   // Download PDF function
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     try {
       console.log('PDF download initiated', { studentsCount: students.length });
       
@@ -168,8 +168,8 @@ export default function StudentList() {
       };
       
       console.log('PDF filters:', filters);
-      exportStudentsToPDF(students, filters);
-      toast.success('PDF report generated successfully');
+      await exportStudentsToPDF(students, filters);
+      toast.success('PDF report with fingerprint images generated successfully');
     } catch (error) {
       console.error('PDF generation error:', error);
       toast.error('Failed to generate PDF report');
