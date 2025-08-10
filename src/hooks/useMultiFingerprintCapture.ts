@@ -13,19 +13,7 @@ export function useMultiFingerprintCapture() {
 
   // Subscribe to service state changes
   useEffect(() => {
-    console.log('🔍 Initializing MultiFingerprint hook...');
-    
-    // Check if MFS100 SDK is available
-    if (typeof window !== 'undefined') {
-      console.log('🔍 MFS100 SDK Check:', {
-        GetMFS100Info: typeof window.GetMFS100Info,
-        CaptureFinger: typeof window.CaptureFinger,
-        jQuery: typeof window.$
-      });
-    }
-    
     const unsubscribe = multiFingerprintCaptureService.subscribe((newResult) => {
-      console.log('📊 Fingerprint state updated:', newResult);
       setResult(newResult);
       setIsCapturing(multiFingerprintCaptureService.isCurrentlyCapturing());
     });

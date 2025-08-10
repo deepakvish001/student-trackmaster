@@ -231,15 +231,6 @@ export function MultiFingerCaptureInterface({
 
   return (
     <div className="space-y-8 p-8 bg-muted/10 rounded-3xl border border-border/50 shadow-xl backdrop-blur-sm">
-      {/* Debug Information */}
-      <div className="text-sm text-muted-foreground bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-        <strong>Debug Info:</strong>
-        <br />• MFS100 SDK Available: {typeof window !== 'undefined' && window.GetMFS100Info ? '✅ Yes' : '❌ No'}
-        <br />• Capture Function: {typeof window !== 'undefined' && window.CaptureFinger ? '✅ Available' : '❌ Missing'}
-        <br />• Fingerprints Length: {fingerprints.length}
-        <br />• Completed Count: {completedCount}
-        <br />• Is Capturing: {isCapturing ? 'Yes' : 'No'}
-      </div>
       {/* Enhanced Header */}
       <Card className="border-0 shadow-2xl bg-card/95 backdrop-blur-md">
         <CardHeader className="pb-6">
