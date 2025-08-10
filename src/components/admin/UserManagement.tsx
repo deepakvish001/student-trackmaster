@@ -159,7 +159,7 @@ export default function UserManagement() {
     }
   }, [state.createUserForm, updateState, toast, batches]);
 
-  // Fetch user batch access
+  // Fetch user batch access with optimized caching
   const { data: userBatchAccess, refetch: refetchBatchAccess } = useQuery({
     queryKey: ['user-batch-access', selectedUserForBatchAccess],
     queryFn: async () => {
@@ -180,18 +180,23 @@ export default function UserManagement() {
       return data as UserBatchAccess[];
     },
     enabled: !!selectedUserForBatchAccess,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 
-  // Fetch all users with aggressive caching to prevent reloads
+  // Fetch all users with aggressive caching to prevent reloads on tab switching
   const { data: users, isLoading, refetch } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
-      console.log('Fetching users...');
+      console.log('🔄 Fetching users (cached for tab switching)...');
       const { data, error } = await supabase.functions.invoke('manage-users', {
         body: { action: 'get_users' }
       });
       
-      console.log('Users fetch result:', { data, error });
+      console.log('👥 Users fetch result:', { data, error });
       
       if (error) throw error;
       if (!data.success) throw new Error(data.error);
@@ -200,11 +205,12 @@ export default function UserManagement() {
     },
     staleTime: Infinity, // Never consider data stale
     gcTime: Infinity, // Keep in cache forever
-    refetchOnWindowFocus: false, // Never refetch when window gains focus
-    refetchOnMount: false, // Never refetch when component mounts
+    refetchOnWindowFocus: false, // CRITICAL: Never refetch when window gains focus (prevents reload on tab switch)
+    refetchOnMount: false, // Never refetch when component mounts after initial load
     refetchOnReconnect: false, // Never refetch on network reconnect
     refetchInterval: false, // Disable interval refetching
     retry: 1, // Only retry once on failure
+    networkMode: 'online', // Only run when online
   });
 
   // Create user mutation with optimistic updates
