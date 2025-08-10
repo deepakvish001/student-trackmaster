@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { supabase } from '@/integrations/supabase/client';
 import { BatchCRUD } from '@/components/batches/BatchCRUD';
+import { BatchListSkeleton } from '@/components/batches/BatchListSkeleton';
+import { BatchPagination } from '@/components/batches/BatchPagination';
+import { useOptimizedBatches } from '@/hooks/useOptimizedBatches';
 import { Batch } from '@/types/index';
 import { 
   GraduationCap, 
@@ -22,14 +23,24 @@ import {
   BookOpen,
   Target,
   RefreshCw,
-  BarChart3
+  BarChart3,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 export default function Batches() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
+  
+  const {
+    batches,
+    stats,
+    pagination,
+    filters,
+    actions,
+    loading,
+    error
+  } = useOptimizedBatches({ pageSize: 12, enablePrefetch: true });
 
   // Real-time clock update
   useEffect(() => {
@@ -38,59 +49,6 @@ export default function Batches() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
-
-  const { data: batches = [], isLoading, refetch } = useQuery({
-    queryKey: ['batches', searchTerm, statusFilter],
-    queryFn: async () => {
-      let query = supabase.from('batches').select('*');
-
-      if (searchTerm) {
-        query = query.or(`batch_name.ilike.%${searchTerm}%,serial_number.ilike.%${searchTerm}%`);
-      }
-
-      if (statusFilter !== 'all') {
-        query = query.eq('is_enabled', statusFilter === 'active');
-      }
-
-      const { data: batchData, error } = await query.order('created_at', { ascending: false });
-      if (error) {
-        console.error('Error fetching batches:', error);
-        throw error;
-      }
-
-      // Get student count for each batch and properly type the result
-      const batchesWithCounts: Batch[] = await Promise.all(
-        (batchData || []).map(async (batch): Promise<Batch> => {
-          const { count } = await supabase
-            .from('students')
-            .select('id', { count: 'exact' })
-            .eq('batch_id', batch.id)
-            .eq('is_enabled', true);
-          
-          return {
-            ...batch,
-            student_count: count || 0,
-            user_id: batch.user_id || undefined
-          };
-        })
-      );
-
-      return batchesWithCounts;
-    },
-    refetchInterval: 30000
-  });
-
-  // Real-time statistics
-  const stats = {
-    totalBatches: batches.length,
-    activeBatches: batches.filter(b => b.is_enabled).length,
-    totalCapacity: batches.reduce((sum, b) => sum + b.max_students, 0),
-    totalStudents: batches.reduce((sum, b) => sum + (b.student_count || 0), 0),
-    utilizationRate: batches.length > 0 
-      ? Math.round((batches.reduce((sum, b) => sum + (b.student_count || 0), 0) / 
-          batches.reduce((sum, b) => sum + b.max_students, 0)) * 100) 
-      : 0
-  };
 
   const getUtilizationColor = (current: number, max: number) => {
     const percentage = (current / max) * 100;
@@ -108,13 +66,12 @@ export default function Batches() {
     return <Badge className="bg-emerald-green/20 text-emerald-green border-emerald-green/30">Low</Badge>;
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <DashboardLayout>
-        <div className="min-h-screen bg-gradient-to-br from-surface-dark via-surface-darker to-background flex items-center justify-center">
-          <div className="glass-card p-12 text-center space-y-6">
-            <div className="animate-spin w-16 h-16 border-4 border-electric-blue/30 border-t-electric-blue rounded-full mx-auto"></div>
-            <div className="text-2xl font-bold text-electric-blue animate-pulse">Loading Batches...</div>
+        <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-vibrant-purple/5 p-6">
+          <div className="max-w-7xl mx-auto">
+            <BatchListSkeleton />
           </div>
         </div>
       </DashboardLayout>
@@ -143,7 +100,7 @@ export default function Batches() {
 
             <div className="flex items-center gap-2">
               <Button
-                onClick={() => refetch()}
+                onClick={() => actions.refetch()}
                 variant="outline"
                 className="modern-button-outline"
               >
@@ -227,9 +184,9 @@ export default function Batches() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-electric-blue" />
                     <Input
-                      placeholder="🔍 Search by batch name or serial number..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="🔍 Search by batch name, serial number, or admin..."
+                      value={filters.searchTerm}
+                      onChange={(e) => actions.handleSearch(e.target.value)}
                       className="pl-12 glass bg-surface-darker border-electric-blue/30 text-foreground placeholder:text-muted-foreground/70 focus:border-electric-blue focus:ring-electric-blue/20 h-12 text-base"
                     />
                   </div>
@@ -240,8 +197,8 @@ export default function Batches() {
                   <div className="relative">
                     <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-emerald-green" />
                     <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
+                      value={filters.statusFilter}
+                      onChange={(e) => actions.handleStatusFilter(e.target.value)}
                       className="pl-12 pr-8 py-3 glass bg-surface-darker border-emerald-green/30 text-foreground rounded-lg focus:border-emerald-green h-12 min-w-[200px]"
                     >
                       <option value="all">All Batches</option>
@@ -344,9 +301,62 @@ export default function Batches() {
               })}
             </div>
           )}
+          
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <div className="flex justify-center items-center space-x-4 mt-8">
+              <Button
+                variant="outline"
+                onClick={() => actions.handlePageChange(pagination.currentPage - 1)}
+                disabled={!pagination.hasPreviousPage}
+                className="glass-card"
+              >
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                Previous
+              </Button>
+              
+              <div className="flex items-center space-x-2">
+                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                  const page = i + 1;
+                  const isCurrentPage = page === pagination.currentPage;
+                  
+                  return (
+                    <Button
+                      key={page}
+                      variant={isCurrentPage ? "default" : "outline"}
+                      onClick={() => actions.handlePageChange(page)}
+                      className={isCurrentPage 
+                        ? "bg-electric-blue text-white" 
+                        : "glass-card hover:bg-electric-blue/10"
+                      }
+                      size="sm"
+                    >
+                      {page}
+                    </Button>
+                  );
+                })}
+              </div>
+              
+              <Button
+                variant="outline"
+                onClick={() => actions.handlePageChange(pagination.currentPage + 1)}
+                disabled={!pagination.hasNextPage}
+                className="glass-card"
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          )}
+          
+          {/* Results Info */}
+          <div className="text-center text-muted-foreground mt-4">
+            Showing {((pagination.currentPage - 1) * 12) + 1} to {Math.min(pagination.currentPage * 12, pagination.totalCount)} of {pagination.totalCount} batches
+          </div>
+        </div>
 
-          {/* Batch Detail Modal */}
-          {selectedBatch && (
+        {/* Batch Detail Modal */}
+        {selectedBatch && (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
               <Card className="glass-card border-foreground/20 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                 <CardHeader className="bg-gradient-to-r from-electric-blue/10 via-emerald-green/10 to-pink-rose/10">
