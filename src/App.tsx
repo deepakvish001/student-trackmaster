@@ -9,7 +9,6 @@ import Dashboard from "./pages/Dashboard";
 import Batches from "./pages/Batches";
 import AddStudent from "./pages/students/AddStudent";
 import EnhancedAddStudent from "./pages/students/EnhancedAddStudent";
-import ViewStudents from "./pages/students/ViewStudents";
 import StudentList from "./pages/students/StudentList";
 import UserManagementPage from "./pages/admin/UserManagement";
 import AuditLogs from "./pages/admin/AuditLogs";
@@ -43,14 +42,6 @@ function App() {
             />
             <Route
               path="/students"
-              element={
-                <ProtectedRoute>
-                  <ViewStudents />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/students/list"
               element={
                 <ProtectedRoute>
                   <StudentList />

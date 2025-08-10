@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EnhancedStudentTable } from '@/components/students/EnhancedStudentTable';
 import { EditStudentDialog } from '@/components/students/EditStudentDialog';
+import { StudentDataDebugger } from '@/components/students/StudentDataDebugger';
 import { supabase } from '@/integrations/supabase/client';
 import { Student } from '@/types';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -349,7 +351,7 @@ export default function StudentList() {
             </CardContent>
           </Card>
 
-          {/* Enhanced Student Table with CRUD Operations */}
+          {/* Enhanced Student Table with CRUD Operations and Debug */}
           <Card className="glass-card border-foreground/10">
             <CardHeader className="bg-gradient-to-r from-electric-blue/5 via-emerald-green/5 to-pink-rose/5">
               <CardTitle className="text-2xl font-bold text-foreground flex items-center">
@@ -358,11 +360,28 @@ export default function StudentList() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <EnhancedStudentTable
-                students={students}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-              />
+              <Tabs defaultValue="table" className="space-y-6">
+                <TabsList className="grid w-full grid-cols-2 glass bg-surface-darker">
+                  <TabsTrigger value="table" className="text-foreground data-[state=active]:bg-electric-blue/20">
+                    Student List
+                  </TabsTrigger>
+                  <TabsTrigger value="debug" className="text-foreground data-[state=active]:bg-emerald-green/20">
+                    Debug Data
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="table" className="space-y-4">
+                  <EnhancedStudentTable
+                    students={students}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
+                </TabsContent>
+                
+                <TabsContent value="debug" className="space-y-4">
+                  <StudentDataDebugger />
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
 
