@@ -161,6 +161,26 @@
     box-shadow: 0 0 20px hsl(var(--electric-blue) / 0.3);
   }
   
+  /* Shadow and glow effects */
+  .shadow-glow {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3), 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  .shadow-glow-lg {
+    box-shadow: 0 0 40px hsl(var(--primary) / 0.4), 0 8px 32px rgba(0, 0, 0, 0.15);
+  }
+  
+  .shadow-purple-glow {
+    box-shadow: 0 0 20px hsl(var(--vibrant-purple) / 0.3), 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Glass effect */
+  .glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
   /* Glass morphism with high contrast */
   .glass-card {
     background: rgba(255, 255, 255, 0.95);
@@ -219,6 +239,39 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
     font-weight: 700;
+  }
+  
+  .text-gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--electric-blue)), hsl(var(--vibrant-purple)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 700;
+  }
+  
+  /* Icon color utilities */
+  .icon-electric-blue {
+    color: hsl(var(--electric-blue));
+  }
+  
+  .icon-emerald-green {
+    color: hsl(var(--emerald-green));
+  }
+  
+  .icon-vibrant-purple {
+    color: hsl(var(--vibrant-purple));
+  }
+  
+  .icon-sunset-orange {
+    color: hsl(var(--sunset-orange));
+  }
+  
+  .icon-pink-rose {
+    color: hsl(var(--pink-rose));
+  }
+  
+  .icon-danger-red {
+    color: hsl(var(--destructive));
   }
   
   /* Loading states */

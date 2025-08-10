@@ -203,8 +203,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
         {/* Modern Industry-Level Header */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <header className="relative bg-gradient-to-r from-surface-1 via-surface-1/95 to-surface-1 border-b border-surface-3/50 backdrop-blur-xl shadow-2xl">
-            <div className="absolute inset-0 bg-gradient-to-r from-electric-blue/5 via-transparent to-emerald-green/5"></div>
+          <header className="relative bg-gradient-to-r from-surface-1 via-surface-1/95 to-surface-1 border-b border-surface-3/50 backdrop-blur-xl shadow-2xl z-50">
+            <div className="absolute inset-0 bg-gradient-to-r from-electric-blue/5 via-transparent to-emerald-green/5 opacity-50"></div>
             <div className="relative px-8 py-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-6">
