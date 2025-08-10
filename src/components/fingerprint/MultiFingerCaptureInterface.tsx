@@ -374,21 +374,33 @@ export function MultiFingerCaptureInterface({
               {/* Action Buttons */}
               <div className="space-y-2">
                 {fingerprint.status === 'captured' ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full py-2 text-xs font-bold bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
-                    onClick={() => setPreviewState({
-                      isVisible: true,
-                      fingerIndex: index,
-                      fingerName: fingerNames[index],
-                      imageData: fingerprint.imageData,
-                      quality: fingerprint.quality
-                    })}
-                  >
-                    <Eye className="mr-1 h-3 w-3" />
-                    Preview
-                  </Button>
+                  <div className="space-y-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full py-2 text-xs font-bold bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+                      onClick={() => setPreviewState({
+                        isVisible: true,
+                        fingerIndex: index,
+                        fingerName: fingerNames[index],
+                        imageData: fingerprint.imageData,
+                        quality: fingerprint.quality
+                      })}
+                    >
+                      <Eye className="mr-1 h-3 w-3" />
+                      Preview
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full py-2 text-xs font-bold bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100 transition-all duration-200"
+                      onClick={() => handleRetry(index)}
+                      disabled={disabled || isCapturing}
+                    >
+                      <RotateCcw className="mr-1 h-3 w-3" />
+                      Recapture
+                    </Button>
+                  </div>
                 ) : fingerprint.status === 'failed' ? (
                   <Button
                     size="sm"
