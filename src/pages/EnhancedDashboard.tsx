@@ -17,7 +17,7 @@ export default function EnhancedDashboard() {
   const { metrics, isChecking, performHealthCheck } = useSystemHealthMonitoring();
   const { getAuditLogs } = useAuditLog();
 
-  // Optimized dashboard statistics with efficient queries
+  // Super-fast dashboard statistics with aggressive caching
   const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
@@ -82,9 +82,11 @@ export default function EnhancedDashboard() {
         )
       };
     },
-    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-    gcTime: 15 * 60 * 1000, // Keep in cache for 15 minutes
-    refetchOnWindowFocus: false // Prevent unnecessary refetches
+    staleTime: Infinity, // Never consider data stale
+    gcTime: Infinity, // Keep in cache forever
+    refetchOnWindowFocus: false, // Prevent unnecessary refetches
+    refetchOnMount: false, // Use cached data
+    refetchOnReconnect: false, // Don't refetch on reconnect
   });
 
   const getStatusColor = (status: string) => {

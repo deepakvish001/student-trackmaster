@@ -14,9 +14,13 @@ import UserManagementPage from "./pages/admin/UserManagement";
 import AuditLogs from "./pages/admin/AuditLogs";
 import SystemSettings from "./pages/admin/SystemSettings";
 import { EnhancedAuthProvider } from "./contexts/EnhancedAuthContext";
+import { useGlobalPerformanceOptimization } from "./hooks/useGlobalPerformanceOptimization";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
+  // Initialize global performance optimization
+  useGlobalPerformanceOptimization();
+
   return (
     <QueryClient>
       <BrowserRouter>
@@ -109,7 +113,16 @@ const QueryClient = ({ children }: { children: React.ReactNode }) => {
       new TanstackQueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 5 * 1000,
+            staleTime: Infinity, // Never consider data stale globally
+            gcTime: Infinity, // Keep in cache forever globally
+            refetchOnWindowFocus: false, // Never refetch on window focus
+            refetchOnMount: false, // Never refetch when component mounts
+            refetchOnReconnect: false, // Never refetch on network reconnect
+            retry: 1, // Only retry once
+          },
+          mutations: {
+            retry: 1, // Only retry mutations once
+            networkMode: 'online', // Only run when online
           },
         },
       }),

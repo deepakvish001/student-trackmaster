@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 
@@ -12,6 +11,7 @@ interface UserProfile {
   role: UserRole;
   avatar_url?: string;
   is_active: boolean;
+  max_batches_allowed?: number;
   last_login_at?: string;
   created_at: string;
   updated_at: string;
@@ -19,26 +19,15 @@ interface UserProfile {
 
 export function useUserProfile() {
   const { user } = useEnhancedAuth();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (user) {
-      fetchProfile();
-    } else {
-      setIsLoading(false);
-    }
-  }, [user]);
-
-  const fetchProfile = async () => {
-    if (!user) return;
-
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const { data, error } = await (supabase as any)
+  // Super-fast user profile with aggressive caching
+  const { data: profile, isLoading, error, refetch } = useQuery({
+    queryKey: ['user-profile', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      
+      const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('user_id', user.id)
@@ -46,95 +35,92 @@ export function useUserProfile() {
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching profile:', error);
-        setError(error.message);
-        return;
+        throw error;
       }
 
       if (!data) {
         // Profile doesn't exist, create one
-        await createProfile();
-      } else {
-        setProfile(data as UserProfile);
-        // Update last login
-        await updateLastLogin();
+        const { data: newProfile, error: createError } = await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: user.id,
+            full_name: user.email?.split('@')[0] || 'User',
+            role: 'user' as UserRole,
+            is_active: true,
+            max_batches_allowed: 1
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('Error creating profile:', createError);
+          throw createError;
+        }
+
+        // Update last login for new profile
+        await supabase
+          .from('user_profiles')
+          .update({ last_login_at: new Date().toISOString() })
+          .eq('user_id', user.id);
+
+        return newProfile as UserProfile;
       }
-    } catch (err) {
-      console.error('Profile fetch error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch profile');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const createProfile = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await (supabase as any)
-        .from('user_profiles')
-        .insert({
-          user_id: user.id,
-          full_name: user.email?.split('@')[0] || 'User',
-          role: 'user' as UserRole,
-          is_active: true
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating profile:', error);
-        setError(error.message);
-        return;
-      }
-      
-      setProfile(data as UserProfile);
-    } catch (err) {
-      console.error('Profile creation error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create profile');
-    }
-  };
-
-  const updateLastLogin = async () => {
-    if (!user) return;
-
-    try {
-      await (supabase as any)
+      // Update last login for existing profile
+      await supabase
         .from('user_profiles')
         .update({ last_login_at: new Date().toISOString() })
         .eq('user_id', user.id);
-    } catch (err) {
-      console.warn('Failed to update last login:', err);
-    }
-  };
 
-  const updateProfile = async (updates: Partial<UserProfile>) => {
-    if (!user || !profile) return;
+      return data as UserProfile;
+    },
+    enabled: !!user?.id,
+    staleTime: Infinity, // Never consider stale
+    gcTime: Infinity, // Keep in cache forever
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    retry: 1,
+  });
 
-    try {
-      setIsLoading(true);
-      const { data, error } = await (supabase as any)
+  // Super-fast profile update with optimistic updates
+  const updateProfileMutation = useMutation({
+    mutationFn: async (updates: Partial<UserProfile>) => {
+      if (!user?.id) throw new Error('User not authenticated');
+
+      const { data, error } = await supabase
         .from('user_profiles')
         .update(updates)
         .eq('user_id', user.id)
         .select()
         .single();
 
-      if (error) {
-        console.error('Error updating profile:', error);
-        setError(error.message);
-        throw new Error(error.message);
+      if (error) throw error;
+      return data as UserProfile;
+    },
+    onMutate: async (updates) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['user-profile', user?.id] });
+      
+      // Snapshot the previous value
+      const previousProfile = queryClient.getQueryData(['user-profile', user?.id]);
+      
+      // Optimistically update to the new value
+      if (previousProfile && profile) {
+        queryClient.setQueryData(['user-profile', user?.id], { ...profile, ...updates });
       }
       
-      setProfile(data as UserProfile);
-      return data as UserProfile;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update profile';
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      return { previousProfile };
+    },
+    onError: (err, updates, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      queryClient.setQueryData(['user-profile', user?.id], context?.previousProfile);
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure correct data
+      queryClient.invalidateQueries({ queryKey: ['user-profile', user?.id] });
+    },
+  });
 
   const hasRole = (requiredRole: UserRole): boolean => {
     if (!profile) return false;
@@ -147,6 +133,10 @@ export function useUserProfile() {
     return profile?.role === 'super_admin';
   };
 
+  const updateProfile = async (updates: Partial<UserProfile>) => {
+    return updateProfileMutation.mutateAsync(updates);
+  };
+
   return {
     profile,
     isLoading,
@@ -154,6 +144,7 @@ export function useUserProfile() {
     updateProfile,
     hasRole,
     isSuperAdmin,
-    refetch: fetchProfile
+    refetch,
+    isUpdating: updateProfileMutation.isPending,
   };
 }
