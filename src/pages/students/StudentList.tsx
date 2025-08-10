@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Student } from '@/types';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useOptimizedStudents } from '@/hooks/useOptimizedStudents';
+import { StudentListSkeleton } from '@/components/students/StudentListSkeleton';
 import { 
   Users, 
   Search, 
@@ -159,12 +160,7 @@ export default function StudentList() {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="min-h-screen bg-gradient-to-br from-surface-dark via-surface-darker to-background flex items-center justify-center">
-          <div className="glass-card p-12 text-center space-y-6">
-            <div className="animate-spin w-16 h-16 border-4 border-electric-blue/30 border-t-electric-blue rounded-full mx-auto"></div>
-            <div className="text-2xl font-bold text-electric-blue animate-pulse">Loading Student List...</div>
-          </div>
-        </div>
+        <StudentListSkeleton />
       </DashboardLayout>
     );
   }

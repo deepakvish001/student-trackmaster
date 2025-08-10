@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useMemo } from 'react';
+import { useDebounce } from './useDebounce';
 
 interface UseOptimizedStudentsOptions {
   searchTerm?: string;
@@ -24,9 +25,12 @@ export function useOptimizedStudents(options: UseOptimizedStudentsOptions = {}) 
   const [currentPage, setCurrentPage] = useState(0);
   const queryClient = useQueryClient();
 
+  // Debounce search term to prevent excessive API calls
+  const debouncedSearchTerm = useDebounce(searchTerm.trim(), 300);
+
   // Optimized students query with pagination
   const studentsQuery = useQuery({
-    queryKey: ['students-optimized', searchTerm, selectedBatch, sortBy, sortOrder, currentPage],
+    queryKey: ['students-optimized', debouncedSearchTerm, selectedBatch, sortBy, sortOrder, currentPage],
     queryFn: async () => {
       let query = supabase
         .from('students')
@@ -57,9 +61,8 @@ export function useOptimizedStudents(options: UseOptimizedStudentsOptions = {}) 
         .eq('is_enabled', true);
 
       // Apply filters efficiently
-      if (searchTerm.trim()) {
-        const searchQuery = searchTerm.trim();
-        query = query.or(`student_name.ilike.%${searchQuery}%,mobile_number.ilike.%${searchQuery}%`);
+      if (debouncedSearchTerm) {
+        query = query.or(`student_name.ilike.%${debouncedSearchTerm}%,mobile_number.ilike.%${debouncedSearchTerm}%`);
       }
 
       if (selectedBatch !== 'all') {
@@ -93,16 +96,15 @@ export function useOptimizedStudents(options: UseOptimizedStudentsOptions = {}) 
 
   // Separate lightweight query for getting total count efficiently
   const countQuery = useQuery({
-    queryKey: ['students-count', searchTerm, selectedBatch],
+    queryKey: ['students-count', debouncedSearchTerm, selectedBatch],
     queryFn: async () => {
       let query = supabase
         .from('students')
         .select('id', { count: 'exact' })
         .eq('is_enabled', true);
 
-      if (searchTerm.trim()) {
-        const searchQuery = searchTerm.trim();
-        query = query.or(`student_name.ilike.%${searchQuery}%,mobile_number.ilike.%${searchQuery}%`);
+      if (debouncedSearchTerm) {
+        query = query.or(`student_name.ilike.%${debouncedSearchTerm}%,mobile_number.ilike.%${debouncedSearchTerm}%`);
       }
 
       if (selectedBatch !== 'all') {
@@ -183,7 +185,7 @@ export function useOptimizedStudents(options: UseOptimizedStudentsOptions = {}) 
   const prefetchNextPage = () => {
     if (hasNextPage) {
       queryClient.prefetchQuery({
-        queryKey: ['students-optimized', searchTerm, selectedBatch, sortBy, sortOrder, currentPage + 1],
+        queryKey: ['students-optimized', debouncedSearchTerm, selectedBatch, sortBy, sortOrder, currentPage + 1],
         staleTime: 2 * 60 * 1000, // 2 minutes
       });
     }
