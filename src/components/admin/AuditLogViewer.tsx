@@ -43,12 +43,10 @@ export default function AuditLogViewer() {
       const testQuery = await supabase.from('audit_logs').select('count').limit(1);
       console.log('🧪 Test query result:', testQuery);
       
+      // Get audit logs without user_profiles join
       let query = supabase
         .from('audit_logs')
-        .select(`
-          *,
-          user_profiles(full_name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       // Apply database-level filtering for better performance
@@ -60,19 +58,38 @@ export default function AuditLogViewer() {
         query = query.or(`action.ilike.%${searchTerm}%,table_name.ilike.%${searchTerm}%`);
       }
 
-      const { data, error } = await query.limit(200);
+      const { data: auditData, error } = await query.limit(200);
       
-      console.log('📊 Query result:', { data: data?.length, error, fullError: error });
+      console.log('📊 Audit logs result:', { data: auditData?.length, error });
       
       if (error) {
         console.error('❌ Error fetching audit logs:', error);
         throw error;
       }
+
+      // Get unique user IDs from audit logs
+      const userIds = [...new Set(auditData?.map(log => log.user_id).filter(Boolean) || [])];
+      console.log('👤 Found user IDs:', userIds.length);
       
-      // Transform the data to match our interface
-      const transformedData = (data || []).map(log => ({
+      // Fetch user profiles for these users
+      let userData: any[] = [];
+      if (userIds.length > 0) {
+        const { data: userProfiles, error: userError } = await supabase
+          .from('user_profiles')
+          .select('user_id, full_name')
+          .in('user_id', userIds);
+        
+        console.log('👥 User profiles result:', { data: userProfiles?.length, error: userError });
+        
+        if (!userError) {
+          userData = userProfiles || [];
+        }
+      }
+      
+      // Combine audit logs with user data
+      const transformedData = (auditData || []).map(log => ({
         ...log,
-        user_profiles: Array.isArray(log.user_profiles) ? log.user_profiles[0] : log.user_profiles
+        user_profiles: userData.find(user => user.user_id === log.user_id) || null
       }));
       
       console.log('✅ Transformed data:', transformedData.length, 'logs', transformedData.slice(0, 2));
