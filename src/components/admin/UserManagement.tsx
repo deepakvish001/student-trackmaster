@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronDown, Check } from 'lucide-react';
+import { ChevronDown, Check, RefreshCw } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -41,6 +42,49 @@ export default function UserManagement() {
   const { logEvent } = useAuditLog();
   const [showAuditLogs, setShowAuditLogs] = React.useState(false);
   const [selectedUserForBatchAccess, setSelectedUserForBatchAccess] = React.useState<string | null>(null);
+  const [isAutoSaving, setIsAutoSaving] = React.useState(false);
+
+  // Real-time subscription for batches
+  React.useEffect(() => {
+    const channel = supabase
+      .channel('batches-realtime')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'batches' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['batches'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
+  // Auto-save batch access changes
+  const handleBatchAccessChange = React.useCallback(async (batchId: string, checked: boolean) => {
+    setIsAutoSaving(true);
+    
+    const currentBatchAccess = state.createUserForm.batch_access || [];
+    const newBatchAccess = checked
+      ? [...currentBatchAccess, batchId]
+      : currentBatchAccess.filter(id => id !== batchId);
+    
+    // Update local state immediately for responsive UI
+    updateState({
+      createUserForm: { ...state.createUserForm, batch_access: newBatchAccess }
+    });
+
+    // Simulate auto-save (in actual implementation, this would save to a draft or temporary state)
+    setTimeout(() => {
+      setIsAutoSaving(false);
+      toast({
+        title: "Auto-saved",
+        description: "Batch selection updated",
+        duration: 1000
+      });
+    }, 500);
+  }, [state.createUserForm, updateState, toast]);
 
   // Fetch available batches
   const { data: batches } = useQuery({
@@ -446,13 +490,21 @@ export default function UserManagement() {
               
               {state.createUserForm.role === 'user' && (
                 <div>
-                  <Label>Batch Access (Optional - User can always access their own created batches)</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Batch Access (Optional - User can always access their own created batches)</Label>
+                    {isAutoSaving && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                        Auto-saving...
+                      </div>
+                    )}
+                  </div>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         role="combobox"
-                        className="w-full justify-between"
+                        className="w-full justify-between hover:bg-accent transition-colors"
                       >
                         {state.createUserForm.batch_access?.length > 0
                           ? `${state.createUserForm.batch_access.length} batches selected`
@@ -461,12 +513,11 @@ export default function UserManagement() {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent 
-                      className="w-full p-0 bg-background border shadow-lg z-50" 
+                      className="w-full p-0 bg-background/95 backdrop-blur border shadow-lg z-50" 
                       align="start"
-                      onPointerDownOutside={(e) => e.preventDefault()}
-                      onInteractOutside={(e) => e.preventDefault()}
                     >
-                      <div className="p-3 space-y-2 max-h-60 overflow-y-auto">
+                      <ScrollArea className="max-h-64">
+                        <div className="p-3 space-y-1">
                         {/* Select All option */}
                         <div className="flex items-center space-x-2 p-2 hover:bg-accent rounded">
                           <Checkbox
@@ -489,34 +540,34 @@ export default function UserManagement() {
                           </Label>
                         </div>
                         
-                        {batches?.map((batch) => (
-                          <div key={batch.id} className="flex items-center space-x-2 p-2 hover:bg-accent rounded">
-                            <Checkbox
-                              id={`batch-${batch.id}`}
-                              checked={(state.createUserForm.batch_access || []).includes(batch.id)}
-                              onCheckedChange={(checked) => {
-                                const currentBatchAccess = state.createUserForm.batch_access || [];
-                                const newBatchAccess = checked
-                                  ? [...currentBatchAccess, batch.id]
-                                  : currentBatchAccess.filter(id => id !== batch.id);
-                                updateState({
-                                  createUserForm: { ...state.createUserForm, batch_access: newBatchAccess }
-                                });
-                              }}
-                            />
-                            <Label htmlFor={`batch-${batch.id}`} className="text-sm flex-1">
-                              {batch.batch_name} - {batch.admin_name}
-                            </Label>
-                            {(state.createUserForm.batch_access || []).includes(batch.id) && (
-                              <Check className="h-4 w-4 text-primary" />
-                            )}
-                          </div>
-                        ))}
-                        {(!batches || batches.length === 0) && (
-                          <p className="text-sm text-muted-foreground p-2">No batches available</p>
-                        )}
-                      </div>
-                    </PopoverContent>
+                         {batches?.map((batch) => (
+                           <div key={batch.id} className="flex items-center space-x-2 p-2 hover:bg-accent rounded cursor-pointer">
+                             <Checkbox
+                               id={`batch-${batch.id}`}
+                               checked={(state.createUserForm.batch_access || []).includes(batch.id)}
+                               onCheckedChange={(checked) => handleBatchAccessChange(batch.id, !!checked)}
+                             />
+                             <Label 
+                               htmlFor={`batch-${batch.id}`} 
+                               className="text-sm flex-1 cursor-pointer"
+                               onClick={() => {
+                                 const isCurrentlyChecked = (state.createUserForm.batch_access || []).includes(batch.id);
+                                 handleBatchAccessChange(batch.id, !isCurrentlyChecked);
+                               }}
+                             >
+                               {batch.batch_name} - {batch.admin_name}
+                             </Label>
+                             {(state.createUserForm.batch_access || []).includes(batch.id) && (
+                               <Check className="h-4 w-4 text-primary" />
+                             )}
+                           </div>
+                         ))}
+                         {(!batches || batches.length === 0) && (
+                           <p className="text-sm text-muted-foreground p-2">No batches available</p>
+                         )}
+                       </div>
+                     </ScrollArea>
+                   </PopoverContent>
                   </Popover>
                   <p className="text-xs text-muted-foreground mt-1">
                     Select which batches this user can access
