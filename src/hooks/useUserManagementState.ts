@@ -7,6 +7,7 @@ interface CreateUserForm {
   full_name: string;
   role: UserRole;
   batch_access: string[]; // Array of batch IDs
+  max_batches_allowed: number; // Maximum batches user can create
 }
 
 interface UserManagementState {
@@ -36,7 +37,8 @@ export function useUserManagementState() {
             password: '',
             full_name: '',
             role: 'user' as UserRole,
-            batch_access: []
+            batch_access: [],
+            max_batches_allowed: 1
           }
         };
       }
@@ -54,7 +56,8 @@ export function useUserManagementState() {
         password: '',
         full_name: '',
         role: 'user' as UserRole,
-        batch_access: []
+        batch_access: [],
+        max_batches_allowed: 1
       }
     };
   });
@@ -83,7 +86,8 @@ export function useUserManagementState() {
         password: '',
         full_name: '',
         role: 'user' as UserRole,
-        batch_access: []
+        batch_access: [],
+        max_batches_allowed: 1
       }
     });
   };

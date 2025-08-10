@@ -111,7 +111,8 @@ export default function UserManagement() {
           password: userData.password,
           full_name: userData.full_name,
           role: userData.role,
-          batch_access: userData.batch_access
+          batch_access: userData.batch_access,
+          max_batches_allowed: userData.max_batches_allowed
         }
       });
       
@@ -421,9 +422,27 @@ export default function UserManagement() {
                 </Select>
               </div>
               
+              <div>
+                <Label htmlFor="max_batches">Maximum Batches Allowed</Label>
+                <Input
+                  id="max_batches"
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={state.createUserForm.max_batches_allowed}
+                  onChange={(e) => updateState({ 
+                    createUserForm: { ...state.createUserForm, max_batches_allowed: parseInt(e.target.value) || 1 }
+                  })}
+                  placeholder="Number of batches this user can create"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Each batch can contain up to 50 students
+                </p>
+              </div>
+              
               {state.createUserForm.role === 'user' && (
                 <div>
-                  <Label>Batch Access</Label>
+                  <Label>Batch Access (Optional - User can always access their own created batches)</Label>
                   <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
                     {batches?.map((batch) => (
                       <div key={batch.id} className="flex items-center space-x-2">

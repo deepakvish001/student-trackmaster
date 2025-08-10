@@ -44,7 +44,7 @@ serve(async (req) => {
     }
 
     const body = await req.json()
-    const { action, email, password, full_name, user_id, new_password, role, batch_access } = body
+    const { action, email, password, full_name, user_id, new_password, role, batch_access, max_batches_allowed } = body
 
     switch (action) {
       case 'create_user': {
@@ -82,7 +82,8 @@ serve(async (req) => {
           .update({
             full_name: full_name,
             role: role || 'user',
-            is_active: true
+            is_active: true,
+            max_batches_allowed: max_batches_allowed || 1
           })
           .eq('user_id', newUser.user.id)
           .select()

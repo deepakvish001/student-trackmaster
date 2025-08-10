@@ -316,6 +316,7 @@ export type Database = {
           id: string
           is_active: boolean
           last_login_at: string | null
+          max_batches_allowed: number
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
           user_id: string
@@ -327,6 +328,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           last_login_at?: string | null
+          max_batches_allowed?: number
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           user_id: string
@@ -338,6 +340,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           last_login_at?: string | null
+          max_batches_allowed?: number
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           user_id?: string
