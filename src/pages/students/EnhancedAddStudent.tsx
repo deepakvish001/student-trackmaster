@@ -379,14 +379,22 @@ export default function EnhancedAddStudent() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-gradient-to-br from-surface-dark via-surface-darker to-background">
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-emerald-green/5">
         <div className="space-y-8 p-6 animate-fade-in-up">
-          {/* Enhanced Header with Real-time Data */}
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="space-y-2">
-              <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                🏛️ RD Service Registration
-              </h1>
+          {/* Premium Header with Real-time Data */}
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="space-y-4">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 branded-gradient rounded-3xl flex items-center justify-center shadow-glow-lg">
+                  <User className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-4xl font-bold text-branded-gradient">
+                    🏛️ Student Registration
+                  </h1>
+                  <p className="text-lg text-muted-foreground">Enterprise biometric enrollment with RD Service integration</p>
+                </div>
+              </div>
               <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                 <div className="flex items-center space-x-1">
                   <Clock className="h-4 w-4 text-electric-blue" />

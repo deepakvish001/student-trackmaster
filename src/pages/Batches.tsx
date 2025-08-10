@@ -123,15 +123,22 @@ export default function Batches() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-background p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
-          {/* Header */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h1 className="text-2xl font-semibold text-foreground">Batches</h1>
-              <p className="text-sm text-muted-foreground">
-                {stats.totalBatches} total batches · {stats.utilizationRate}% utilized
-              </p>
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-vibrant-purple/5 p-6">
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* Premium Header */}
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            <div className="space-y-4">
+              <div className="flex items-center space-x-4">
+                <div className="w-14 h-14 bg-vibrant-purple/10 border border-vibrant-purple/20 rounded-2xl flex items-center justify-center">
+                  <GraduationCap className="w-7 h-7 text-vibrant-purple" />
+                </div>
+                <div>
+                  <h1 className="text-4xl font-bold text-branded-gradient">Batch Management</h1>
+                  <p className="text-lg text-muted-foreground">
+                    {stats.totalBatches} active batches • {stats.utilizationRate}% system utilization
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
