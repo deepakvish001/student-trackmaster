@@ -90,13 +90,7 @@ export default function Batches() {
                 </Alert>}
             </div>
 
-            <div className="flex items-center gap-2">
-              <Button onClick={() => actions.refetch()} variant="outline" className="modern-button-outline">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
-              <BatchCRUD batches={batches} />
-            </div>
+            
           </div>
 
           {/* Real-time Statistics Dashboard */}
