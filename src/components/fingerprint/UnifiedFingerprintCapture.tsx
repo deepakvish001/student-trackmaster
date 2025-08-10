@@ -33,21 +33,23 @@ export function UnifiedFingerprintCapture({
 
     setIsCapturing(true);
     try {
-      // Dynamic import based on device type to reduce bundle size
-      const { captureFingerprint } = await import(`@/utils/${deviceType}Enhanced`);
-      
-      const result = await captureFingerprint({
-        fingerIndex: index,
-        mode: captureMode,
-        targetQuality: 60
-      });
+      // Import from the correct module based on device type
+      if (deviceType === 'mfs100') {
+        const { captureFingerprint } = await import('@/utils/mfs100Native');
+        
+        const result = await captureFingerprint(60, 30);
 
-      if (result.success) {
-        setQuality(result.quality);
-        onChange(result.imageData, result.quality);
-        toast.success(`${fingerName} captured (Quality: ${result.quality}%)`);
+        if (result.httpStaus && result.data && result.data.ErrorCode === "0") {
+          const quality = result.data.Quality || 60;
+          setQuality(quality);
+          onChange(result.data.BitmapData || '', quality);
+          toast.success(`${fingerName} captured (Quality: ${quality}%)`);
+        } else {
+          throw new Error(result.data?.ErrorDescription || result.err || 'Capture failed');
+        }
       } else {
-        throw new Error(result.error || 'Capture failed');
+        // For other device types, we'd implement their specific capture logic
+        throw new Error(`Device type ${deviceType} not yet implemented`);
       }
     } catch (error) {
       console.error('Capture error:', error);

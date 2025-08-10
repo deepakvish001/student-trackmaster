@@ -35,8 +35,8 @@ export function useConsolidatedMFS100(config: Partial<MFS100Config> = {}) {
     try {
       setLastError(null);
       
-      // Dynamic import to reduce bundle size
-      const { initializeMFS100, getDeviceInfo } = await import('@/utils/mfs100Enhanced');
+      // Import from the correct module
+      const { initializeMFS100, getDeviceInfo } = await import('@/utils/mfs100Native');
       
       const initialized = await initializeMFS100();
       if (initialized) {
@@ -64,20 +64,23 @@ export function useConsolidatedMFS100(config: Partial<MFS100Config> = {}) {
     }
 
     try {
-      const { captureFingerprint: capture } = await import('@/utils/mfs100Enhanced');
+      // Import from the correct module
+      const { captureFingerprint: capture } = await import('@/utils/mfs100Native');
       
-      const result = await capture({
-        fingerIndex,
-        targetQuality: finalConfig.targetQuality,
-        timeout: finalConfig.timeout,
-        mode: finalConfig.pollingMode
-      });
+      const result = await capture(finalConfig.targetQuality, finalConfig.timeout / 1000);
 
-      return {
-        success: true,
-        imageData: result.imageData,
-        quality: result.quality
-      };
+      if (result.httpStaus && result.data && result.data.ErrorCode === "0") {
+        return {
+          success: true,
+          imageData: result.data.BitmapData,
+          quality: result.data.Quality || finalConfig.targetQuality
+        };
+      } else {
+        return { 
+          success: false, 
+          error: result.data?.ErrorDescription || result.err || 'Capture failed' 
+        };
+      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Capture failed';
       return { success: false, error: errorMsg };
