@@ -7,42 +7,49 @@
 
 @layer base {
   :root {
-    /* AdminLTE Style Color System */
-    --background: 0 0% 96%; /* Light gray background */
-    --foreground: 210 20% 30%; /* Dark text */
-    --card: 0 0% 100%; /* White cards */
-    --card-foreground: 210 20% 30%;
+    /* Modern High Contrast Design System */
+    --background: 0 0% 100%; /* Pure white */
+    --foreground: 220 15% 15%; /* Rich dark text */
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 210 20% 30%;
-    --primary: 210 100% 50%; /* Blue primary */
+    --popover-foreground: 220 15% 15%;
+    --primary: 230 100% 60%; /* Modern blue */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 20% 25%; /* Dark sidebar */
+    --secondary: 250 95% 65%; /* Rich purple */
     --secondary-foreground: 0 0% 100%;
-    --muted: 210 10% 90%;
-    --muted-foreground: 210 15% 50%;
-    --accent: 160 80% 45%; /* Green accent */
+    --muted: 210 40% 98%;
+    --muted-foreground: 220 15% 35%;
+    --accent: 160 80% 50%; /* Fresh green */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 85% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 210 15% 85%;
-    --input: 0 0% 100%;
-    --ring: 210 100% 50%;
+    --border: 220 13% 91%;
+    --input: 220 13% 95%;
+    --ring: 230 100% 60%;
     
-    /* AdminLTE Color Palette */
-    --admin-cyan: 190 100% 42%; /* Cyan for Total Batches */
-    --admin-green: 135 60% 45%; /* Green for Total Students */
-    --admin-yellow: 45 100% 51%; /* Yellow for Remaining Batches */
-    --admin-red: 0 85% 60%; /* Red for alerts */
-    --admin-blue: 210 100% 50%; /* Blue for links */
-    --admin-dark: 210 20% 25%; /* Dark sidebar */
+    /* Modern Color Palette */
+    --electric-blue: 230 100% 60%;
+    --vibrant-purple: 250 95% 65%;
+    --emerald-green: 160 80% 50%;
+    --sunset-orange: 30 100% 60%;
+    --pink-rose: 335 85% 65%;
+    --lime-green: 90 80% 55%;
     
-    /* Sidebar Colors */
-    --sidebar-bg: 210 20% 25%;
-    --sidebar-text: 0 0% 85%;
-    --sidebar-hover: 210 25% 30%;
-    --sidebar-active: 210 100% 50%;
+    /* Modern Surfaces with subtle depth */
+    --surface-1: 0 0% 99%;
+    --surface-2: 220 13% 98%;
+    --surface-3: 220 13% 94%;
+    --surface-dark: 220 30% 8%;
+    --surface-darker: 220 35% 5%;
     
-    --radius: 0.25rem; /* 4px - AdminLTE style radius */
+    /* Typography hierarchy */
+    --text-primary: 220 15% 15%;
+    --text-secondary: 220 15% 25%;
+    --text-tertiary: 220 15% 35%;
+    --text-muted: 220 15% 50%;
+    
+    --radius: 0.875rem; /* 14px - modern radius */
   }
 
   .dark {

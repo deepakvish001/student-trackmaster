@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { Users, GraduationCap, Shield, Activity, AlertTriangle, CheckCircle, Clock, Database, Wifi, RefreshCw, TrendingUp, ChevronRight } from 'lucide-react';
+import { Users, GraduationCap, Shield, Activity, AlertTriangle, CheckCircle, Clock, Database, Wifi, RefreshCw, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useSystemHealthMonitoring } from '@/hooks/useSystemHealthMonitoring';
@@ -101,82 +101,140 @@ export default function EnhancedDashboard() {
     }
   };
 
-  // Calculate remaining batches for AdminLTE style
-  const remainingBatches = stats?.batchUtilization ? 
-    stats.batchUtilization.reduce((total, batch) => total + (batch.max - batch.current), 0) : 0;
-
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* AdminLTE Style Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Total Batches - Cyan */}
-          <div className="bg-cyan-500 rounded-md p-6 text-white relative overflow-hidden">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-4xl font-bold">{stats?.totalBatches || 0}</div>
-                <div className="text-cyan-100 text-lg font-medium">Total Batches</div>
-              </div>
-              <div className="opacity-30">
-                <GraduationCap size={80} />
-              </div>
-            </div>
-            <div className="mt-4 pt-2 border-t border-cyan-400">
-              <div className="flex items-center justify-center bg-cyan-600 hover:bg-cyan-700 transition-colors rounded px-4 py-2 cursor-pointer">
-                <span className="text-sm">More info</span>
-                <ChevronRight className="w-4 h-4 ml-2" />
-              </div>
-            </div>
+      <div className="min-h-screen bg-background p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
+            <p className="text-sm text-muted-foreground">System overview and health monitoring</p>
           </div>
 
-          {/* Total Students - Green */}
-          <div className="bg-green-500 rounded-md p-6 text-white relative overflow-hidden">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-4xl font-bold">{stats?.totalStudents || 0}</div>
-                <div className="text-green-100 text-lg font-medium">Total Students</div>
-              </div>
-              <div className="opacity-30">
-                <Users size={80} />
-              </div>
-            </div>
-            <div className="mt-4 pt-2 border-t border-green-400">
-              <div className="flex items-center justify-center bg-green-600 hover:bg-green-700 transition-colors rounded px-4 py-2 cursor-pointer">
-                <span className="text-sm">More info</span>
-                <ChevronRight className="w-4 h-4 ml-2" />
-              </div>
-            </div>
+          {/* System Health Status */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {(['database', 'auth', 'network', 'overall'] as const).map((service) => {
+              const status = metrics?.[service as keyof typeof metrics] || 'unknown';
+              return (
+                <Card key={service} className="modern-card">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          {service}
+                        </p>
+                        <p className={`text-sm font-semibold ${getStatusColor(status)}`}>
+                          {status}
+                        </p>
+                      </div>
+                      <div className={`p-2 rounded ${getStatusColor(status).replace('text-', 'bg-').replace('foreground', 'primary/10')}`}>
+                        {getStatusIcon(status)}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
 
-          {/* Remaining Batches - Yellow */}
-          <div className="bg-yellow-500 rounded-md p-6 text-white relative overflow-hidden">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-4xl font-bold">-{remainingBatches}</div>
-                <div className="text-yellow-100 text-lg font-medium">Remaining Batches</div>
-              </div>
-              <div className="opacity-30">
-                <Activity size={80} />
-              </div>
-            </div>
-            <div className="mt-4 pt-2 border-t border-yellow-400">
-              <div className="flex items-center justify-center bg-yellow-600 hover:bg-yellow-700 transition-colors rounded px-4 py-2 cursor-pointer">
-                <span className="text-sm">More info</span>
-                <ChevronRight className="w-4 h-4 ml-2" />
-              </div>
-            </div>
+          {/* Key Statistics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="modern-card">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Students</p>
+                    <p className="text-lg font-semibold text-foreground">
+                      {stats?.totalStudents || 0}
+                    </p>
+                  </div>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="modern-card">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Batches</p>
+                    <p className="text-lg font-semibold text-foreground">
+                      {stats?.totalBatches || 0}
+                    </p>
+                  </div>
+                  <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="modern-card">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Users</p>
+                    <p className="text-lg font-semibold text-foreground">
+                      {stats?.totalUsers || 0}
+                    </p>
+                  </div>
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="modern-card">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">This Week</p>
+                    <p className="text-lg font-semibold text-foreground">
+                      +{stats?.studentsThisWeek || 0}
+                    </p>
+                  </div>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
+
+          {/* Batch Utilization */}
+          <Card className="modern-card">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold">Batch Utilization</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {stats?.batchUtilization && stats.batchUtilization.length > 0 ? (
+                stats.batchUtilization.map((batch) => (
+                  <div key={batch.id} className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-foreground">Batch {batch.id}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {batch.current}/{batch.max}
+                      </span>
+                    </div>
+                    <div className="w-full bg-muted/30 rounded-full h-1.5">
+                      <div
+                        className="bg-primary h-1.5 rounded-full transition-all duration-300"
+                        style={{ width: `${batch.utilization}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No batch data available</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Security Alert */}
+          {metrics?.overall === 'critical' && (
+            <Alert className="border-destructive/20 bg-destructive/10">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              <AlertDescription className="text-destructive">
+                Critical system issues detected. Please check system health monitoring for details.
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
-
-        {/* Security Alert */}
-        {metrics?.overall === 'critical' && (
-          <Alert className="border-destructive/20 bg-destructive/10">
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-            <AlertDescription className="text-destructive">
-              Critical system issues detected. Please check system health monitoring for details.
-            </AlertDescription>
-          </Alert>
-        )}
       </div>
     </DashboardLayout>
   );
