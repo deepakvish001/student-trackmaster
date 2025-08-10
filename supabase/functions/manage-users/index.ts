@@ -76,25 +76,25 @@ serve(async (req) => {
           )
         }
 
-        // Create profile for new user using service role key
+        // Update the automatically created profile (from trigger) with correct role
         const { data: profileData, error: profileError } = await supabaseClient
           .from('user_profiles')
-          .insert({
-            user_id: newUser.user.id,
+          .update({
             full_name: full_name,
             role: role || 'user',
             is_active: true
           })
+          .eq('user_id', newUser.user.id)
           .select()
 
-        console.log('Profile creation result:', { profileData, profileError })
+        console.log('Profile update result:', { profileData, profileError })
 
         if (profileError) {
-          console.error('Profile creation error:', profileError)
+          console.error('Profile update error:', profileError)
           // Try to clean up the created user
           await supabaseClient.auth.admin.deleteUser(newUser.user.id)
           return new Response(
-            JSON.stringify({ error: `Failed to create user profile: ${profileError.message}` }),
+            JSON.stringify({ error: `Failed to update user profile: ${profileError.message}` }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
