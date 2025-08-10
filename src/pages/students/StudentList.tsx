@@ -399,25 +399,44 @@ export default function StudentList() {
                               {student.batches?.batch_name || 'No Batch'}
                             </div>
                           </td>
-                          {[1, 2, 3, 4, 5].map((fingerIndex) => (
-                            <td key={fingerIndex} className="p-3 border-r border-border text-center">
-                              <div className="w-16 h-16 mx-auto bg-muted/20 border border-border rounded flex items-center justify-center overflow-hidden">
-                                {student[`finger_${fingerIndex}_image` as keyof typeof student] ? (
-                                  <img 
-                                    src={student[`finger_${fingerIndex}_image` as keyof typeof student] as string}
-                                    alt={`Finger ${fingerIndex}`}
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : student[`finger_${fingerIndex}` as keyof typeof student] ? (
-                                  <div className="w-12 h-12 bg-electric-blue/10 rounded flex items-center justify-center">
-                                    <Shield className="w-6 h-6 text-electric-blue" />
-                                  </div>
-                                ) : (
-                                  <div className="text-xs text-muted-foreground">No Data</div>
-                                )}
-                              </div>
-                            </td>
-                          ))}
+                          {[1, 2, 3, 4, 5].map((fingerIndex) => {
+                            const imageData = student[`finger_${fingerIndex}_image` as keyof typeof student] as string;
+                            const templateData = student[`finger_${fingerIndex}` as keyof typeof student] as string;
+                            
+                            return (
+                              <td key={fingerIndex} className="p-3 border-r border-border text-center">
+                                <div className="w-16 h-16 mx-auto bg-muted/20 border border-border rounded flex items-center justify-center overflow-hidden">
+                                  {imageData && imageData.trim() ? (
+                                    <img 
+                                      src={imageData}
+                                      alt={`Finger ${fingerIndex}`}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        // Hide broken images and show template icon instead
+                                        e.currentTarget.style.display = 'none';
+                                        const parent = e.currentTarget.parentElement;
+                                        if (parent && templateData) {
+                                          parent.innerHTML = `
+                                            <div class="w-12 h-12 bg-electric-blue/10 rounded flex items-center justify-center">
+                                              <svg class="w-6 h-6 text-electric-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                                              </svg>
+                                            </div>
+                                          `;
+                                        }
+                                      }}
+                                    />
+                                  ) : templateData && templateData.trim() ? (
+                                    <div className="w-12 h-12 bg-electric-blue/10 rounded flex items-center justify-center">
+                                      <Shield className="w-6 h-6 text-electric-blue" />
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-muted-foreground">No Data</div>
+                                  )}
+                                </div>
+                              </td>
+                            );
+                          })}
                           <td className="p-3 text-center">
                             <div className="flex items-center justify-center gap-2">
                               <Button
