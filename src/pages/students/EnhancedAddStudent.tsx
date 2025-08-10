@@ -285,41 +285,55 @@ export default function EnhancedAddStudent() {
   return (
     <DashboardLayout>
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-emerald-green/5">
-        <div className="space-y-8 p-6">
-          {/* Clean Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 branded-gradient rounded-xl flex items-center justify-center shadow-glow">
-                <User className="w-6 h-6 text-white" />
+        <div className="space-y-8 p-6 animate-fade-in-up">
+          {/* Simple Header */}
+          <div className="text-center space-y-4">
+            <div className="flex items-center justify-center space-x-4">
+              <div className="w-16 h-16 branded-gradient rounded-3xl flex items-center justify-center shadow-glow-lg">
+                <User className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-foreground">Add Student</h1>
-                <p className="text-muted-foreground">Complete student registration with biometric enrollment</p>
+                <h1 className="text-4xl font-bold text-branded-gradient">
+                  Add New Student
+                </h1>
+                <p className="text-lg text-muted-foreground">Complete the form and capture biometric data</p>
               </div>
             </div>
           </div>
 
-          {/* Main Form Card */}
-          <Card className="premium-card">
-            <CardContent className="p-8">
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                  {/* Form Fields in Single Row */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {/* Student Information Form */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Left Column - Form */}
+            <Card className="premium-card">
+              <CardHeader>
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-electric-blue/10 border border-electric-blue/20 rounded-xl flex items-center justify-center">
+                    <User className="h-5 w-5 text-electric-blue" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl font-bold text-foreground">Student Information</CardTitle>
+                    <p className="text-sm text-muted-foreground">Enter basic student details</p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     {/* Student Name */}
                     <FormField
                       control={form.control}
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-semibold text-foreground">
+                          <FormLabel className="text-sm font-bold text-electric-blue uppercase tracking-wider">
+                            <User className="h-4 w-4 inline mr-2" />
                             Student Name
                           </FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="Enter Student Name"
+                              placeholder="Enter full name"
                               {...field}
-                              className="h-11 bg-background border border-border focus:border-electric-blue transition-all duration-300"
+                              className="h-12 bg-muted/20 border-2 border-border/50 focus:border-electric-blue focus:bg-background rounded-xl transition-all duration-300"
                             />
                           </FormControl>
                           <FormMessage />
@@ -333,14 +347,38 @@ export default function EnhancedAddStudent() {
                       name="mobile"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-semibold text-foreground">
-                            Mobile
+                          <FormLabel className="text-sm font-bold text-vibrant-purple uppercase tracking-wider">
+                            <Phone className="h-4 w-4 inline mr-2" />
+                            Mobile Number
                           </FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="Enter Mobile"
+                              placeholder="Enter mobile number"
                               {...field}
-                              className="h-11 bg-background border border-border focus:border-electric-blue transition-all duration-300"
+                              className="h-12 bg-muted/20 border-2 border-border/50 focus:border-vibrant-purple focus:bg-background rounded-xl transition-all duration-300"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Email */}
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-bold text-emerald-green uppercase tracking-wider">
+                            <Mail className="h-4 w-4 inline mr-2" />
+                            Email Address (Optional)
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="email"
+                              placeholder="Enter email address"
+                              {...field}
+                              className="h-12 bg-muted/20 border-2 border-border/50 focus:border-emerald-green focus:bg-background rounded-xl transition-all duration-300"
                             />
                           </FormControl>
                           <FormMessage />
@@ -354,8 +392,9 @@ export default function EnhancedAddStudent() {
                       name="batchId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-semibold text-foreground">
-                            Batch
+                          <FormLabel className="text-sm font-bold text-sunset-orange uppercase tracking-wider">
+                            <GraduationCap className="h-4 w-4 inline mr-2" />
+                            Select Batch
                           </FormLabel>
                           <FormControl>
                             <BatchSelector 
@@ -375,123 +414,69 @@ export default function EnhancedAddStudent() {
                       name="address"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-semibold text-foreground">
+                          <FormLabel className="text-sm font-bold text-pink-rose uppercase tracking-wider">
+                            <MapPin className="h-4 w-4 inline mr-2" />
                             Address
                           </FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="Enter Address"
+                              placeholder="Enter full address"
                               {...field}
-                              className="h-11 bg-background border border-border focus:border-electric-blue transition-all duration-300"
+                              className="h-12 bg-muted/20 border-2 border-border/50 focus:border-pink-rose focus:bg-background rounded-xl transition-all duration-300"
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                  </div>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
 
-                  {/* Email Field (Optional) */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-semibold text-foreground">
-                            Email (Optional)
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="email"
-                              placeholder="Enter Email"
-                              {...field}
-                              className="h-11 bg-background border border-border focus:border-electric-blue transition-all duration-300"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+            {/* Right Column - Fingerprint Capture */}
+            <Card className="premium-card">
+              <CardHeader>
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-vibrant-purple/10 border border-vibrant-purple/20 rounded-xl flex items-center justify-center">
+                    <Shield className="h-5 w-5 text-vibrant-purple" />
                   </div>
+                  <div>
+                    <CardTitle className="text-xl font-bold text-foreground">Biometric Capture</CardTitle>
+                    <p className="text-sm text-muted-foreground">Secure fingerprint enrollment</p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <MultiFingerCaptureInterface
+                  onAllCaptured={handleAllFingerprintsCaptured}
+                  disabled={isSubmitting}
+                />
+              </CardContent>
+            </Card>
+          </div>
 
-                  {/* Fingerprint Capture Section */}
-                  <div className="space-y-6">
-                    <div className="border-t pt-6">
-                      <h3 className="text-lg font-semibold text-foreground mb-6">Biometric Enrollment</h3>
-                      
-                      {/* Replace MultiFingerCaptureInterface with custom layout */}
-                      <div className="grid grid-cols-5 gap-6">
-                        {[1, 2, 3, 4, 5].map((fingerIndex) => (
-                          <div key={fingerIndex} className="text-center space-y-3">
-                            {/* Fingerprint Preview Box */}
-                            <div className="w-full h-32 border-2 border-dashed border-border rounded-lg flex items-center justify-center bg-muted/10 relative overflow-hidden">
-                              {capturedImages[fingerIndex - 1] ? (
-                                <img 
-                                  src={capturedImages[fingerIndex - 1]!} 
-                                  alt={`Finger ${fingerIndex}`}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="text-center">
-                                  <Shield className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                                  <p className="text-xs text-muted-foreground">Fingerprint {fingerIndex}</p>
-                                </div>
-                              )}
-                            </div>
-                            
-                            {/* Finger Label */}
-                            <p className="text-sm font-medium text-foreground">Finger {fingerIndex}</p>
-                            
-                            {/* Capture Button */}
-                            <Button
-                              type="button"
-                              variant="default"
-                              size="sm"
-                              disabled={isSubmitting}
-                              className="w-full h-9 bg-electric-blue hover:bg-electric-blue/90 text-white font-medium"
-                              onClick={() => {
-                                // Trigger individual finger capture
-                                toast.info(`Capturing Finger ${fingerIndex}...`);
-                              }}
-                            >
-                              Capture
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                      
-                      {/* Hidden MultiFingerCaptureInterface for actual functionality */}
-                      <div className="hidden">
-                        <MultiFingerCaptureInterface
-                          onAllCaptured={handleAllFingerprintsCaptured}
-                          disabled={isSubmitting}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Submit Button */}
-                  <div className="flex justify-start pt-6">
-                    <Button
-                      type="submit"
-                      disabled={isSubmitting || !form.watch("fingerprints")?.every(fp => fp)}
-                      className="h-11 px-8 bg-electric-blue hover:bg-electric-blue/90 text-white font-semibold"
-                    >
-                      {isSubmitting ? (
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span>Creating...</span>
-                        </div>
-                      ) : (
-                        "Submit"
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
+          {/* Submit Button */}
+          <div className="flex justify-center">
+            <Button
+              type="submit"
+              onClick={form.handleSubmit(onSubmit)}
+              disabled={isSubmitting || !form.watch("fingerprints")?.every(fp => fp)}
+              className="h-16 px-12 text-lg font-bold bg-gradient-to-r from-vibrant-purple via-electric-blue to-emerald-green hover:scale-105 text-white rounded-2xl shadow-glow-lg transition-all duration-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            >
+              {isSubmitting ? (
+                <div className="flex items-center gap-3">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <span>Creating Student...</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="h-6 w-6" />
+                  <span>Register Student</span>
+                </div>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </DashboardLayout>
