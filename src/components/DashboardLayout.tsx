@@ -41,30 +41,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { 
       title: 'Dashboard', 
       path: '/dashboard', 
-      icon: LayoutDashboard, 
-      colorClass: 'icon-electric-blue hover:text-electric-blue',
-      bgClass: 'hover:bg-electric-blue/10'
+      icon: LayoutDashboard
     },
     { 
       title: 'Add Student', 
       path: '/students/enhanced-add', 
-      icon: Plus, 
-      colorClass: 'icon-emerald-green hover:text-emerald-green',
-      bgClass: 'hover:bg-emerald-green/10'
+      icon: Plus
     },
     { 
       title: 'View Students', 
       path: '/students', 
-      icon: Users, 
-      colorClass: 'icon-vibrant-purple hover:text-vibrant-purple',
-      bgClass: 'hover:bg-vibrant-purple/10'
+      icon: Users
     },
     { 
       title: 'Batches', 
       path: '/batches', 
-      icon: GraduationCap, 
-      colorClass: 'icon-sunset-orange hover:text-sunset-orange',
-      bgClass: 'hover:bg-sunset-orange/10'
+      icon: GraduationCap
     },
   ];
 
@@ -73,9 +65,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { 
       title: 'Administration', 
       path: '/admin/audit-logs', 
-      icon: Shield, 
-      colorClass: 'icon-danger-red hover:text-danger-red',
-      bgClass: 'hover:bg-danger-red/10'
+      icon: Shield
     },
   ];
 
@@ -92,38 +82,38 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     <SidebarProvider>
       <FixedHeader />
       <div className="pt-20 min-h-screen flex w-full bg-background">
-        <Sidebar className="bg-card border-r border-border">
-          <SidebarHeader className="p-6 border-b border-border">
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                <User className="w-5 h-5 text-primary-foreground" />
+        <Sidebar className="bg-card border-r border-border" collapsible="icon">
+          <SidebarHeader className="p-4 border-b border-border">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+                <User className="w-4 h-4 text-primary-foreground" />
               </div>
-              <div>
-                <div className="font-semibold text-foreground">Dashboard</div>
-                <div className="text-sm text-muted-foreground">Navigation</div>
+              <div className="min-w-0 flex-1">
+                <div className="font-medium text-foreground text-sm truncate">Navigation</div>
+                <div className="text-xs text-muted-foreground truncate">Main Menu</div>
               </div>
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="px-4 py-6">
+          <SidebarContent className="p-2">
             {/* Main Menu */}
             <SidebarGroup>
               <SidebarGroupContent>
-                <SidebarMenu className="space-y-2">
+                <SidebarMenu className="space-y-1">
                   {menuItems.map((item) => (
                     <SidebarMenuItem key={item.path}>
                       <SidebarMenuButton asChild>
                         <Link
                           to={item.path}
-                          className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
+                          className={`flex items-center px-3 py-2 rounded-md transition-colors text-sm font-medium ${
                             (location.pathname === item.path || 
                              (item.path === '/dashboard' && (location.pathname === '/' || location.pathname === '/dashboard')))
-                              ? 'bg-primary text-primary-foreground font-medium' 
+                              ? 'bg-primary text-primary-foreground' 
                               : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                           }`}
                         >
-                          <item.icon className="w-5 h-5 mr-3" />
-                          <span>{item.title}</span>
+                          <item.icon className="w-4 h-4 mr-3 flex-shrink-0" />
+                          <span className="truncate">{item.title}</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -134,25 +124,25 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
             {/* Super Admin Menu */}
             {isSuperAdmin() && (
-              <SidebarGroup className="mt-6">
+              <SidebarGroup className="mt-4">
                 <SidebarGroupContent>
-                  <div className="px-4 py-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                    Administration
+                  <div className="px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Admin
                   </div>
-                  <SidebarMenu className="space-y-2 mt-3">
+                  <SidebarMenu className="space-y-1">
                     {adminMenuItems.map((item) => (
                       <SidebarMenuItem key={item.path}>
                         <SidebarMenuButton asChild>
                           <Link
                             to={item.path}
-                            className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
+                            className={`flex items-center px-3 py-2 rounded-md transition-colors text-sm font-medium ${
                               location.pathname === item.path
-                                ? 'bg-primary text-primary-foreground font-medium' 
+                                ? 'bg-primary text-primary-foreground' 
                                 : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                             }`}
                           >
-                            <item.icon className="w-5 h-5 mr-3" />
-                            <span>{item.title}</span>
+                            <item.icon className="w-4 h-4 mr-3 flex-shrink-0" />
+                            <span className="truncate">{item.title}</span>
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -163,14 +153,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             )}
           </SidebarContent>
 
-          <SidebarFooter className="p-6 border-t border-border">
+          <SidebarFooter className="p-2 border-t border-border">
             <Button
               onClick={handleLogout}
               variant="ghost"
-              className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+              size="sm"
+              className="w-full justify-start text-sm font-medium text-destructive hover:text-destructive hover:bg-destructive/10"
             >
-              <LogOut className="w-5 h-5 mr-3" />
-              <span>Logout</span>
+              <LogOut className="w-4 h-4 mr-3 flex-shrink-0" />
+              <span className="truncate">Logout</span>
             </Button>
           </SidebarFooter>
         </Sidebar>
