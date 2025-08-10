@@ -22,7 +22,6 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { BatchSelector } from "@/components/BatchSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { MultiFingerCaptureInterface } from "@/components/fingerprint/MultiFingerCaptureInterface";
 import { validateStudentDataWithBiometrics } from "@/utils/enhancedSecurityValidation";
 import { encryptFingerprintData, auditBiometricAccess } from "@/utils/biometricSecurity";
 import { sanitizeTextInput, sanitizeEmail, sanitizePhoneNumber } from "@/utils/inputSanitization";
@@ -35,7 +34,8 @@ import {
   Loader2, 
   CheckCircle, 
   User,
-  ArrowLeft
+  ArrowLeft,
+  Fingerprint
 } from "lucide-react";
 
 const formSchema = z.object({
@@ -75,6 +75,7 @@ export default function EnhancedAddStudent() {
     { pidData: "", quality: 0 }
   ]);
   const [capturedImages, setCapturedImages] = useState<(string | null)[]>([null, null, null, null, null]);
+  const [isCapturing, setIsCapturing] = useState<boolean[]>([false, false, false, false, false]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -109,41 +110,56 @@ export default function EnhancedAddStudent() {
     loadBatches();
   }, []);
 
-  const handleCaptureComplete = (captures: any[]) => {
-    console.log('All captures completed:', captures);
-    
-    const fingerprints: string[] = ["", "", "", "", ""];
-    const images: (string | null)[] = [null, null, null, null, null];
-    const newFingerprintData: FingerprintData[] = [
-      { pidData: "", quality: 0 },
-      { pidData: "", quality: 0 },
-      { pidData: "", quality: 0 },
-      { pidData: "", quality: 0 },
-      { pidData: "", quality: 0 }
-    ];
-    
-    captures.forEach((fp) => {
-      if (fp.index >= 0 && fp.index < 5) {
-        fingerprints[fp.index] = fp.template || 'enhanced_capture';
-        images[fp.index] = fp.imageData;
-        newFingerprintData[fp.index] = {
-          pidData: fp.template || 'enhanced_capture',
-          imageData: fp.imageData,
-          quality: fp.quality
-        };
-      }
+  // Simulate fingerprint capture for individual finger
+  const captureFingerprint = async (fingerIndex: number) => {
+    setIsCapturing(prev => {
+      const newState = [...prev];
+      newState[fingerIndex] = true;
+      return newState;
     });
-    
-    // Update form state
-    form.setValue("fingerprints", fingerprints);
-    form.setValue("images", images);
-    setCapturedImages(images);
-    setFingerprintData(newFingerprintData);
-    
-    // Trigger form validation
-    form.trigger("fingerprints");
-    
-    toast.success(`All 5 fingerprints captured successfully!`);
+
+    try {
+      // Simulate capture delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Generate mock fingerprint data
+      const mockQuality = Math.floor(Math.random() * 20) + 80; // 80-100%
+      const mockPidData = `MOCK_PID_DATA_FINGER_${fingerIndex + 1}_${Date.now()}`;
+      const mockImageData = `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==`;
+
+      // Update fingerprint data
+      const newFingerprintData = [...fingerprintData];
+      newFingerprintData[fingerIndex] = {
+        pidData: mockPidData,
+        quality: mockQuality,
+        imageData: mockImageData
+      };
+      setFingerprintData(newFingerprintData);
+
+      // Update captured images
+      const newImages = [...capturedImages];
+      newImages[fingerIndex] = mockImageData;
+      setCapturedImages(newImages);
+
+      // Update form
+      const newFingerprints = form.getValues("fingerprints");
+      newFingerprints[fingerIndex] = mockPidData;
+      form.setValue("fingerprints", newFingerprints);
+
+      const newFormImages = form.getValues("images");
+      newFormImages[fingerIndex] = mockImageData;
+      form.setValue("images", newFormImages);
+
+      toast.success(`Finger ${fingerIndex + 1} captured successfully! Quality: ${mockQuality}%`);
+    } catch (error) {
+      toast.error(`Failed to capture finger ${fingerIndex + 1}`);
+    } finally {
+      setIsCapturing(prev => {
+        const newState = [...prev];
+        newState[fingerIndex] = false;
+        return newState;
+      });
+    }
   };
 
   async function onSubmit(values: FormData) {
@@ -309,17 +325,19 @@ export default function EnhancedAddStudent() {
     );
   }
 
+  const completedCount = fingerprintData.filter(fp => fp.pidData).length;
+
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-black text-white overflow-hidden">
-        {/* Header */}
-        <div className="px-8 py-6 border-b border-gray-800">
+      <div className="h-screen bg-black text-white flex flex-col overflow-hidden">
+        {/* Compact Header */}
+        <div className="px-8 py-4 border-b border-gray-800 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-500 to-orange-400 bg-clip-text text-transparent">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-500 to-orange-400 bg-clip-text text-transparent">
                 Add New Student
               </h1>
-              <p className="text-gray-400 mt-1">Register student with secure biometric data</p>
+              <p className="text-gray-400 text-sm">Register student with biometric data</p>
             </div>
             <Button
               variant="outline"
@@ -327,30 +345,30 @@ export default function EnhancedAddStudent() {
               className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:border-orange-500 transition-colors"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Students
+              Back
             </Button>
           </div>
         </div>
 
-        <div className="px-8 py-6">
+        <div className="px-8 py-4 flex-1 flex flex-col">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              {/* Single Row Form Fields */}
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col">
+              {/* Single Row Form Fields - Compact */}
+              <div className="grid grid-cols-5 gap-4 mb-6 flex-shrink-0">
                 <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white font-semibold">Student Name</FormLabel>
+                      <FormLabel className="text-white text-sm font-medium">Student Name</FormLabel>
                       <FormControl>
                         <Input
                           placeholder="Enter full name"
                           {...field}
-                          className="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500 transition-colors h-12"
+                          className="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500 h-10"
                         />
                       </FormControl>
-                      <FormMessage className="text-red-400" />
+                      <FormMessage className="text-red-400 text-xs" />
                     </FormItem>
                   )}
                 />
@@ -360,15 +378,15 @@ export default function EnhancedAddStudent() {
                   name="mobile"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white font-semibold">Mobile Number</FormLabel>
+                      <FormLabel className="text-white text-sm font-medium">Mobile Number</FormLabel>
                       <FormControl>
                         <Input
                           placeholder="Enter mobile number"
                           {...field}
-                          className="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500 transition-colors h-12"
+                          className="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500 h-10"
                         />
                       </FormControl>
-                      <FormMessage className="text-red-400" />
+                      <FormMessage className="text-red-400 text-xs" />
                     </FormItem>
                   )}
                 />
@@ -378,16 +396,16 @@ export default function EnhancedAddStudent() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white font-semibold">Email Address</FormLabel>
+                      <FormLabel className="text-white text-sm font-medium">Email Address</FormLabel>
                       <FormControl>
                         <Input
                           placeholder="Enter email address"
                           type="email"
                           {...field}
-                          className="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500 transition-colors h-12"
+                          className="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500 h-10"
                         />
                       </FormControl>
-                      <FormMessage className="text-red-400" />
+                      <FormMessage className="text-red-400 text-xs" />
                     </FormItem>
                   )}
                 />
@@ -397,15 +415,13 @@ export default function EnhancedAddStudent() {
                   name="batchId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white font-semibold">Select Batch</FormLabel>
-                      <div className="h-12">
-                        <BatchSelector
-                          value={field.value}
-                          onChange={field.onChange}
-                          disabled={false}
-                        />
-                      </div>
-                      <FormMessage className="text-red-400" />
+                      <FormLabel className="text-white text-sm font-medium">Select Batch</FormLabel>
+                      <BatchSelector
+                        value={field.value}
+                        onChange={field.onChange}
+                        disabled={false}
+                      />
+                      <FormMessage className="text-red-400 text-xs" />
                     </FormItem>
                   )}
                 />
@@ -415,109 +431,107 @@ export default function EnhancedAddStudent() {
                   name="address"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white font-semibold">Address</FormLabel>
+                      <FormLabel className="text-white text-sm font-medium">Address</FormLabel>
                       <FormControl>
                         <Input
                           placeholder="Enter address"
                           {...field}
-                          className="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500 transition-colors h-12"
+                          className="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-orange-500 h-10"
                         />
                       </FormControl>
-                      <FormMessage className="text-red-400" />
+                      <FormMessage className="text-red-400 text-xs" />
                     </FormItem>
                   )}
                 />
               </div>
 
-              {/* Fingerprint Capture Section */}
-              <div className="mt-12">
-                <div className="flex items-center gap-3 mb-8">
-                  <Shield className="h-6 w-6 text-orange-500" />
-                  <h2 className="text-2xl font-bold text-white">Biometric Capture</h2>
+              {/* Fingerprint Section - Main Content */}
+              <div className="flex-1 flex flex-col min-h-0">
+                <div className="flex items-center gap-3 mb-4 flex-shrink-0">
+                  <Shield className="h-5 w-5 text-orange-500" />
+                  <h2 className="text-lg font-semibold text-white">Biometric Capture</h2>
                   <div className="text-sm text-gray-400 bg-gray-800 px-3 py-1 rounded-full">
-                    Captured: {fingerprintData.filter(fp => fp.pidData).length}/5
+                    {completedCount}/5 Captured
                   </div>
                 </div>
 
-                {/* Five Fingerprint Captures Side by Side */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                {/* Five Fingerprint Captures Side by Side - Flexible Height */}
+                <div className="grid grid-cols-5 gap-4 flex-1 min-h-0">
                   {[0, 1, 2, 3, 4].map((index) => (
-                    <div key={index} className="space-y-3">
-                      <div className="text-center">
-                        <h3 className="text-white font-semibold text-lg mb-3">
+                    <div key={index} className="flex flex-col min-h-0">
+                      <div className="text-center mb-2 flex-shrink-0">
+                        <h3 className="text-white font-medium text-sm">
                           Finger {index + 1}
                         </h3>
                       </div>
                       
-                      <div className="bg-gray-900 border-2 border-gray-700 hover:border-gray-600 rounded-xl p-6 min-h-[320px] flex flex-col transition-all duration-200">
-                        {/* Preview Area */}
-                        <div className="flex-1 flex items-center justify-center bg-gray-800 rounded-lg border-2 border-dashed border-gray-600 min-h-[220px] mb-4">
+                      <div className="bg-gray-900 border-2 border-gray-700 hover:border-gray-600 rounded-lg p-3 flex-1 flex flex-col min-h-0">
+                        {/* Preview Area - Takes available space */}
+                        <div className="flex-1 flex items-center justify-center bg-gray-800 rounded-lg border-2 border-dashed border-gray-600 min-h-[200px] mb-3">
                           {capturedImages[index] ? (
-                            <div className="text-center">
-                              <img
-                                src={capturedImages[index] || ''}
-                                alt={`Finger ${index + 1}`}
-                                className="max-w-full max-h-[200px] rounded-lg border border-gray-600 shadow-lg"
-                              />
-                              <div className="mt-3 text-sm text-green-400 flex items-center justify-center gap-2">
+                            <div className="text-center h-full flex flex-col justify-center">
+                              <div className="flex-1 flex items-center justify-center">
+                                <Fingerprint className="h-16 w-16 text-green-400" />
+                              </div>
+                              <div className="mt-2 text-sm text-green-400 flex items-center justify-center gap-2">
                                 <CheckCircle className="h-4 w-4" />
                                 Quality: {fingerprintData[index]?.quality || 0}%
                               </div>
                             </div>
                           ) : (
                             <div className="text-center text-gray-500">
-                              <div className="w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center mb-3 mx-auto">
-                                <User className="h-10 w-10" />
+                              <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mb-2 mx-auto">
+                                <User className="h-8 w-8" />
                               </div>
-                              <p className="text-sm">No capture</p>
+                              <p className="text-sm">Ready to capture</p>
                             </div>
                           )}
                         </div>
 
-                        {/* Capture Button */}
-                        <div className="mt-auto">
-                          <MultiFingerCaptureInterface
-                            onAllCaptured={handleCaptureComplete}
-                            disabled={isSubmitting}
-                            targetQuality={70}
-                          />
-                        </div>
+                        {/* Capture/Recapture Button - Fixed at bottom */}
+                        <Button
+                          type="button"
+                          onClick={() => captureFingerprint(index)}
+                          disabled={isCapturing[index] || isSubmitting}
+                          className="w-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 text-sm rounded-lg transition-colors flex-shrink-0"
+                        >
+                          {isCapturing[index] ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Capturing...
+                            </>
+                          ) : capturedImages[index] ? (
+                            "Recapture"
+                          ) : (
+                            "Capture"
+                          )}
+                        </Button>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Submit Button */}
-              <div className="flex justify-center pt-12">
+              {/* Submit Button - Fixed at bottom */}
+              <div className="flex justify-center pt-6 flex-shrink-0">
                 <Button
                   type="submit"
-                  disabled={isSubmitting || fingerprintData.filter(fp => fp.pidData).length < 5}
-                  className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white font-bold text-xl px-16 py-6 rounded-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none min-w-[400px] shadow-2xl shadow-orange-500/25"
+                  disabled={isSubmitting || completedCount < 5}
+                  className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white font-bold text-lg px-12 py-4 rounded-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none min-w-[300px] shadow-lg"
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+                      <Loader2 className="mr-3 h-5 w-5 animate-spin" />
                       Saving Student...
                     </>
                   ) : (
                     <>
-                      <CheckCircle className="mr-3 h-6 w-6" />
+                      <CheckCircle className="mr-3 h-5 w-5" />
                       Submit to Save Student
                     </>
                   )}
                 </Button>
               </div>
-
-              {/* Security Alert */}
-              {fingerprintData.filter(fp => fp.pidData).length > 0 && (
-                <Alert className="bg-gray-900 border-gray-700 mt-8">
-                  <Shield className="h-4 w-4 text-orange-500" />
-                  <AlertDescription className="text-gray-300">
-                    <strong className="text-orange-400">Security Notice:</strong> Biometric data is encrypted with AES-256 and securely stored. All captures are logged for audit purposes.
-                  </AlertDescription>
-                </Alert>
-              )}
             </form>
           </Form>
         </div>
