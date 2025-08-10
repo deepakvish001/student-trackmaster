@@ -57,7 +57,7 @@ export default function EnhancedDashboard() {
         
         return {
           id: batch.id,
-          name: batch.batch_name,
+          name: batch.batch_name || `Batch ${batch.serial_number}`,
           serialNumber: batch.serial_number,
           current: count || 0,
           max: batch.max_students,
@@ -346,8 +346,8 @@ export default function EnhancedDashboard() {
                                 <span className="text-sm font-bold text-blue-400">{index + 1}</span>
                               </div>
                               <div>
-                                <h3 className="font-bold text-orange-200 text-lg mb-1">{batch.name || 'Unnamed Batch'}</h3>
-                                <p className="text-xs text-gray-400">Serial: {batch.serialNumber}</p>
+                                <h3 className="font-bold text-orange-200 text-xl mb-1">{batch.name}</h3>
+                                <p className="text-sm text-gray-400">Serial: {batch.serialNumber}</p>
                               </div>
                             </div>
                             <div className="text-right">
