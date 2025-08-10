@@ -17,7 +17,9 @@ const StudentList = withLazyLoading(() => import("./pages/students/StudentList")
 const UserManagementPage = withLazyLoading(() => import("./pages/admin/UserManagement"), 'page');
 const AuditLogs = withLazyLoading(() => import("./pages/admin/AuditLogs"), 'page');
 const SystemSettings = withLazyLoading(() => import("./pages/admin/SystemSettings"), 'page');
-import Login from "./pages/Login"; // Keep login synchronous for immediate access
+
+// Keep Login synchronous for immediate access
+import Login from "./pages/Login";
 import { EnhancedAuthProvider } from "./contexts/EnhancedAuthContext";
 import { useGlobalPerformanceOptimization } from "./hooks/useGlobalPerformanceOptimization";
 import ProtectedRoute from "./components/ProtectedRoute";
