@@ -29,12 +29,13 @@ export default function EnhancedDashboard() {
           .eq('is_enabled', true),
         supabase
           .from('batches')
-          .select('id, created_at, max_students, batch_name, serial_number')
+          .select('id, created_at, max_students, batch_name, serial_number, admin_name')
           .eq('is_enabled', true)
       ]);
       
       const students = studentsRes.data || [];
       const batches = batchesRes.data || [];
+      console.log('Dashboard batches data:', batches);
 
       // Get user profiles data with minimal selection and error handling
       let profiles = [];
@@ -55,7 +56,7 @@ export default function EnhancedDashboard() {
           .eq('batch_id', batch.id)
           .eq('is_enabled', true);
         
-        return {
+        const batchData = {
           id: batch.id,
           name: batch.batch_name || `Batch ${batch.serial_number}`,
           serialNumber: batch.serial_number,
@@ -63,6 +64,8 @@ export default function EnhancedDashboard() {
           max: batch.max_students,
           utilization: Math.round(((count || 0) / batch.max_students) * 100)
         };
+        console.log('Batch utilization data:', batchData);
+        return batchData;
       });
 
       const batchUtilization = await Promise.all(batchUtilizationPromises);
