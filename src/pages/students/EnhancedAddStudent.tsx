@@ -41,6 +41,7 @@ import {
   MapPin,
   GraduationCap
 } from "lucide-react";
+import { MFS100Debug } from "@/components/debug/MFS100Debug";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name must not exceed 100 characters"),
@@ -419,6 +420,11 @@ export default function EnhancedAddStudent() {
             {/* Fingerprint Capture Section */}
             <div className="flex-1 flex flex-col">
               <h2 className="text-lg font-bold text-center mb-4 text-branded-gradient">Biometric Fingerprint Capture</h2>
+              
+              {/* Debug Panel */}
+              <div className="mb-6">
+                <MFS100Debug />
+              </div>
               
               <div className="flex-1">
                 <MultiFingerCaptureInterface
