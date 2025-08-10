@@ -429,11 +429,12 @@ export default function UserManagement() {
                       <div key={batch.id} className="flex items-center space-x-2">
                         <Checkbox
                           id={`batch-${batch.id}`}
-                          checked={state.createUserForm.batch_access.includes(batch.id)}
+                          checked={(state.createUserForm.batch_access || []).includes(batch.id)}
                           onCheckedChange={(checked) => {
+                            const currentBatchAccess = state.createUserForm.batch_access || [];
                             const newBatchAccess = checked
-                              ? [...state.createUserForm.batch_access, batch.id]
-                              : state.createUserForm.batch_access.filter(id => id !== batch.id);
+                              ? [...currentBatchAccess, batch.id]
+                              : currentBatchAccess.filter(id => id !== batch.id);
                             updateState({
                               createUserForm: { ...state.createUserForm, batch_access: newBatchAccess }
                             });
