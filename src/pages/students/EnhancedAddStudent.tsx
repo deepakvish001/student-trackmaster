@@ -288,15 +288,15 @@ export default function EnhancedAddStudent() {
         <div className="h-screen p-8 flex flex-col justify-center max-w-7xl mx-auto">
           
           {/* Page Heading */}
-          <div className="text-center mb-8">
-            <h1 className="text-5xl font-bold text-white mb-2">
+          <div className="text-center mb-10">
+            <h1 className="text-6xl font-extrabold text-white mb-2 tracking-tight">
               Add <span className="text-orange-500">Student</span>
             </h1>
           </div>
 
           {/* Single Row Form Fields */}
           <Form {...form}>
-            <div className="grid grid-cols-5 gap-6 mb-12">
+            <div className="grid grid-cols-5 gap-8 mb-16">
               {/* Student Name */}
               <FormField
                 control={form.control}
@@ -307,7 +307,7 @@ export default function EnhancedAddStudent() {
                       <Input
                         placeholder="Enter full name"
                         {...field}
-                        className="h-14 bg-gray-900/80 border-2 border-gray-700 focus:border-orange-500 rounded-xl text-white placeholder:text-gray-400 font-medium text-lg px-4 transition-all duration-300"
+                        className="h-16 bg-gray-900/80 border-2 border-gray-700 focus:border-orange-500 rounded-2xl text-white placeholder:text-gray-400 font-medium text-lg px-6 transition-all duration-300 shadow-lg"
                       />
                     </FormControl>
                     <FormMessage className="text-red-400 mt-2" />
@@ -325,7 +325,7 @@ export default function EnhancedAddStudent() {
                       <Input
                         placeholder="Enter mobile number"
                         {...field}
-                        className="h-14 bg-gray-900/80 border-2 border-gray-700 focus:border-orange-500 rounded-xl text-white placeholder:text-gray-400 font-medium text-lg px-4 transition-all duration-300"
+                        className="h-16 bg-gray-900/80 border-2 border-gray-700 focus:border-orange-500 rounded-2xl text-white placeholder:text-gray-400 font-medium text-lg px-6 transition-all duration-300 shadow-lg"
                       />
                     </FormControl>
                     <FormMessage className="text-red-400 mt-2" />
@@ -344,7 +344,7 @@ export default function EnhancedAddStudent() {
                         type="email"
                         placeholder="Enter email address"
                         {...field}
-                        className="h-14 bg-gray-900/80 border-2 border-gray-700 focus:border-orange-500 rounded-xl text-white placeholder:text-gray-400 font-medium text-lg px-4 transition-all duration-300"
+                        className="h-16 bg-gray-900/80 border-2 border-gray-700 focus:border-orange-500 rounded-2xl text-white placeholder:text-gray-400 font-medium text-lg px-6 transition-all duration-300 shadow-lg"
                       />
                     </FormControl>
                     <FormMessage className="text-red-400 mt-2" />
@@ -359,7 +359,7 @@ export default function EnhancedAddStudent() {
                 render={({ field }) => (
                   <FormItem>
                     <FormControl>
-                      <div className="h-14 bg-gray-900/80 border-2 border-gray-700 focus-within:border-orange-500 rounded-xl transition-all duration-300">
+                      <div className="h-16 bg-gray-900/80 border-2 border-gray-700 focus-within:border-orange-500 rounded-2xl transition-all duration-300 shadow-lg">
                         <BatchSelector 
                           value={field.value} 
                           onChange={field.onChange}
@@ -382,7 +382,7 @@ export default function EnhancedAddStudent() {
                       <Input
                         placeholder="Enter address"
                         {...field}
-                        className="h-14 bg-gray-900/80 border-2 border-gray-700 focus:border-orange-500 rounded-xl text-white placeholder:text-gray-400 font-medium text-lg px-4 transition-all duration-300"
+                        className="h-16 bg-gray-900/80 border-2 border-gray-700 focus:border-orange-500 rounded-2xl text-white placeholder:text-gray-400 font-medium text-lg px-6 transition-all duration-300 shadow-lg"
                       />
                     </FormControl>
                     <FormMessage className="text-red-400 mt-2" />
@@ -392,7 +392,7 @@ export default function EnhancedAddStudent() {
             </div>
 
             {/* Fingerprint Capture */}
-            <div className="mb-8">
+            <div className="mb-12">
               <SimpleFingerprintGrid
                 onAllCaptured={handleAllFingerprintsCaptured}
                 disabled={isSubmitting}
@@ -400,12 +400,12 @@ export default function EnhancedAddStudent() {
             </div>
               
             {/* Submit Button */}
-            <div className="text-center">
+            <div className="text-center pt-2">
               <Button
                 type="submit"
                 disabled={isSubmitting}
                 onClick={form.handleSubmit(onSubmit)}
-                className="h-16 px-20 text-xl font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-2xl hover:shadow-orange-500/25 transition-all duration-300 rounded-xl border-0 disabled:opacity-50"
+                className="h-18 px-24 text-2xl font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-2xl hover:shadow-orange-500/30 transition-all duration-300 rounded-2xl border-0 disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>
