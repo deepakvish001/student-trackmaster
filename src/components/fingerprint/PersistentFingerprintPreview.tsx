@@ -46,9 +46,9 @@ export function PersistentFingerprintPreview({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white to-blue-50/30 border-2 border-blue-200/50 shadow-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-background border-border shadow-2xl">
         <DialogHeader className="space-y-4 pb-6">
-          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-700 to-indigo-800 bg-clip-text text-transparent flex items-center space-x-3">
+          <DialogTitle className="text-2xl font-bold text-foreground flex items-center space-x-3">
             <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg">
               <Eye className="h-6 w-6 text-white" />
             </div>
@@ -101,7 +101,7 @@ export function PersistentFingerprintPreview({
                 <div className={`flex justify-center transition-all duration-500 ${
                   isZoomed ? 'scale-125' : 'scale-100'
                 }`}>
-                  <div className="relative bg-white p-6 rounded-xl shadow-inner border-2 border-gray-200/50">
+                  <div className="relative bg-muted/20 border border-border rounded-xl shadow-inner p-6">
                     {imageData ? (
                       <img
                         src={imageData}

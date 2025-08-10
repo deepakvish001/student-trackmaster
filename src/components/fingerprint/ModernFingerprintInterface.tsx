@@ -212,7 +212,7 @@ export function ModernFingerprintInterface({
             
             {isCapturing && (
               <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center">
-                <div className="bg-white p-4 rounded-lg shadow-lg text-center">
+                <div className="bg-background border border-border p-4 rounded-lg shadow-lg text-center">
                   <Zap className="h-6 w-6 text-blue-500 mx-auto mb-2 animate-pulse" />
                   <p className="text-sm font-medium mb-2">Scanning...</p>
                   <Progress value={captureProgress} className="w-32 h-2" />

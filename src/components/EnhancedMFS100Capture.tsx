@@ -277,7 +277,7 @@ export function EnhancedMFS100Capture({
         
         {captureState === 'capturing' && (
           <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center">
-            <div className="bg-white p-3 rounded-lg shadow-lg text-center">
+            <div className="bg-background border border-border p-3 rounded-lg shadow-lg text-center">
               <div className="flex items-center space-x-2 mb-2">
                 <RefreshCw className="h-4 w-4 animate-spin text-blue-500" />
                 <span className="text-sm font-medium">Capturing...</span>

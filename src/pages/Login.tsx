@@ -10,7 +10,7 @@ import { Mail, Lock, User, Eye, EyeOff, Sparkles } from 'lucide-react';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false); // Always false for login only
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { login, signUp, user, isLoading: authLoading } = useEnhancedAuth();
@@ -19,13 +19,10 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      if (isSignUp) {
-        await signUp(email, password);
-      } else {
-        await login(email, password);
-      }
+      // Only login, no signup option
+      await login(email, password);
     } catch (error) {
-      console.error('Auth failed:', error);
+      console.error('Login failed:', error);
     } finally {
       setIsLoading(false);
     }
@@ -52,15 +49,12 @@ export default function Login() {
               </h1>
               <div className="flex items-center justify-center gap-2">
                 <h2 className="text-2xl font-semibold text-foreground">
-                  {isSignUp ? 'Create Account' : 'Welcome Back'}
+                  Welcome Back
                 </h2>
                 <Sparkles className="w-6 h-6 text-vibrant-purple animate-pulse" />
               </div>
               <p className="text-lg text-muted-foreground max-w-sm mx-auto">
-                {isSignUp 
-                  ? 'Join the future of biometric management. Create your secure account now.' 
-                  : 'Access your enterprise biometric management platform with enhanced security.'
-                }
+                Access your enterprise biometric management platform with enhanced security.
               </p>
             </div>
           </div>
@@ -119,23 +113,10 @@ export default function Login() {
               </div>
             ) : (
               <div className="flex items-center gap-3">
-                <span>{isSignUp ? 'Create Premium Account' : 'Access Dashboard'}</span>
+                <span>Access Dashboard</span>
                 <Sparkles className="w-5 h-5" />
               </div>
             )}
-          </Button>
-
-          {/* Premium Toggle Sign Up/Sign In */}
-          <Button 
-            type="button" 
-            variant="ghost" 
-            className="w-full h-14 text-lg border-2 border-border/50 hover:border-electric-blue hover:bg-electric-blue/5 rounded-2xl transition-all duration-300" 
-            onClick={() => setIsSignUp(!isSignUp)}
-          >
-            {isSignUp 
-              ? 'Already have an account? Sign in →' 
-              : 'Need an account? Create one →'
-            }
           </Button>
         </form>
 

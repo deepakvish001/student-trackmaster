@@ -243,7 +243,7 @@ export function EnhancedRDServiceCapture({
           {/* Capture Status Overlay */}
           {isCapturing && (
             <div className="absolute inset-0 bg-black/10 rounded-lg flex items-center justify-center">
-              <div className="bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-lg text-center">
+              <div className="bg-background/95 backdrop-blur-sm border border-border p-3 rounded-lg shadow-lg text-center">
                 <div className="flex items-center space-x-2 mb-1">
                   <RefreshCw className="h-4 w-4 animate-spin text-blue-500" />
                   <span className="text-sm font-medium">Capturing...</span>

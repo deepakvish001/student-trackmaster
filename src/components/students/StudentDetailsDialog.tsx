@@ -35,7 +35,7 @@ export function StudentDetailsDialog({ student, open, onOpenChange }: StudentDet
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-background border-border">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <User className="h-5 w-5" />
@@ -48,35 +48,35 @@ export function StudentDetailsDialog({ student, open, onOpenChange }: StudentDet
 
         <div className="space-y-6">
           {/* Student Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/20 rounded-lg border border-border/50">
             <div className="flex items-center space-x-2">
-              <Hash className="h-4 w-4 text-gray-500" />
-              <span className="text-sm font-medium">Student ID:</span>
-              <span className="text-sm">{student.id}</span>
+              <Hash className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">Student ID:</span>
+              <span className="text-sm text-muted-foreground">{student.id}</span>
             </div>
             
             <div className="flex items-center space-x-2">
-              <Building className="h-4 w-4 text-gray-500" />
-              <span className="text-sm font-medium">Batch:</span>
-              <span className="text-sm">{student.batches?.batch_name || 'No Batch Assigned'}</span>
+              <Building className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">Batch:</span>
+              <span className="text-sm text-muted-foreground">{student.batches?.batch_name || 'No Batch Assigned'}</span>
             </div>
             
             <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4 text-gray-500" />
-              <span className="text-sm font-medium">Created:</span>
-              <span className="text-sm">{new Date(student.created_at).toLocaleDateString()}</span>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">Created:</span>
+              <span className="text-sm text-muted-foreground">{new Date(student.created_at).toLocaleDateString()}</span>
             </div>
             
             <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4 text-gray-500" />
-              <span className="text-sm font-medium">Updated:</span>
-              <span className="text-sm">{new Date(student.updated_at).toLocaleDateString()}</span>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">Updated:</span>
+              <span className="text-sm text-muted-foreground">{new Date(student.updated_at).toLocaleDateString()}</span>
             </div>
           </div>
 
           {/* Fingerprints */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Fingerprint Data</h3>
+            <h3 className="text-lg font-semibold mb-4 text-foreground">Fingerprint Data</h3>
             <StudentFingerprintView
               student={{
                 finger_1: student.finger_1,
@@ -95,9 +95,9 @@ export function StudentDetailsDialog({ student, open, onOpenChange }: StudentDet
           </div>
 
           {/* Debug Information */}
-          <div className="p-4 bg-blue-50 rounded-lg">
-            <h4 className="text-sm font-semibold text-blue-800 mb-2">Debug Information:</h4>
-            <div className="text-xs text-blue-700 space-y-1">
+          <div className="p-4 bg-electric-blue/10 border border-electric-blue/20 rounded-lg">
+            <h4 className="text-sm font-semibold text-electric-blue mb-2">Debug Information:</h4>
+            <div className="text-xs text-muted-foreground space-y-1">
               <div>Student ID: {student.id}</div>
               <div>Batch ID: {student.batch_id || 'None'}</div>
               <div>Is Enabled: {student.is_enabled ? 'Yes' : 'No'}</div>

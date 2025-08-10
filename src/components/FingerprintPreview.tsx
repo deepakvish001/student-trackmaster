@@ -43,8 +43,8 @@ export function FingerprintPreview({
       <CardContent className="space-y-6">
         {/* Enhanced Large Preview Display */}
         <div className="flex justify-center">
-          <div className="relative bg-white p-6 rounded-xl shadow-lg border-2 border-gray-200">
-            <div className="w-96 h-96 border-2 rounded-lg flex items-center justify-center bg-gray-50 border-gray-300">
+          <div className="relative bg-muted/20 border border-border p-6 rounded-xl shadow-lg">
+            <div className="w-96 h-96 border-2 rounded-lg flex items-center justify-center bg-muted/10 border-border">
               {imageData ? (
                 <img
                   src={imageData}
@@ -124,7 +124,7 @@ export function FingerprintPreview({
         </div>
 
         {/* Instructions */}
-        <div className="text-xs text-center text-gray-600 bg-white/70 p-3 rounded-lg">
+        <div className="text-xs text-center text-muted-foreground bg-muted/20 border border-border p-3 rounded-lg">
           <p className="font-medium mb-1">Review your fingerprint capture:</p>
           <p>• Check if the ridges are clear and visible</p>
           <p>• Ensure the quality meets your requirements</p>

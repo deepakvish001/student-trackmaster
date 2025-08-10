@@ -99,7 +99,7 @@ export function FingerprintDisplay({
   };
 
   return (
-    <div className="bg-white border rounded-lg p-4 w-full max-w-[320px] mx-auto shadow-sm">
+    <div className="bg-background border border-border rounded-lg p-4 w-full max-w-[320px] mx-auto shadow-sm">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center space-x-2">

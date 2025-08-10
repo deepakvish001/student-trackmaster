@@ -218,7 +218,7 @@ export function FingerprintGuidanceSystem({
                         ? 'border-3 border-green-500 shadow-xl bg-gradient-to-br from-green-50 to-emerald-50'
                         : status === 'captured'
                           ? 'border-3 border-amber-500 shadow-lg bg-gradient-to-br from-amber-50 to-yellow-50'
-                          : 'border-2 border-gray-200 shadow-lg hover:border-blue-300 bg-white hover:shadow-xl'
+                          : 'border-2 border-border shadow-lg hover:border-electric-blue bg-background hover:shadow-xl'
                   }`}
                   onClick={() => handleFingerClick(index)}
                 >

@@ -194,7 +194,7 @@ export function EnhancedFingerprintPreview({
       }}
     >
       <Card 
-        className="border-2 border-primary bg-white max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+        className="border-2 border-electric-blue bg-background max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
         onClick={handlePreviewClick}
       >
         <CardHeader className="text-center border-b">
