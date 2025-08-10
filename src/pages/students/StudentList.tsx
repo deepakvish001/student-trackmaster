@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -18,24 +17,8 @@ import { useOptimizedStudents } from '@/hooks/useOptimizedStudents';
 import { useRealTimeBatchAccess } from '@/hooks/useRealTimeBatchAccess';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { StudentListSkeleton } from '@/components/students/StudentListSkeleton';
-import { 
-  Users, 
-  Search, 
-  Filter, 
-  Download, 
-  RefreshCw, 
-  Shield, 
-  Activity,
-  Clock,
-  Database,
-  Fingerprint,
-  Plus,
-  AlertTriangle,
-  ChevronLeft,
-  ChevronRight
-} from 'lucide-react';
+import { Users, Search, Filter, Download, RefreshCw, Shield, Activity, Clock, Database, Fingerprint, Plus, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
-
 export default function StudentList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBatch, setSelectedBatch] = useState('all');
@@ -44,12 +27,15 @@ export default function StudentList() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
-
   const queryClient = useQueryClient();
-  const { profile } = useUserProfile();
-  
+  const {
+    profile
+  } = useUserProfile();
+
   // Enable real-time batch access updates
-  const { isSubscribed } = useRealTimeBatchAccess();
+  const {
+    isSubscribed
+  } = useRealTimeBatchAccess();
 
   // Use optimized data fetching hook with debounced search
   const {
@@ -93,20 +79,23 @@ export default function StudentList() {
   const deleteMutation = useMutation({
     mutationFn: async (studentId: string) => {
       console.log('Deleting student with ID:', studentId);
-      const { error } = await supabase
-        .from('students')
-        .update({ is_enabled: false })
-        .eq('id', studentId);
+      const {
+        error
+      } = await supabase.from('students').update({
+        is_enabled: false
+      }).eq('id', studentId);
       if (error) {
         console.error('Delete error:', error);
         throw error;
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students-list'] });
+      queryClient.invalidateQueries({
+        queryKey: ['students-list']
+      });
       toast.success('Student deleted successfully');
     },
-    onError: (error) => {
+    onError: error => {
       console.error('Error deleting student:', error);
       toast.error('Failed to delete student');
     }
@@ -114,43 +103,47 @@ export default function StudentList() {
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: async ({ studentId, updates }: { studentId: string; updates: Partial<Student> }) => {
+    mutationFn: async ({
+      studentId,
+      updates
+    }: {
+      studentId: string;
+      updates: Partial<Student>;
+    }) => {
       console.log('Updating student:', studentId, updates);
-      const { error } = await supabase
-        .from('students')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', studentId);
+      const {
+        error
+      } = await supabase.from('students').update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      }).eq('id', studentId);
       if (error) {
         console.error('Update error:', error);
         throw error;
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students-list'] });
+      queryClient.invalidateQueries({
+        queryKey: ['students-list']
+      });
       toast.success('Student updated successfully');
       setShowEditDialog(false);
       setEditingStudent(null);
     },
-    onError: (error) => {
+    onError: error => {
       console.error('Error updating student:', error);
       toast.error('Failed to update student');
     }
   });
-
   const handleEdit = (student: Student) => {
     console.log('Editing student:', student);
     setEditingStudent(student);
     setShowEditDialog(true);
   };
-
   const handleDelete = (studentId: string) => {
     console.log('Delete requested for student:', studentId);
     deleteMutation.mutate(studentId);
   };
-
   const handleUpdateStudent = (updates: Partial<Student>) => {
     console.log('Update student with:', updates);
     if (editingStudent) {
@@ -160,18 +153,12 @@ export default function StudentList() {
       });
     }
   };
-
-
   if (isLoading) {
-    return (
-      <DashboardLayout>
+    return <DashboardLayout>
         <StudentListSkeleton />
-      </DashboardLayout>
-    );
+      </DashboardLayout>;
   }
-
-  return (
-    <DashboardLayout>
+  return <DashboardLayout>
       <div className="min-h-screen bg-background p-6">
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Premium Header */}
@@ -187,29 +174,15 @@ export default function StudentList() {
                 </div>
               </div>
               
-              {isSubscribed && (
-                <Alert className="bg-primary/10 border-primary/20 mt-4">
-                  <Shield className="h-4 w-4" />
-                  <AlertDescription>
-                    Real-time access monitoring is active. Your view will update automatically if batch permissions change.
-                  </AlertDescription>
-                </Alert>
-              )}
+              {isSubscribed}
             </div>
 
             <div className="flex items-center gap-4">
-              <Button
-                onClick={() => window.location.href = '/students/enhanced-add'}
-                className="h-12 px-6 bg-sunset-orange hover:bg-sunset-orange/90 text-white rounded-2xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg"
-              >
+              <Button onClick={() => window.location.href = '/students/enhanced-add'} className="h-12 px-6 bg-sunset-orange hover:bg-sunset-orange/90 text-white rounded-2xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg">
                 <Plus className="h-5 w-5 mr-3" />
                 Add New Student
               </Button>
-              <Button
-                onClick={() => refetch()}
-                variant="outline"
-                className="h-12 px-6 border-2 border-electric-blue/30 text-electric-blue hover:bg-electric-blue/5 rounded-2xl font-semibold transition-all duration-300 hover:scale-105"
-              >
+              <Button onClick={() => refetch()} variant="outline" className="h-12 px-6 border-2 border-electric-blue/30 text-electric-blue hover:bg-electric-blue/5 rounded-2xl font-semibold transition-all duration-300 hover:scale-105">
                 <RefreshCw className="h-5 w-5 mr-3" />
                 Refresh Data
               </Button>
@@ -318,12 +291,7 @@ export default function StudentList() {
                     <Label className="text-sm font-bold text-electric-blue uppercase tracking-wider">Search Students</Label>
                     <div className="relative group">
                       <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-electric-blue group-focus-within:scale-110 transition-transform duration-300" />
-                      <Input
-                        placeholder="Search by name, mobile, or email..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-12 h-12 bg-muted/20 border-2 border-border/50 focus:border-electric-blue focus:bg-background rounded-xl transition-all duration-300"
-                      />
+                      <Input placeholder="Search by name, mobile, or email..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-12 h-12 bg-muted/20 border-2 border-border/50 focus:border-electric-blue focus:bg-background rounded-xl transition-all duration-300" />
                     </div>
                   </div>
 
@@ -331,17 +299,11 @@ export default function StudentList() {
                     <Label className="text-sm font-bold text-vibrant-purple uppercase tracking-wider">Filter by Batch</Label>
                     <div className="relative group">
                       <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-vibrant-purple group-focus-within:scale-110 transition-transform duration-300" />
-                      <select
-                        value={selectedBatch}
-                        onChange={(e) => setSelectedBatch(e.target.value)}
-                        className="pl-12 pr-4 h-12 w-full bg-muted/20 border-2 border-border/50 focus:border-vibrant-purple focus:bg-background rounded-xl transition-all duration-300 text-foreground"
-                      >
+                      <select value={selectedBatch} onChange={e => setSelectedBatch(e.target.value)} className="pl-12 pr-4 h-12 w-full bg-muted/20 border-2 border-border/50 focus:border-vibrant-purple focus:bg-background rounded-xl transition-all duration-300 text-foreground">
                         <option value="all">All Batches</option>
-                        {batches.map((batch) => (
-                          <option key={batch.id} value={batch.id}>
+                        {batches.map(batch => <option key={batch.id} value={batch.id}>
                             {batch.batch_name}
-                          </option>
-                        ))}
+                          </option>)}
                       </select>
                     </div>
                   </div>
@@ -350,15 +312,11 @@ export default function StudentList() {
                     <Label className="text-sm font-bold text-emerald-green uppercase tracking-wider">Sort By</Label>
                     <div className="relative group">
                       <Database className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-emerald-green group-focus-within:scale-110 transition-transform duration-300" />
-                      <select
-                        value={`${sortBy}-${sortOrder}`}
-                        onChange={(e) => {
-                          const [field, order] = e.target.value.split('-');
-                          setSortBy(field as any);
-                          setSortOrder(order as any);
-                        }}
-                        className="pl-12 pr-4 h-12 w-full bg-muted/20 border-2 border-border/50 focus:border-emerald-green focus:bg-background rounded-xl transition-all duration-300 text-foreground"
-                      >
+                      <select value={`${sortBy}-${sortOrder}`} onChange={e => {
+                      const [field, order] = e.target.value.split('-');
+                      setSortBy(field as any);
+                      setSortOrder(order as any);
+                    }} className="pl-12 pr-4 h-12 w-full bg-muted/20 border-2 border-border/50 focus:border-emerald-green focus:bg-background rounded-xl transition-all duration-300 text-foreground">
                         <option value="created_at-desc">Newest First</option>
                         <option value="created_at-asc">Oldest First</option>
                         <option value="student_name-asc">Name A-Z</option>
@@ -392,15 +350,10 @@ export default function StudentList() {
                 </TabsList>
                 
                 <TabsContent value="table" className="space-y-4">
-                  <EnhancedStudentTable
-                    students={students}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                  />
+                  <EnhancedStudentTable students={students} onEdit={handleEdit} onDelete={handleDelete} />
                   
                   {/* Pagination Controls */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-between px-4 py-4 bg-muted/20 rounded-xl border border-border/50">
+                  {totalPages > 1 && <div className="flex items-center justify-between px-4 py-4 bg-muted/20 rounded-xl border border-border/50">
                       <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                         <span>Page {currentPage + 1} of {totalPages}</span>
                         <span>•</span>
@@ -408,48 +361,28 @@ export default function StudentList() {
                       </div>
                       
                       <div className="flex items-center space-x-2">
-                        <Button
-                          onClick={goToPreviousPage}
-                          disabled={!hasPreviousPage}
-                          variant="outline"
-                          size="sm"
-                          className="h-10 px-4 border-border/50 hover:bg-electric-blue/5"
-                        >
+                        <Button onClick={goToPreviousPage} disabled={!hasPreviousPage} variant="outline" size="sm" className="h-10 px-4 border-border/50 hover:bg-electric-blue/5">
                           <ChevronLeft className="h-4 w-4 mr-2" />
                           Previous
                         </Button>
                         
                         <div className="flex items-center space-x-1">
-                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                            const pageNum = Math.max(0, Math.min(totalPages - 5, currentPage - 2)) + i;
-                            return (
-                              <Button
-                                key={pageNum}
-                                onClick={() => goToPage(pageNum)}
-                                variant={pageNum === currentPage ? "default" : "outline"}
-                                size="sm"
-                                className="h-10 w-10"
-                              >
+                          {Array.from({
+                        length: Math.min(5, totalPages)
+                      }, (_, i) => {
+                        const pageNum = Math.max(0, Math.min(totalPages - 5, currentPage - 2)) + i;
+                        return <Button key={pageNum} onClick={() => goToPage(pageNum)} variant={pageNum === currentPage ? "default" : "outline"} size="sm" className="h-10 w-10">
                                 {pageNum + 1}
-                              </Button>
-                            );
-                          })}
+                              </Button>;
+                      })}
                         </div>
                         
-                        <Button
-                          onClick={goToNextPage}
-                          disabled={!hasNextPage}
-                          variant="outline"
-                          size="sm"
-                          className="h-10 px-4 border-border/50 hover:bg-electric-blue/5"
-                          onMouseEnter={handlePrefetchNext}
-                        >
+                        <Button onClick={goToNextPage} disabled={!hasNextPage} variant="outline" size="sm" className="h-10 px-4 border-border/50 hover:bg-electric-blue/5" onMouseEnter={handlePrefetchNext}>
                           Next
                           <ChevronRight className="h-4 w-4 ml-2" />
                         </Button>
                       </div>
-                    </div>
-                  )}
+                    </div>}
                 </TabsContent>
                 
                 <TabsContent value="debug" className="space-y-4">
@@ -460,16 +393,8 @@ export default function StudentList() {
           </Card>
 
           {/* Edit Student Dialog */}
-          <EditStudentDialog
-            student={editingStudent}
-            open={showEditDialog}
-            onOpenChange={setShowEditDialog}
-            onUpdate={handleUpdateStudent}
-            batches={batches}
-            isUpdating={updateMutation.isPending}
-          />
+          <EditStudentDialog student={editingStudent} open={showEditDialog} onOpenChange={setShowEditDialog} onUpdate={handleUpdateStudent} batches={batches} isUpdating={updateMutation.isPending} />
         </div>
       </div>
-    </DashboardLayout>
-  );
+    </DashboardLayout>;
 }
