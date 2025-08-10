@@ -28,6 +28,7 @@ export default function StudentList() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const queryClient = useQueryClient();
   const {
     profile
@@ -157,8 +158,14 @@ export default function StudentList() {
 
   // Download PDF function - fetch ALL students or filtered students in real-time
   const handleDownloadPDF = async () => {
+    // Set loading state
+    setIsGeneratingPDF(true);
+    
     try {
       console.log('🔄 PDF download initiated - fetching real-time student data');
+      
+      // Show initial processing message
+      toast.loading('🔄 Starting PDF generation...', { id: 'pdf-generation' });
       
       // Check if any filters are applied
       const hasSearchFilter = searchTerm.trim().length > 0;
@@ -216,17 +223,23 @@ export default function StudentList() {
       // Apply same sorting as current view
       query = query.order(sortBy, { ascending: sortOrder === 'asc' });
 
+      // Update progress message
+      toast.loading('📊 Fetching student data from database...', { id: 'pdf-generation' });
+
       // Fetch real-time data
       const { data: allStudents, error } = await query;
 
       if (error) {
         console.error('❌ Error fetching students for PDF:', error);
-        toast.error('Failed to fetch student data for PDF');
+        toast.error('Failed to fetch student data for PDF', { id: 'pdf-generation' });
         return;
       }
 
       const studentCount = allStudents?.length || 0;
       console.log(`✅ Fetched ${studentCount} students for PDF`);
+      
+      // Update progress message
+      toast.loading(`🖼️ Processing ${studentCount} students with fingerprint images...`, { id: 'pdf-generation' });
       
       // Prepare filter information for PDF
       const selectedBatchData = batches.find(batch => batch.id === selectedBatch);
@@ -252,13 +265,20 @@ export default function StudentList() {
       
       console.log('📄 Generating PDF for:', pdfType);
       
+      // Final progress message
+      toast.loading('📄 Generating PDF document...', { id: 'pdf-generation' });
+      
       await exportStudentsToPDF(allStudents || [], filters);
       
-      toast.success(`📋 PDF generated successfully with ${studentCount} students (${pdfType})`);
+      // Success message
+      toast.success(`📋 PDF generated successfully with ${studentCount} students (${pdfType})`, { id: 'pdf-generation' });
       
     } catch (error) {
       console.error('❌ PDF generation error:', error);
-      toast.error('Failed to generate PDF report');
+      toast.error('Failed to generate PDF report', { id: 'pdf-generation' });
+    } finally {
+      // Always reset loading state
+      setIsGeneratingPDF(false);
     }
   };
   if (isLoading) {
@@ -290,9 +310,23 @@ export default function StudentList() {
             </div>
 
             <div className="flex items-center gap-4">
-              <Button onClick={handleDownloadPDF} variant="outline" className="h-12 px-6 border-2 border-emerald-green/30 text-emerald-green hover:bg-emerald-green/5 rounded-2xl font-semibold transition-all duration-300 hover:scale-105">
-                <Download className="h-5 w-5 mr-3" />
-                Download PDF
+              <Button 
+                onClick={handleDownloadPDF} 
+                disabled={isGeneratingPDF}
+                variant="outline" 
+                className="h-12 px-6 border-2 border-emerald-green/30 text-emerald-green hover:bg-emerald-green/5 disabled:opacity-50 disabled:cursor-not-allowed rounded-2xl font-semibold transition-all duration-300 hover:scale-105"
+              >
+                {isGeneratingPDF ? (
+                  <>
+                    <div className="animate-spin h-5 w-5 mr-3 border-2 border-emerald-green border-t-transparent rounded-full"></div>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-5 w-5 mr-3" />
+                    Download PDF
+                  </>
+                )}
               </Button>
               <Button onClick={() => window.location.href = '/students/enhanced-add'} className="h-12 px-6 bg-sunset-orange hover:bg-sunset-orange/90 text-white rounded-2xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg">
                 <Plus className="h-5 w-5 mr-3" />
