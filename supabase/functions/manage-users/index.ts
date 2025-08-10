@@ -289,6 +289,33 @@ serve(async (req) => {
         )
       }
 
+      case 'update_max_batches': {
+        if (!user_id || max_batches_allowed === undefined) {
+          return new Response(
+            JSON.stringify({ error: 'User ID and max_batches_allowed are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        const { error: updateError } = await supabaseClient
+          .from('user_profiles')
+          .update({ max_batches_allowed: max_batches_allowed })
+          .eq('user_id', user_id)
+
+        if (updateError) {
+          console.error('Update max batches error:', updateError)
+          return new Response(
+            JSON.stringify({ error: updateError.message }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, message: 'Max batches updated successfully' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: 'Invalid action' }),

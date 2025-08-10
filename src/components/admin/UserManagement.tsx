@@ -26,6 +26,7 @@ interface UserProfile {
   full_name: string;
   role: UserRole;
   is_active: boolean;
+  max_batches_allowed: number;
   last_login_at: string | null;
   created_at: string;
   updated_at: string;
@@ -505,6 +506,7 @@ export default function UserManagement() {
                 <TableHead>Name</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Max Batches</TableHead>
                 <TableHead>Batch Access</TableHead>
                 <TableHead>Last Login</TableHead>
                 <TableHead>Created</TableHead>
@@ -524,16 +526,70 @@ export default function UserManagement() {
                     <Badge variant={user.is_active ? 'default' : 'destructive'}>
                       {user.is_active ? 'Enabled' : 'Disabled'}
                     </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedUserForBatchAccess(user.user_id)}
-                      title="Manage Batch Access"
-                    >
-                      <Settings className="h-4 w-4" />
-                    </Button>
+                   </TableCell>
+                   <TableCell>
+                     <div className="flex items-center gap-2">
+                       <span>{user.max_batches_allowed}</span>
+                       <Dialog>
+                         <DialogTrigger asChild>
+                           <Button variant="ghost" size="sm" title="Edit Max Batches">
+                             <Settings className="h-3 w-3" />
+                           </Button>
+                         </DialogTrigger>
+                         <DialogContent>
+                           <DialogHeader>
+                             <DialogTitle>Update Max Batches</DialogTitle>
+                           </DialogHeader>
+                           <div className="space-y-4">
+                             <div>
+                               <Label htmlFor="max_batches_edit">Maximum Batches Allowed</Label>
+                               <Input
+                                 id="max_batches_edit"
+                                 type="number"
+                                 min="1"
+                                 max="100"
+                                 defaultValue={user.max_batches_allowed}
+                                 onChange={(e) => {
+                                   const newValue = parseInt(e.target.value) || 1;
+                                   // Update user immediately
+                                   supabase.functions.invoke('manage-users', {
+                                     body: {
+                                       action: 'update_max_batches',
+                                       user_id: user.user_id,
+                                       max_batches_allowed: newValue
+                                     }
+                                   }).then(({ data, error }) => {
+                                     if (!error && data.success) {
+                                       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+                                       toast({ title: "Success", description: "Max batches updated" });
+                                     } else {
+                                       toast({ 
+                                         title: "Error", 
+                                         description: "Failed to update max batches",
+                                         variant: "destructive" 
+                                       });
+                                     }
+                                   });
+                                 }}
+                               />
+                               <p className="text-xs text-muted-foreground mt-1">
+                                 Each batch can contain up to 50 students
+                               </p>
+                             </div>
+                           </div>
+                         </DialogContent>
+                       </Dialog>
+                     </div>
+                   </TableCell>
+                   <TableCell>
+                     <Button
+                       variant="ghost"
+                       size="sm"
+                       onClick={() => setSelectedUserForBatchAccess(user.user_id)}
+                       title="Manage Batch Access"
+                     >
+                       <Settings className="h-4 w-4" />
+                     </Button>
                   </TableCell>
                   <TableCell>
                     {user.last_login_at 
