@@ -200,37 +200,37 @@ export function MultiFingerCaptureInterface({
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'captured': return 'border-emerald-500 bg-gradient-to-br from-emerald-50 to-green-50';
-      case 'capturing': return 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 animate-pulse';
-      case 'retrying': return 'border-amber-500 bg-gradient-to-br from-amber-50 to-orange-50 animate-pulse';
-      case 'failed': return 'border-red-500 bg-gradient-to-br from-red-50 to-rose-50';
-      default: return 'border-gray-300 bg-gradient-to-br from-gray-50 to-slate-50 hover:border-blue-400 hover:shadow-md';
+      case 'captured': return 'border-emerald-500 bg-emerald-500/10';
+      case 'capturing': return 'border-electric-blue bg-electric-blue/10 animate-pulse';
+      case 'retrying': return 'border-sunset-orange bg-sunset-orange/10 animate-pulse';
+      case 'failed': return 'border-pink-rose bg-pink-rose/10';
+      default: return 'border-border bg-muted/20 hover:border-electric-blue hover:shadow-md';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'captured': return <CheckCircle2 className="h-6 w-6 text-emerald-600" />;
-      case 'capturing': return <Activity className="h-6 w-6 text-blue-600 animate-pulse" />;
-      case 'retrying': return <RotateCcw className="h-6 w-6 text-amber-600 animate-spin" />;
-      case 'failed': return <AlertCircle className="h-6 w-6 text-red-600" />;
-      default: return <Fingerprint className="h-6 w-6 text-gray-500" />;
+      case 'captured': return <CheckCircle2 className="h-6 w-6 text-emerald-green" />;
+      case 'capturing': return <Activity className="h-6 w-6 text-electric-blue animate-pulse" />;
+      case 'retrying': return <RotateCcw className="h-6 w-6 text-sunset-orange animate-spin" />;
+      case 'failed': return <AlertCircle className="h-6 w-6 text-pink-rose" />;
+      default: return <Fingerprint className="h-6 w-6 text-muted-foreground" />;
     }
   };
 
   const getProgressPercentage = () => (completedCount / 5) * 100;
 
   return (
-    <div className="space-y-8 p-8 bg-gradient-to-br from-sky-50/70 via-blue-50/50 to-indigo-50/70 rounded-3xl border border-blue-100/50 shadow-xl backdrop-blur-sm">
+    <div className="space-y-8 p-8 bg-muted/10 rounded-3xl border border-border/50 shadow-xl backdrop-blur-sm">
       {/* Enhanced Header */}
-      <Card className="border-0 shadow-2xl bg-gradient-to-r from-white/95 to-blue-50/80 backdrop-blur-md">
+      <Card className="border-0 shadow-2xl bg-card/95 backdrop-blur-md">
         <CardHeader className="pb-6">
           <CardTitle className="flex items-center justify-between text-2xl">
             <span className="flex items-center space-x-4">
               <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl shadow-lg">
                 <Hand className="h-8 w-8 text-white" />
               </div>
-              <span className="bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-900 bg-clip-text text-transparent font-bold text-3xl">
+              <span className="text-foreground font-bold text-3xl">
                 Multi-Fingerprint Capture System
               </span>
             </span>
@@ -283,27 +283,27 @@ export function MultiFingerCaptureInterface({
 
             {/* Statistics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                <TrendingUp className="h-5 w-5 text-blue-600" />
+              <div className="flex items-center space-x-3 p-3 bg-electric-blue/10 rounded-lg border border-electric-blue/20">
+                <TrendingUp className="h-5 w-5 text-electric-blue" />
                 <div>
-                  <div className="text-sm font-medium text-blue-800">Average Quality</div>
-                  <div className="text-lg font-bold text-blue-900">{averageQuality}%</div>
+                  <div className="text-sm font-medium text-foreground">Average Quality</div>
+                  <div className="text-lg font-bold text-foreground">{averageQuality}%</div>
                 </div>
               </div>
               
-              <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-200">
-                <Zap className="h-5 w-5 text-emerald-600" />
+              <div className="flex items-center space-x-3 p-3 bg-emerald-green/10 rounded-lg border border-emerald-green/20">
+                <Zap className="h-5 w-5 text-emerald-green" />
                 <div>
-                  <div className="text-sm font-medium text-emerald-800">AI Enhancement</div>
-                  <div className="text-lg font-bold text-emerald-900">Ultra HD + AI</div>
+                  <div className="text-sm font-medium text-foreground">AI Enhancement</div>
+                  <div className="text-lg font-bold text-foreground">Ultra HD + AI</div>
                 </div>
               </div>
               
-              <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
-                <Clock className="h-5 w-5 text-purple-600" />
+              <div className="flex items-center space-x-3 p-3 bg-vibrant-purple/10 rounded-lg border border-vibrant-purple/20">
+                <Clock className="h-5 w-5 text-vibrant-purple" />
                 <div>
-                  <div className="text-sm font-medium text-purple-800">Status</div>
-                  <div className="text-lg font-bold text-purple-900">
+                  <div className="text-sm font-medium text-foreground">Status</div>
+                  <div className="text-lg font-bold text-foreground">
                     {isCapturing ? 'Capturing...' : allCaptured ? 'Complete' : 'In Progress'}
                   </div>
                 </div>
@@ -321,10 +321,10 @@ export function MultiFingerCaptureInterface({
             className={`relative transition-all duration-500 transform hover:scale-105 ${getStatusColor(fingerprint.status)} border-2`}
           >
             <CardHeader className="text-center pb-3">
-              <CardTitle className="text-base font-bold text-gray-900">
+              <CardTitle className="text-base font-bold text-foreground">
                 Finger {index + 1}
               </CardTitle>
-              <div className="text-sm text-gray-700 font-medium">
+              <div className="text-sm text-muted-foreground font-medium">
                 {fingerNames[index]}
               </div>
               {fingerprint.quality > 0 && (
@@ -341,12 +341,12 @@ export function MultiFingerCaptureInterface({
               {/* Fingerprint Display */}
               <div className={`mx-auto w-40 h-48 border-2 rounded-lg flex items-center justify-center transition-all duration-500 ${
                 fingerprint.status === 'capturing' || fingerprint.status === 'retrying'
-                  ? 'border-blue-500 border-dashed animate-pulse bg-gradient-to-br from-blue-100 to-indigo-100' 
+                  ? 'border-electric-blue border-dashed animate-pulse bg-electric-blue/10' 
                   : fingerprint.status === 'captured'
-                    ? 'border-emerald-500 bg-gradient-to-br from-emerald-100 to-green-100'
+                    ? 'border-emerald-green bg-emerald-green/10'
                     : fingerprint.status === 'failed'
-                      ? 'border-red-500 bg-gradient-to-br from-red-100 to-rose-100'
-                      : 'border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100'
+                      ? 'border-pink-rose bg-pink-rose/10'
+                      : 'border-border bg-muted/20'
               }`}>
                 {fingerprint.imageData ? (
                   <img 
@@ -361,7 +361,7 @@ export function MultiFingerCaptureInterface({
                 ) : (
                   <div className="flex flex-col items-center space-y-1">
                     {getStatusIcon(fingerprint.status)}
-                    <span className="text-xs font-medium">
+                    <span className="text-xs font-medium text-muted-foreground">
                       {fingerprint.status === 'capturing' ? 'Capturing...' :
                        fingerprint.status === 'retrying' ? 'Retrying...' :
                        fingerprint.status === 'failed' ? 'Failed' :
@@ -433,7 +433,7 @@ export function MultiFingerCaptureInterface({
 
       {/* Save All Button */}
       {allCaptured && (
-        <Card className="border-3 border-emerald-500 bg-gradient-to-r from-emerald-50 via-green-50 to-emerald-50 shadow-2xl">
+        <Card className="border-3 border-emerald-green bg-emerald-green/10 shadow-2xl">
           <CardContent className="pt-8 pb-6">
             <div className="text-center space-y-6">
               <div className="flex justify-center">
@@ -443,10 +443,10 @@ export function MultiFingerCaptureInterface({
               </div>
               
               <div>
-                <h3 className="text-2xl font-bold bg-gradient-to-r from-emerald-800 to-green-900 bg-clip-text text-transparent">
+                <h3 className="text-2xl font-bold text-foreground">
                   All Fingerprints Captured!
                 </h3>
-                <p className="text-emerald-800 text-lg max-w-2xl mx-auto font-medium mt-2">
+                <p className="text-muted-foreground text-lg max-w-2xl mx-auto font-medium mt-2">
                   All 5 fingerprints have been captured with ultra-high quality enhancement. 
                   Ready to save to secure database.
                 </p>

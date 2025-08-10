@@ -70,7 +70,7 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
     
     if (imageUrl) {
       return (
-        <div className="w-16 h-20 border rounded overflow-hidden bg-gray-50 shadow-sm">
+        <div className="w-16 h-20 border border-border rounded overflow-hidden bg-muted/30 shadow-sm">
           <img 
             src={imageUrl}
             alt={`Finger ${index + 1}`}
@@ -85,8 +85,8 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
     }
     
     return (
-      <div className="w-16 h-20 border rounded flex items-center justify-center bg-gray-100">
-        <Fingerprint className="h-5 w-5 text-gray-400" />
+      <div className="w-16 h-20 border border-border rounded flex items-center justify-center bg-muted/20">
+        <Fingerprint className="h-5 w-5 text-muted-foreground" />
         <span className="sr-only">No fingerprint {index + 1}</span>
       </div>
     );
@@ -108,24 +108,24 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
           <TableBody>
             {students.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                   No students found. Add your first student to get started.
                 </TableCell>
               </TableRow>
             ) : (
               students.map((student) => (
-                <TableRow key={student.id} className="hover:bg-gray-50">
+                <TableRow key={student.id} className="hover:bg-muted/50 hover:text-foreground transition-colors duration-300">
                   <TableCell className="font-medium">
                     <div>
                       <div className="font-medium">{student.student_name}</div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-muted-foreground">
                         {student.mobile_number || '-'}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     {student.batches?.batch_name || (
-                      <span className="text-gray-500 text-sm">No Batch</span>
+                      <span className="text-muted-foreground text-sm">No Batch</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -137,7 +137,7 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
                       {renderFingerprintPreview(student, 4)}
                     </div>
                     <div className="text-center mt-2">
-                      <span className="text-xs text-gray-500 font-medium">
+                      <span className="text-xs text-muted-foreground font-medium">
                         {getFingerprintCount(student)}/5 captured
                       </span>
                     </div>
