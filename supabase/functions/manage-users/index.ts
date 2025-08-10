@@ -127,15 +127,25 @@ serve(async (req) => {
       }
 
       case 'delete_user': {
-        // Prevent self-deletion
-        if (user_id === user.id) {
+        // Use optimized database function for profile deletion
+        const { data: deleteResult, error: dbError } = await supabaseClient
+          .rpc('delete_user_account', { target_user_id: user_id })
+
+        if (dbError) {
           return new Response(
-            JSON.stringify({ error: 'Cannot delete your own account' }),
+            JSON.stringify({ error: dbError.message }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
 
-        // Delete user from auth
+        if (!deleteResult.success) {
+          return new Response(
+            JSON.stringify({ error: deleteResult.error }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        // Delete user from auth (this is required and cannot be done in database function)
         const { error: deleteError } = await supabaseClient.auth.admin.deleteUser(user_id)
 
         if (deleteError) {
@@ -180,34 +190,9 @@ serve(async (req) => {
       }
 
       case 'toggle_status': {
-        // Prevent self-status toggle
-        if (user_id === user.id) {
-          return new Response(
-            JSON.stringify({ error: 'Cannot change your own account status' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
-        }
-
-        // Get current user status
-        const { data: currentUser, error: getUserError } = await supabaseClient
-          .from('user_profiles')
-          .select('is_active')
-          .eq('user_id', user_id)
-          .single()
-
-        if (getUserError) {
-          return new Response(
-            JSON.stringify({ error: getUserError.message }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
-        }
-
-        // Toggle status
-        const newStatus = !currentUser.is_active
-        const { error: toggleError } = await supabaseClient
-          .from('user_profiles')
-          .update({ is_active: newStatus })
-          .eq('user_id', user_id)
+        // Use optimized database function for atomic toggle
+        const { data: toggleResult, error: toggleError } = await supabaseClient
+          .rpc('toggle_user_status', { target_user_id: user_id })
 
         if (toggleError) {
           return new Response(
@@ -216,34 +201,37 @@ serve(async (req) => {
           )
         }
 
+        if (!toggleResult.success) {
+          return new Response(
+            JSON.stringify({ error: toggleResult.error }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
         return new Response(
-          JSON.stringify({ 
-            success: true, 
-            message: `User ${newStatus ? 'enabled' : 'disabled'} successfully`,
-            newStatus 
-          }),
+          JSON.stringify(toggleResult),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 
       case 'ban_user': {
-        // Prevent self-ban
-        if (user_id === user.id) {
-          return new Response(
-            JSON.stringify({ error: 'Cannot ban your own account' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
-        }
-
-        // Update user profile to inactive
-        const { error: banError } = await supabaseClient
-          .from('user_profiles')
-          .update({ is_active: false })
-          .eq('user_id', user_id)
+        // Use optimized database function
+        const { data: banResult, error: banError } = await supabaseClient
+          .rpc('update_user_status', { 
+            target_user_id: user_id, 
+            new_status: false 
+          })
 
         if (banError) {
           return new Response(
             JSON.stringify({ error: banError.message }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        if (!banResult.success) {
+          return new Response(
+            JSON.stringify({ error: banResult.error }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
@@ -255,15 +243,23 @@ serve(async (req) => {
       }
 
       case 'unban_user': {
-        // Update user profile to active
-        const { error: unbanError } = await supabaseClient
-          .from('user_profiles')
-          .update({ is_active: true })
-          .eq('user_id', user_id)
+        // Use optimized database function
+        const { data: unbanResult, error: unbanError } = await supabaseClient
+          .rpc('update_user_status', { 
+            target_user_id: user_id, 
+            new_status: true 
+          })
 
         if (unbanError) {
           return new Response(
             JSON.stringify({ error: unbanError.message }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        if (!unbanResult.success) {
+          return new Response(
+            JSON.stringify({ error: unbanResult.error }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
