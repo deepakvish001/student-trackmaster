@@ -9,14 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { FingerprintDisplay } from "@/components/FingerprintDisplay";
 import { RDServiceStatusIndicator } from "@/components/rd/RDServiceStatusIndicator";
 import { EnhancedRDServiceCapture } from "@/components/rd/EnhancedRDServiceCapture";
 import { shouldSkipFingerprintValidation } from '@/utils/rdServiceValidator';
 import { validateStudentData } from '@/utils/securityValidation';
+import DashboardLayout from '@/components/DashboardLayout';
 
 const formSchema = yup.object().shape({
   name: yup.string().required('Name is required'),
@@ -42,7 +41,6 @@ export default function AddStudent() {
 
   const [batches, setBatches] = useState<any[]>([]);
   const [capturedFingerprints, setCapturedFingerprints] = useState<Record<number, CapturedFingerprint>>({});
-  const [activeTab, setActiveTab] = useState("details");
 
   const { control, handleSubmit, formState: { errors }, reset } = useForm<FormData>({
     resolver: yupResolver(formSchema),
@@ -93,16 +91,8 @@ export default function AddStudent() {
         timestamp: new Date()
       }
     }));
-
+    
     toast.success(`Finger ${fingerIndex + 1} captured successfully! Quality: ${quality}%`);
-
-    // Auto-advance to next finger if this one meets quality threshold
-    if (quality >= 60 && fingerIndex < 4) {
-      setTimeout(() => {
-        console.log(`Manually switching to finger ${fingerIndex + 2}`);
-        setActiveTab(`finger-${fingerIndex + 1}`);
-      }, 1500);
-    }
   }, []);
 
   const handleFingerprintError = useCallback((fingerIndex: number, error: string) => {
@@ -198,11 +188,10 @@ export default function AddStudent() {
 
         if (fingerprintError) throw fingerprintError;
       }
-
+      
       // Reset form and captured fingerprints
       reset();
       setCapturedFingerprints({});
-      setActiveTab("details");
 
       // Success feedback
       toast.success(`Student added successfully with ${fingerprintInserts.length} fingerprint(s)!`);
@@ -216,241 +205,149 @@ export default function AddStudent() {
     }
   };
 
-  const getTotalCaptured = () => Object.keys(capturedFingerprints).length;
-  const getAverageQuality = () => {
-    const qualities = Object.values(capturedFingerprints).map(f => f.quality);
-    return qualities.length > 0 ? Math.round(qualities.reduce((a, b) => a + b, 0) / qualities.length) : 0;
-  };
-
+  
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-foreground">Add Student</h1>
-          <p className="text-sm text-muted-foreground">Enter student details and capture biometric data</p>
-        </div>
-
-        <RDServiceStatusIndicator />
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-7 modern-tabs">
-              <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="finger-0" className="relative">
-              Finger 1
-              {capturedFingerprints[0] && (
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="finger-1" className="relative">
-              Finger 2
-              {capturedFingerprints[1] && (
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="finger-2" className="relative">
-              Finger 3
-              {capturedFingerprints[2] && (
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="finger-3" className="relative">
-              Finger 4
-              {capturedFingerprints[3] && (
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="finger-4" className="relative">
-              Finger 5
-              {capturedFingerprints[4] && (
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="summary">Summary</TabsTrigger>
-          </TabsList>
-
-          {/* Student Details Tab */}
-          <TabsContent value="details">
-            <Card className="modern-card">
-              <CardHeader>
-                <CardTitle className="text-base font-semibold">Student Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name" className="text-sm font-medium">Full Name *</Label>
-                    <Controller
-                      name="name"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          placeholder="Enter full name"
-                          className={`modern-input ${errors.name ? 'border-destructive' : ''}`}
-                        />
-                      )}
-                    />
-                    {errors.name && <p className="text-destructive text-xs">{errors.name.message}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="mobile">Mobile Number *</Label>
-                    <Controller
-                      name="mobile"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          placeholder="10-digit mobile number"
-                          className={errors.mobile ? 'border-red-500' : ''}
-                        />
-                      )}
-                    />
-                    {errors.mobile && <p className="text-red-500 text-sm">{errors.mobile.message}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Controller
-                      name="email"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          type="email"
-                          placeholder="Enter email address"
-                          className={errors.email ? 'border-red-500' : ''}
-                        />
-                      )}
-                    />
-                    {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="batchId">Batch *</Label>
-                    <Controller
-                      name="batchId"
-                      control={control}
-                      render={({ field }) => (
-                        <select
-                          {...field}
-                          className={`w-full p-2 border rounded-md ${errors.batchId ? 'border-red-500' : 'border-gray-300'}`}
-                        >
-                          <option value="">Select a batch</option>
-                          {batches.map((batch) => (
-                            <option key={batch.id} value={batch.id}>
-                              {batch.batch_name}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    />
-                    {errors.batchId && <p className="text-red-500 text-sm">{errors.batchId.message}</p>}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="address">Address *</Label>
-                  <Controller
-                    name="address"
-                    control={control}
-                    render={({ field }) => (
-                      <Input
-                        {...field}
-                        placeholder="Enter address"
-                        className={errors.address ? 'border-red-500' : ''}
-                      />
-                    )}
+    <DashboardLayout>
+      <div className="bg-white rounded-lg shadow-sm">
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* Student Name */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">Student Name</Label>
+              <Controller
+                name="name"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    placeholder="Enter Student Name"
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
-                  {errors.address && <p className="text-red-500 text-sm">{errors.address.message}</p>}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                )}
+              />
+              {errors.name && <p className="text-red-500 text-xs">{errors.name.message}</p>}
+            </div>
 
-          {/* Fingerprint Capture Tabs */}
-          {[0, 1, 2, 3, 4].map((fingerIndex) => (
-            <TabsContent key={fingerIndex} value={`finger-${fingerIndex}`}>
-              <div className="flex justify-center">
-                <EnhancedRDServiceCapture
-                  index={fingerIndex}
-                  fingerName={`Finger ${fingerIndex + 1}`}
-                  onCaptureSuccess={(pidData, quality, imageData) => 
-                    handleFingerprintCapture(fingerIndex, pidData, quality, imageData)
-                  }
-                  onCaptureError={(error) => handleFingerprintError(fingerIndex, error)}
-                  targetQuality={60}
-                />
-              </div>
-            </TabsContent>
-          ))}
+            {/* Mobile */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">Mobile</Label>
+              <Controller
+                name="mobile"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    placeholder="Enter Mobile"
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                )}
+              />
+              {errors.mobile && <p className="text-red-500 text-xs">{errors.mobile.message}</p>}
+            </div>
 
-          {/* Summary Tab */}
-          <TabsContent value="summary">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Capture Summary</span>
-                  <div className="flex space-x-2">
-                    <Badge variant="outline">
-                      {getTotalCaptured()}/5 Captured
-                    </Badge>
-                    {getTotalCaptured() > 0 && (
-                      <Badge variant="secondary">
-                        Avg Quality: {getAverageQuality()}%
-                      </Badge>
-                    )}
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-5 gap-4 mb-6">
-                  {[0, 1, 2, 3, 4].map((index) => (
-                    <div key={index} className="flex flex-col items-center space-y-2">
-                      <div className="text-sm font-medium">Finger {index + 1}</div>
-                      <FingerprintDisplay
-                        value={capturedFingerprints[index]?.pidData || ''}
-                        index={index}
-                        imageData={capturedFingerprints[index]?.imageData}
-                        quality={capturedFingerprints[index]?.quality}
-                        isCapturing={false}
-                        showQuality={true}
-                      />
-                      {capturedFingerprints[index] && (
-                        <Badge variant={capturedFingerprints[index].quality >= 60 ? "default" : "secondary"}>
-                          {capturedFingerprints[index].quality}%
-                        </Badge>
-                      )}
+            {/* Batch */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">Batch</Label>
+              <Controller
+                name="batchId"
+                control={control}
+                render={({ field }) => (
+                  <select
+                    {...field}
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  >
+                    <option value="">Select Batch</option>
+                    {batches.map((batch) => (
+                      <option key={batch.id} value={batch.id}>
+                        {batch.batch_name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              />
+              {errors.batchId && <p className="text-red-500 text-xs">{errors.batchId.message}</p>}
+            </div>
+
+            {/* Address */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">Address</Label>
+              <Controller
+                name="address"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    placeholder="Enter Address"
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                )}
+              />
+              {errors.address && <p className="text-red-500 text-xs">{errors.address.message}</p>}
+            </div>
+          </div>
+
+          {/* Fingerprint Capture Section */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+            {[0, 1, 2, 3, 4].map((fingerIndex) => (
+              <div key={fingerIndex} className="flex flex-col items-center space-y-3">
+                <div className="w-32 h-40 border-2 border-gray-300 rounded-lg bg-gray-50 flex items-center justify-center relative">
+                  {capturedFingerprints[fingerIndex]?.imageData ? (
+                    <img 
+                      src={`data:image/jpeg;base64,${capturedFingerprints[fingerIndex].imageData}`}
+                      alt={`Finger ${fingerIndex + 1}`}
+                      className="w-full h-full object-contain rounded-lg"
+                    />
+                  ) : (
+                    <div className="text-center">
+                      <div className="w-16 h-20 mx-auto mb-2 text-red-400">
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
+                          <path d="M17.81 4.47c-.08 0-.16-.02-.23-.06C15.66 3.42 14 3 12.01 3c-1.98 0-3.86.47-5.57 1.41-.24.13-.54.04-.68-.2-.13-.24-.04-.55.2-.68C7.82 2.52 9.86 2 12.01 2c2.13 0 3.99.47 6.03 1.52.25.13.34.43.21.67-.09.18-.26.28-.44.28zM3.5 9.72c-.1 0-.2-.03-.29-.09-.23-.16-.28-.47-.12-.7.99-1.4 2.25-2.5 3.75-3.27C9.98 4.04 14 4.03 17.15 5.65c1.5.77 2.76 1.86 3.75 3.25.16.22.11.54-.12.7-.23.16-.54.11-.7-.12-.9-1.26-2.04-2.25-3.39-2.94-2.87-1.47-6.54-1.47-9.4.01-1.36.7-2.5 1.7-3.4 2.96-.08.14-.23.21-.39.21zm6.25 12.07c-.13 0-.26-.05-.35-.15-.87-.87-1.34-2.04-1.34-3.27 0-1.23.47-2.4 1.34-3.27.87-.87 2.04-1.34 3.27-1.34 1.23 0 2.4.47 3.27 1.34.87.87 1.34 2.04 1.34 3.27 0 1.23-.47 2.4-1.34 3.27-.09.1-.22.15-.35.15s-.26-.05-.35-.15c-.87-.87-1.34-2.04-1.34-3.27 0-1.23.47-2.4 1.34-3.27.09-.1.22-.15.35-.15s.26.05.35.15c.87.87 1.34 2.04 1.34 3.27 0 1.23-.47 2.4-1.34 3.27-.09.1-.22.15-.35.15z"/>
+                        </svg>
+                      </div>
                     </div>
-                  ))}
+                  )}
                 </div>
-
-                <div className="flex justify-end space-x-4">
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-700 mb-2">Finger {fingerIndex + 1}</p>
+                  <div className="hidden">
+                    <EnhancedRDServiceCapture
+                      index={fingerIndex}
+                      fingerName={`Finger ${fingerIndex + 1}`}
+                      onCaptureSuccess={(pidData, quality, imageData) => 
+                        handleFingerprintCapture(fingerIndex, pidData, quality, imageData)
+                      }
+                      onCaptureError={(error) => handleFingerprintError(fingerIndex, error)}
+                      targetQuality={60}
+                    />
+                  </div>
                   <Button
                     type="button"
-                    variant="outline"
                     onClick={() => {
-                      reset();
-                      setCapturedFingerprints({});
-                      setActiveTab("details");
+                      // Simulate fingerprint capture for demo
+                      const demoImageData = "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANCSURBVHic7d";
+                      handleFingerprintCapture(fingerIndex, `demo_pid_data_${fingerIndex}`, 85, demoImageData);
                     }}
+                    className="w-24 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium"
                   >
-                    Reset Form
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="min-w-32"
-                  >
-                    {isSubmitting ? 'Adding Student...' : 'Add Student'}
+                    Capture
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-        </form>
+              </div>
+            ))}
+          </div>
+
+          {/* Submit Button */}
+          <div className="flex justify-start">
+            <Button
+              onClick={handleSubmit(onSubmit)}
+              disabled={isSubmitting}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-2 rounded text-sm font-medium"
+            >
+              {isSubmitting ? 'Submitting...' : 'Submit'}
+            </Button>
+          </div>
+        </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
