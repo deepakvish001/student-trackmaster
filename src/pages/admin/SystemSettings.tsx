@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
+import AdminLayout from '@/components/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -73,19 +73,15 @@ export default function SystemSettings() {
 
   if (profileLoading || isLoading) {
     return (
-      <DashboardLayout>
+      <AdminLayout>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="flex items-center gap-2">
             <Loader2 className="h-8 w-8 animate-spin" />
             <span className="text-lg">Loading system settings...</span>
           </div>
         </div>
-      </DashboardLayout>
+      </AdminLayout>
     );
-  }
-
-  if (!profile || !isSuperAdmin()) {
-    return <Navigate to="/" replace />;
   }
 
   const handleSave = async () => {
@@ -102,7 +98,7 @@ export default function SystemSettings() {
   };
 
   return (
-    <DashboardLayout>
+    <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -441,6 +437,6 @@ export default function SystemSettings() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </AdminLayout>
   );
 }

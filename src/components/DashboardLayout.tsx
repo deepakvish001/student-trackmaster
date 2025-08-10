@@ -91,8 +91,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Super Admin specific menu items
   const adminMenuItems = [
     { 
-      title: 'User Management', 
-      path: '/admin/users', 
+      title: 'Administration', 
+      path: '/admin/audit-logs', 
       icon: Shield, 
       colorClass: 'icon-danger-red hover:text-danger-red',
       bgClass: 'hover:bg-danger-red/10'
