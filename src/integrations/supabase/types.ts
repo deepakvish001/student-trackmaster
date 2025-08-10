@@ -334,6 +334,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      reset_system_settings_to_defaults: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       toggle_user_status: {
         Args: { target_user_id: string }
         Returns: Json

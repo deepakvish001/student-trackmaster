@@ -122,7 +122,7 @@ export function useSystemSettings() {
       
       const { data, error } = await supabase.rpc('update_system_setting', {
         key,
-        value: JSON.stringify(value)
+        value: typeof value === 'string' ? `"${value}"` : JSON.stringify(value)
       });
 
       if (error) {
@@ -183,7 +183,7 @@ export function useSystemSettings() {
       const promises = Object.entries(flatSettings).map(([key, value]) =>
         supabase.rpc('update_system_setting', {
           key,
-          value: JSON.stringify(value)
+          value: typeof value === 'string' ? `"${value}"` : JSON.stringify(value)
         })
       );
 

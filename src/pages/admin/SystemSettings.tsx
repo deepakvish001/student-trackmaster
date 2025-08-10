@@ -97,6 +97,42 @@ export default function SystemSettings() {
     });
   };
 
+  const handleResetToDefaults = async () => {
+    try {
+      const { data, error } = await supabase.rpc('reset_system_settings_to_defaults');
+      
+      if (error) {
+        console.error('Error resetting settings:', error);
+        toast({
+          title: "Error",
+          description: "Failed to reset settings to defaults",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const response = data as { success?: boolean; message?: string; error?: string };
+      
+      if (response?.success) {
+        toast({
+          title: "Success",
+          description: response.message || "Settings reset to defaults successfully"
+        });
+        // Reload settings to reflect changes
+        await loadSettings();
+      } else {
+        throw new Error(response?.error || 'Unknown error');
+      }
+    } catch (err: any) {
+      console.error('Failed to reset settings:', err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to reset settings",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -110,6 +146,10 @@ export default function SystemSettings() {
             <Button variant="outline" onClick={handleRefresh} className="gap-2">
               <RefreshCw className="h-4 w-4" />
               Refresh
+            </Button>
+            <Button variant="outline" onClick={handleResetToDefaults} className="gap-2">
+              <Settings className="h-4 w-4" />
+              Reset to Defaults
             </Button>
             <Button onClick={handleSave} disabled={isSaving} className="gap-2">
               {isSaving ? (
