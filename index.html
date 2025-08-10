@@ -6,6 +6,21 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Student TrackMaster - Offline Capable</title>
+    
+    <!-- Performance optimizations -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="//zwtjjzryscwhqsgvvqzf.supabase.co">
+    
+    <!-- Critical CSS will be inlined here by build process -->
+    <style>
+      /* Critical above-the-fold styles */
+      body { font-family: 'Geist', 'Inter', system-ui, sans-serif; margin: 0; }
+      .loading-spinner { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+      .spinner { width: 40px; height: 40px; border: 3px solid #f3f3f3; border-top: 3px solid #ff6600; border-radius: 50%; animation: spin 1s linear infinite; }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+    
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json">
     <!-- PWA Meta Tags -->
@@ -13,13 +28,40 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="TrackMaster">
-    <!-- jQuery required by MFS100 SDK -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- MFS100 SDK for fingerprint device -->
-    <script src="/mfs100-9.0.2.6.js"></script>
+    
+    <!-- Async load non-critical resources -->
+    <link 
+      rel="preload" 
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Geist:wght@300;400;500;600;700;800&display=swap" 
+      as="style" 
+      onload="this.onload=null;this.rel='stylesheet'"
+    >
+    
+    <!-- jQuery required by MFS100 SDK - defer loading -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" defer></script>
+    <!-- MFS100 SDK for fingerprint device - defer loading -->
+    <script src="/mfs100-9.0.2.6.js" defer></script>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Loading fallback for initial app load -->
+    <div id="root">
+      <div class="loading-spinner">
+        <div class="spinner"></div>
+      </div>
+    </div>
+    
+    <!-- Performance monitoring and service worker registration -->
+    <script>
+      // Register enhanced service worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw-enhanced.js')
+            .then(reg => console.log('Enhanced SW registered'))
+            .catch(err => console.log('SW registration failed'));
+        });
+      }
+    </script>
+    
     <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
