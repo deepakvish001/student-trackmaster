@@ -521,6 +521,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      is_user_super_admin: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
       log_high_risk_activity: {
         Args: {
           activity_type: string
