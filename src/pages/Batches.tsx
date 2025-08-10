@@ -96,7 +96,12 @@ export default function Batches() {
           <Card className="glass-card border-foreground/10">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xl font-bold text-foreground">Student Batch List</CardTitle>
+                <div>
+                  <CardTitle className="text-xl font-bold text-foreground">Student Batch List</CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Manage your accessible batches • Total: {batches.length} batches
+                  </p>
+                </div>
                 <div className="flex items-center space-x-2">
                   <label className="text-sm font-medium text-foreground">Search:</label>
                   <Input 

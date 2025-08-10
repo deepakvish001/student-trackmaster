@@ -119,7 +119,8 @@ export const BatchActions = ({ batch }: BatchActionsProps) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['batches'] });
-      toast.success(`Batch ${batch.is_enabled ? 'disabled' : 'enabled'} successfully`);
+      const action = batch.is_enabled ? 'disabled' : 'enabled';
+      toast.success(`Batch "${batch.batch_name}" ${action} successfully`);
     },
     onError: (error) => {
       console.error('Error toggling batch status:', error);
@@ -175,10 +176,18 @@ export const BatchActions = ({ batch }: BatchActionsProps) => {
           
           <DropdownMenuItem 
             onClick={handleToggleStatus}
-            className="cursor-pointer hover:bg-emerald-green/10 text-foreground"
+            disabled={toggleStatusMutation.isPending}
+            className={`cursor-pointer ${
+              batch.is_enabled 
+                ? 'hover:bg-pink-rose/10 text-pink-rose focus:text-pink-rose' 
+                : 'hover:bg-emerald-green/10 text-emerald-green focus:text-emerald-green'
+            }`}
           >
-            <Power className="h-4 w-4 mr-2 text-emerald-green" />
-            {batch.is_enabled ? 'Disable' : 'Enable'}
+            <Power className={`h-4 w-4 mr-2 ${batch.is_enabled ? 'text-pink-rose' : 'text-emerald-green'}`} />
+            {toggleStatusMutation.isPending 
+              ? (batch.is_enabled ? 'Disabling...' : 'Enabling...') 
+              : (batch.is_enabled ? 'Disable Batch' : 'Enable Batch')
+            }
           </DropdownMenuItem>
           
           <DropdownMenuSeparator className="bg-foreground/10" />

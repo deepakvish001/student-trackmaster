@@ -1,32 +1,37 @@
-import { Button } from "@/components/ui/button";
-import { Check, X } from "lucide-react";
+import React from 'react';
+import { BatchStatusIndicator } from '@/components/ui/batch-status-indicator';
+import { Batch } from '@/types/batch';
 
 interface BatchStatusButtonProps {
   isEnabled: boolean;
   onClick: () => void;
+  batch?: Batch;
 }
 
-export const BatchStatusButton = ({ isEnabled, onClick }: BatchStatusButtonProps) => {
+export const BatchStatusButton = ({ isEnabled, onClick, batch }: BatchStatusButtonProps) => {
+  // If we have batch data, use the new indicator
+  if (batch) {
+    return (
+      <BatchStatusIndicator 
+        batch={batch} 
+        onToggle={() => onClick()}
+        showToggleButton={true}
+        size="sm"
+      />
+    );
+  }
+
+  // Fallback to simple button for backward compatibility
   return (
-    <Button
-      variant={isEnabled ? "default" : "destructive"}
-      size="sm"
+    <button
       onClick={onClick}
-      className={`transition-colors flex items-center gap-2 ${
-        isEnabled ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"
+      className={`px-3 py-1 rounded-md text-sm font-medium transition-all duration-200 ${
+        isEnabled 
+          ? 'bg-emerald-green/20 text-emerald-green border border-emerald-green/30 hover:bg-emerald-green/30' 
+          : 'bg-pink-rose/20 text-pink-rose border border-pink-rose/30 hover:bg-pink-rose/30'
       }`}
     >
-      {isEnabled ? (
-        <>
-          <Check className="h-4 w-4" />
-          <span>Enabled</span>
-        </>
-      ) : (
-        <>
-          <X className="h-4 w-4" />
-          <span>Disabled</span>
-        </>
-      )}
-    </Button>
+      {isEnabled ? 'Enabled' : 'Disabled'}
+    </button>
   );
 };

@@ -29,7 +29,7 @@ export default function EnhancedDashboard() {
           .eq('is_enabled', true),
         supabase
           .from('batches')
-          .select('id, created_at, max_students, batch_name, serial_number, admin_name')
+          .select('id, created_at, max_students, batch_name, serial_number, admin_name, is_enabled')
           .eq('is_enabled', true)
       ]);
       
@@ -62,7 +62,9 @@ export default function EnhancedDashboard() {
           serialNumber: batch.serial_number,
           current: count || 0,
           max: batch.max_students,
-          utilization: Math.round(((count || 0) / batch.max_students) * 100)
+          utilization: Math.round(((count || 0) / batch.max_students) * 100),
+          isEnabled: batch.is_enabled,
+          adminName: batch.admin_name
         };
         console.log('Batch utilization data:', batchData);
         return batchData;
@@ -355,10 +357,21 @@ export default function EnhancedDashboard() {
                                 <span className="text-sm font-bold text-blue-400">{index + 1}</span>
                               </div>
                               <div>
-                                <h3 className="font-bold text-orange-200 text-xl leading-tight">
-                                  {batch.name || 'No Name'}
-                                </h3>
-                                <p className="text-sm text-gray-400 mt-1">{batch.serialNumber}</p>
+                                <div className="flex items-center space-x-2">
+                                  <h3 className="font-bold text-orange-200 text-xl leading-tight">
+                                    {batch.name || 'No Name'}
+                                  </h3>
+                                  <Badge 
+                                    className={`${
+                                      batch.isEnabled 
+                                        ? 'bg-emerald-green/20 text-emerald-green border-emerald-green/30' 
+                                        : 'bg-pink-rose/20 text-pink-rose border-pink-rose/30'
+                                    } text-xs`}
+                                  >
+                                    {batch.isEnabled ? 'Active' : 'Inactive'}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-gray-400 mt-1">{batch.serialNumber} • {batch.adminName}</p>
                               </div>
                             </div>
                             <div className="text-right">
