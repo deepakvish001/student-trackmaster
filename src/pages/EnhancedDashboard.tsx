@@ -119,7 +119,7 @@ export default function EnhancedDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-white">
+      <div className="min-h-screen bg-black text-white">
         <div className="max-w-7xl mx-auto space-y-10 p-8">
           {/* Enhanced Premium Header */}
           <div className="space-y-6">
