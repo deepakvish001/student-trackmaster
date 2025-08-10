@@ -19,6 +19,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { StudentListSkeleton } from '@/components/students/StudentListSkeleton';
 import { Users, Search, Filter, Download, RefreshCw, Shield, Activity, Clock, Database, Fingerprint, Plus, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { exportStudentsToPDF } from '@/utils/pdfExport';
 export default function StudentList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBatch, setSelectedBatch] = useState('all');
@@ -153,6 +154,19 @@ export default function StudentList() {
       });
     }
   };
+
+  // Download PDF function
+  const handleDownloadPDF = () => {
+    const selectedBatchData = batches.find(batch => batch.id === selectedBatch);
+    const filters = {
+      searchTerm: searchTerm || undefined,
+      selectedBatch,
+      batchName: selectedBatchData?.batch_name
+    };
+    
+    exportStudentsToPDF(students, filters);
+    toast.success('PDF report generated successfully');
+  };
   if (isLoading) {
     return <DashboardLayout>
         <StudentListSkeleton />
@@ -178,6 +192,10 @@ export default function StudentList() {
             </div>
 
             <div className="flex items-center gap-4">
+              <Button onClick={handleDownloadPDF} variant="outline" className="h-12 px-6 border-2 border-emerald-green/30 text-emerald-green hover:bg-emerald-green/5 rounded-2xl font-semibold transition-all duration-300 hover:scale-105">
+                <Download className="h-5 w-5 mr-3" />
+                Download PDF
+              </Button>
               <Button onClick={() => window.location.href = '/students/enhanced-add'} className="h-12 px-6 bg-sunset-orange hover:bg-sunset-orange/90 text-white rounded-2xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg">
                 <Plus className="h-5 w-5 mr-3" />
                 Add New Student
