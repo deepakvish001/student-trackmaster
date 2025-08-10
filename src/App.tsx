@@ -7,8 +7,6 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Batches from "./pages/Batches";
-import Downloads from "./pages/Downloads";
-import Testing from "./pages/Testing";
 import AddStudent from "./pages/students/AddStudent";
 import EnhancedAddStudent from "./pages/students/EnhancedAddStudent";
 import ViewStudents from "./pages/students/ViewStudents";
@@ -80,22 +78,6 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Batches />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/downloads"
-              element={
-                <ProtectedRoute>
-                  <Downloads />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/testing"
-              element={
-                <ProtectedRoute>
-                  <Testing />
                 </ProtectedRoute>
               }
             />
