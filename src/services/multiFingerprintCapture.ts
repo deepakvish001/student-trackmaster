@@ -95,9 +95,9 @@ class MultiFingerprintCaptureService {
     try {
       console.log('🎨 Applying ultimate image enhancement...');
       
-      // Create high-resolution canvas (4x scaling)
+      // Create ultra-high-resolution canvas (8x scaling for maximum detail)
       const canvas = document.createElement('canvas');
-      const scale = 4;
+      const scale = 8; // Increased to 8x for ultimate quality
       canvas.width = 256 * scale;
       canvas.height = 256 * scale;
       const ctx = canvas.getContext('2d');
@@ -109,13 +109,13 @@ class MultiFingerprintCaptureService {
       const originalImageData = ctx.createImageData(256, 256);
       const originalData = originalImageData.data;
       
-      // Step 1: Base processing with contrast enhancement
+      // Step 1: Base processing with ultra contrast enhancement
       for (let i = 0; i < Math.min(binaryData.length, 256 * 256); i++) {
         let pixelValue = 255 - binaryData.charCodeAt(i);
         
-        // Advanced contrast enhancement with gamma correction
-        pixelValue = Math.pow(pixelValue / 255, 0.8) * 255;
-        pixelValue = Math.min(255, Math.max(0, pixelValue * 1.4 + 15));
+        // Ultra-advanced contrast enhancement with optimal gamma correction
+        pixelValue = Math.pow(pixelValue / 255, 0.75) * 255;
+        pixelValue = Math.min(255, Math.max(0, pixelValue * 1.6 + 20)); // Increased contrast
         
         const pixelIndex = i * 4;
         originalData[pixelIndex] = pixelValue;
@@ -138,7 +138,7 @@ class MultiFingerprintCaptureService {
       const finalImageData = new ImageData(sharpenedData, 256 * scale, 256 * scale);
       ctx.putImageData(finalImageData, 0, 0);
       
-      console.log('✨ Ultimate image enhancement complete - 4x resolution with advanced filtering');
+      console.log('✨ Ultimate image enhancement complete - 8x resolution with advanced filtering');
       return canvas.toDataURL('image/png', 1.0);
       
     } catch (error) {

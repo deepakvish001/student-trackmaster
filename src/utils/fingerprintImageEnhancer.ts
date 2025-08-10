@@ -4,8 +4,8 @@ import { pipeline, env } from '@huggingface/transformers';
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 
-const MAX_IMAGE_DIMENSION = 1024;
-const ENHANCEMENT_SCALE = 2; // 2x upscaling
+const MAX_IMAGE_DIMENSION = 2048; // Increased for ultra-high quality
+const ENHANCEMENT_SCALE = 4; // 4x upscaling for maximum quality
 
 export interface EnhancementOptions {
   removeBackground?: boolean;
@@ -320,7 +320,18 @@ export const maxQualityEnhanceFingerprint = (imageData: string): Promise<string>
     removeBackground: true,
     enhanceContrast: true,
     upscale: true,
-    denoiseLevel: 0.4,
-    sharpenLevel: 0.7
+    denoiseLevel: 0.5,
+    sharpenLevel: 0.8
+  });
+};
+
+// Ultra-maximum quality enhancement for complete fingerprint capture
+export const ultraMaxQualityEnhanceFingerprint = (imageData: string): Promise<string> => {
+  return enhanceFingerprintImage(imageData, {
+    removeBackground: false, // Keep full image
+    enhanceContrast: true,
+    upscale: true,
+    denoiseLevel: 0.6,
+    sharpenLevel: 1.0
   });
 };

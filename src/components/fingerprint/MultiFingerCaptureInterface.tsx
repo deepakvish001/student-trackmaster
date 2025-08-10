@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useMultiFingerprintCapture } from "@/hooks/useMultiFingerprintCapture";
 import { PersistentFingerprintPreview } from "./PersistentFingerprintPreview";
+import { FullscreenFingerprintPreview } from "./FullscreenFingerprintPreview";
 
 interface MultiFingerCaptureInterfaceProps {
   onAllCaptured: (fingerprintData: any[]) => void;
@@ -46,6 +47,14 @@ export function MultiFingerCaptureInterface({
   } = useMultiFingerprintCapture();
 
   const [previewState, setPreviewState] = useState({
+    isVisible: false,
+    fingerIndex: -1,
+    fingerName: '',
+    imageData: '',
+    quality: 0
+  });
+
+  const [fullscreenPreview, setFullscreenPreview] = useState({
     isVisible: false,
     fingerIndex: -1,
     fingerName: '',
@@ -314,7 +323,7 @@ export function MultiFingerCaptureInterface({
       </Card>
 
       {/* Fingerprint Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 justify-items-center">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8 justify-items-center">
         {fingerprints.map((fingerprint, index) => (
           <Card 
             key={index}
@@ -339,7 +348,7 @@ export function MultiFingerCaptureInterface({
             
             <CardContent className="text-center space-y-4 pb-4">
               {/* Fingerprint Display */}
-              <div className={`mx-auto w-40 h-48 border-2 rounded-lg flex items-center justify-center transition-all duration-500 ${
+              <div className={`mx-auto w-48 h-56 border-2 rounded-lg flex items-center justify-center transition-all duration-500 ${
                 fingerprint.status === 'capturing' || fingerprint.status === 'retrying'
                   ? 'border-electric-blue border-dashed animate-pulse bg-electric-blue/10' 
                   : fingerprint.status === 'captured'
@@ -352,10 +361,12 @@ export function MultiFingerCaptureInterface({
                   <img 
                     src={fingerprint.imageData} 
                     alt={`${fingerNames[index]} preview`}
-                    className="w-36 h-44 object-contain rounded shadow-sm"
+                    className="w-full h-full object-contain rounded shadow-sm"
                     style={{
-                      filter: 'contrast(1.2) brightness(1.1)',
-                      imageRendering: 'crisp-edges'
+                      filter: 'contrast(1.3) brightness(1.15) saturate(1.15)',
+                      imageRendering: 'crisp-edges',
+                      maxWidth: '100%',
+                      maxHeight: '100%'
                     }}
                   />
                 ) : (
@@ -378,8 +389,8 @@ export function MultiFingerCaptureInterface({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="w-full py-2 text-xs font-bold bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
-                      onClick={() => setPreviewState({
+                      className="w-full py-2 text-xs font-bold bg-electric-blue/10 border-electric-blue/30 text-electric-blue hover:bg-electric-blue/20"
+                      onClick={() => setFullscreenPreview({
                         isVisible: true,
                         fingerIndex: index,
                         fingerName: fingerNames[index],
@@ -388,12 +399,12 @@ export function MultiFingerCaptureInterface({
                       })}
                     >
                       <Eye className="mr-1 h-3 w-3" />
-                      Preview
+                      Full Preview
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      className="w-full py-2 text-xs font-bold bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100 transition-all duration-200"
+                      className="w-full py-2 text-xs font-bold bg-sunset-orange/10 border-sunset-orange/30 text-sunset-orange hover:bg-sunset-orange/20 transition-all duration-200"
                       onClick={() => handleRetry(index)}
                       disabled={disabled || isCapturing}
                     >
@@ -405,7 +416,7 @@ export function MultiFingerCaptureInterface({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="w-full py-2 text-xs font-bold bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100"
+                    className="w-full py-2 text-xs font-bold bg-sunset-orange/10 border-sunset-orange/30 text-sunset-orange hover:bg-sunset-orange/20"
                     onClick={() => handleRetry(index)}
                     disabled={disabled || isCapturing}
                   >
@@ -474,6 +485,22 @@ export function MultiFingerCaptureInterface({
           </CardContent>
         </Card>
       )}
+
+      {/* Fullscreen Preview Dialog */}
+      <FullscreenFingerprintPreview
+        isOpen={fullscreenPreview.isVisible}
+        fingerName={fullscreenPreview.fingerName}
+        imageData={fullscreenPreview.imageData}
+        quality={fullscreenPreview.quality}
+        onClose={() => setFullscreenPreview(prev => ({ ...prev, isVisible: false }))}
+        onRecapture={() => {
+          const index = fullscreenPreview.fingerIndex;
+          setFullscreenPreview(prev => ({ ...prev, isVisible: false }));
+          if (index >= 0) {
+            setTimeout(() => handleRetry(index), 500);
+          }
+        }}
+      />
 
       {/* Persistent Preview Modal */}
       <PersistentFingerprintPreview

@@ -70,13 +70,13 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
     
     if (imageUrl) {
       return (
-        <div className="w-16 h-20 border border-border rounded overflow-hidden bg-muted/30 shadow-sm">
+        <div className="w-20 h-24 border border-border rounded overflow-hidden bg-muted/30 shadow-sm">
           <img 
             src={imageUrl}
             alt={`Finger ${index + 1}`}
             className="w-full h-full object-contain"
             style={{
-              filter: 'contrast(1.3) brightness(1.15) saturate(1.1)',
+              filter: 'contrast(1.4) brightness(1.2) saturate(1.2)',
               imageRendering: 'crisp-edges'
             }}
           />
@@ -85,8 +85,8 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
     }
     
     return (
-      <div className="w-16 h-20 border border-border rounded flex items-center justify-center bg-muted/20">
-        <Fingerprint className="h-5 w-5 text-muted-foreground" />
+      <div className="w-20 h-24 border border-border rounded flex items-center justify-center bg-muted/20">
+        <Fingerprint className="h-6 w-6 text-muted-foreground" />
         <span className="sr-only">No fingerprint {index + 1}</span>
       </div>
     );
