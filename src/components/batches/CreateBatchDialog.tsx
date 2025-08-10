@@ -47,45 +47,74 @@ export const CreateBatchDialog = ({ open, onOpenChange }: CreateBatchDialogProps
   // Create mutation
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      console.log('🚀 Creating batch with data:', data);
+      
       // Auto-generate serial number if not provided
       let serialNumber = data.serial_number;
       if (!serialNumber) {
+        console.log('📝 Auto-generating serial number...');
         serialNumber = await generateNextSerialNumber();
+        console.log('✅ Generated serial number:', serialNumber);
       } else {
+        console.log('🔍 Checking if serial number exists:', serialNumber);
         // Check if serial number already exists
-        const { data: existingBatch } = await supabase
+        const { data: existingBatch, error: checkError } = await supabase
           .from('batches')
           .select('id')
           .eq('serial_number', serialNumber)
-          .single();
+          .maybeSingle();
+        
+        console.log('🔍 Check result:', { existingBatch, checkError });
+        
+        if (checkError && checkError.code !== 'PGRST116') {
+          console.error('❌ Error checking serial number:', checkError);
+          throw checkError;
+        }
         
         if (existingBatch) {
+          console.log('❌ Serial number already exists');
           throw new Error(`Serial number "${serialNumber}" already exists. Please use a different serial number.`);
         }
       }
       
-      const { error } = await supabase
+      const currentUser = await supabase.auth.getUser();
+      console.log('👤 Current user:', currentUser.data.user?.id);
+      
+      const insertData = {
+        ...data,
+        serial_number: serialNumber,
+        user_id: currentUser.data.user?.id
+      };
+      
+      console.log('💾 Inserting batch data:', insertData);
+      
+      const { data: insertResult, error } = await supabase
         .from('batches')
-        .insert([{
-          ...data,
-          serial_number: serialNumber,
-          user_id: (await supabase.auth.getUser()).data.user?.id
-        }]);
+        .insert([insertData])
+        .select();
         
+      console.log('💾 Insert result:', { insertResult, error });
+      
       if (error) {
+        console.error('❌ Insert error:', error);
         if (error.code === '23505') {
           throw new Error(`Serial number "${serialNumber}" already exists. Please use a different serial number.`);
         }
         throw error;
       }
+      
+      console.log('✅ Batch created successfully:', insertResult);
+      return insertResult;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      console.log('🎉 Batch creation success:', result);
       queryClient.invalidateQueries({ queryKey: ['batches'] });
       toast.success('Batch created successfully');
       onOpenChange(false);
       resetForm();
     },
     onError: (error) => {
+      console.error('❌ Batch creation error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to create batch';
       toast.error(errorMessage);
     }
