@@ -61,32 +61,7 @@ export default function UserManagement() {
     };
   }, [queryClient]);
 
-  // Auto-save batch access changes
-  const handleBatchAccessChange = React.useCallback(async (batchId: string, checked: boolean) => {
-    setIsAutoSaving(true);
-    
-    const currentBatchAccess = state.createUserForm.batch_access || [];
-    const newBatchAccess = checked
-      ? [...currentBatchAccess, batchId]
-      : currentBatchAccess.filter(id => id !== batchId);
-    
-    // Update local state immediately for responsive UI
-    updateState({
-      createUserForm: { ...state.createUserForm, batch_access: newBatchAccess }
-    });
-
-    // Simulate auto-save (in actual implementation, this would save to a draft or temporary state)
-    setTimeout(() => {
-      setIsAutoSaving(false);
-      toast({
-        title: "Auto-saved",
-        description: "Batch selection updated",
-        duration: 1000
-      });
-    }, 500);
-  }, [state.createUserForm, updateState, toast]);
-
-  // Fetch available batches with aggressive caching
+  // Fetch available batches with aggressive caching (moved up for dependency)
   const { data: batches } = useQuery({
     queryKey: ['batches'],
     queryFn: async () => {
@@ -105,6 +80,84 @@ export default function UserManagement() {
     refetchOnMount: false,
     refetchOnReconnect: false,
   });
+
+  // Super fast auto-save batch access changes with optimistic updates
+  const handleBatchAccessChange = React.useCallback(async (batchId: string, checked: boolean) => {
+    const currentBatchAccess = state.createUserForm.batch_access || [];
+    const newBatchAccess = checked
+      ? [...currentBatchAccess, batchId]
+      : currentBatchAccess.filter(id => id !== batchId);
+    
+    // Instant UI update (optimistic)
+    updateState({
+      createUserForm: { ...state.createUserForm, batch_access: newBatchAccess }
+    });
+
+    // Show instant save feedback
+    setIsAutoSaving(true);
+    
+    // Super fast autosave simulation (in real app, this would save to draft/temp state)
+    try {
+      // Simulate instant save to localStorage for draft state
+      const draftData = {
+        ...state.createUserForm,
+        batch_access: newBatchAccess,
+        lastModified: Date.now()
+      };
+      localStorage.setItem('user-creation-draft', JSON.stringify(draftData));
+      
+      // Ultra-fast feedback
+      setTimeout(() => {
+        setIsAutoSaving(false);
+        toast({
+          title: "✓ Saved",
+          description: checked ? "Batch access added" : "Batch access removed",
+          duration: 1000,
+          className: "bg-green-50 border-green-200"
+        });
+      }, 100); // Ultra-fast 100ms feedback
+      
+    } catch (error) {
+      setIsAutoSaving(false);
+      console.error('Auto-save error:', error);
+    }
+  }, [state.createUserForm, updateState, toast]);
+
+  // Handle Select All with super fast autosave
+  const handleSelectAllBatches = React.useCallback(async (checked: boolean) => {
+    const newBatchAccess = checked ? batches?.map(b => b.id) || [] : [];
+    
+    // Instant UI update
+    updateState({
+      createUserForm: { ...state.createUserForm, batch_access: newBatchAccess }
+    });
+
+    setIsAutoSaving(true);
+    
+    // Super fast autosave
+    try {
+      const draftData = {
+        ...state.createUserForm,
+        batch_access: newBatchAccess,
+        lastModified: Date.now()
+      };
+      localStorage.setItem('user-creation-draft', JSON.stringify(draftData));
+      
+      setTimeout(() => {
+        setIsAutoSaving(false);
+        toast({
+          title: "✓ Batch Selection Saved",
+          description: checked ? "All batches selected" : "All batches deselected",
+          duration: 1000,
+          className: "bg-green-50 border-green-200"
+        });
+      }, 100);
+      
+    } catch (error) {
+      setIsAutoSaving(false);
+      console.error('Select all auto-save error:', error);
+    }
+  }, [state.createUserForm, updateState, toast, batches]);
 
   // Fetch user batch access
   const { data: userBatchAccess, refetch: refetchBatchAccess } = useQuery({
@@ -569,14 +622,7 @@ export default function UserManagement() {
                               batches?.length > 0 && 
                               (state.createUserForm.batch_access || []).length === batches.length
                             }
-                            onCheckedChange={(checked) => {
-                              const newBatchAccess = checked 
-                                ? batches?.map(b => b.id) || []
-                                : [];
-                              updateState({
-                                createUserForm: { ...state.createUserForm, batch_access: newBatchAccess }
-                              });
-                            }}
+                            onCheckedChange={(checked) => handleSelectAllBatches(!!checked)}
                           />
                           <Label htmlFor="select-all-batches" className="text-sm font-medium">
                             Select All
