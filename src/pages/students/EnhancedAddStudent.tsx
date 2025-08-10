@@ -308,7 +308,7 @@ export default function EnhancedAddStudent() {
                       <Input
                         placeholder="Enter Student Name"
                         {...field}
-                        className="h-12 bg-gray-800 border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400"
+                        className="h-12 bg-black border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400"
                       />
                     </FormControl>
                     <FormMessage className="text-red-400 mt-1" />
@@ -327,7 +327,7 @@ export default function EnhancedAddStudent() {
                       <Input
                         placeholder="Enter Mobile"
                         {...field}
-                        className="h-12 bg-gray-800 border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400"
+                        className="h-12 bg-black border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400"
                       />
                     </FormControl>
                     <FormMessage className="text-red-400 mt-1" />
@@ -347,7 +347,7 @@ export default function EnhancedAddStudent() {
                         type="email"
                         placeholder="Enter Email"
                         {...field}
-                        className="h-12 bg-gray-800 border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400"
+                        className="h-12 bg-black border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400"
                       />
                     </FormControl>
                     <FormMessage className="text-red-400 mt-1" />
@@ -363,7 +363,7 @@ export default function EnhancedAddStudent() {
                   <FormItem>
                     <FormLabel className="text-white font-medium mb-2 block">Batch</FormLabel>
                     <FormControl>
-                      <div className="h-12 bg-gray-800 border border-gray-600 focus-within:border-orange-500 rounded-lg">
+                      <div className="h-12 bg-black border border-gray-600 focus-within:border-orange-500 rounded-lg">
                         <BatchSelector 
                           value={field.value} 
                           onChange={field.onChange}
@@ -387,7 +387,7 @@ export default function EnhancedAddStudent() {
                       <Input
                         placeholder="Enter Address"
                         {...field}
-                        className="h-12 bg-gray-800 border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400"
+                        className="h-12 bg-black border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400"
                       />
                     </FormControl>
                     <FormMessage className="text-red-400 mt-1" />

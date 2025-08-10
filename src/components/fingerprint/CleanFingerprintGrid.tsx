@@ -112,7 +112,7 @@ export function CleanFingerprintGrid({
       {fingerprints.map((fingerprint, index) => (
         <div key={index} className="text-center space-y-3">
           {/* Fingerprint Preview Box */}
-          <div className="w-full h-40 border-2 border-gray-600 rounded-lg bg-gray-800 flex items-center justify-center overflow-hidden">
+          <div className="w-full h-40 border-2 border-gray-600 rounded-lg bg-black flex items-center justify-center overflow-hidden">
             {fingerprint.imageData ? (
               <img 
                 src={fingerprint.imageData} 
