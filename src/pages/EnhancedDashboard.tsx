@@ -347,7 +347,7 @@ export default function EnhancedDashboard() {
                               </div>
                               <div>
                                 <h3 className="font-bold text-white text-lg">{batch.name}</h3>
-                                <p className="text-xs text-gray-400">#{batch.serialNumber}</p>
+                                <p className="text-xs text-gray-400">{batch.serialNumber}</p>
                               </div>
                             </div>
                             <div className="text-right">
