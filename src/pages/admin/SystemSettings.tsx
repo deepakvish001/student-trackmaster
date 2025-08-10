@@ -135,347 +135,278 @@ export default function SystemSettings() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-primary">System Settings</h2>
-            <p className="text-muted-foreground">Configure system-wide settings and security policies</p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleRefresh} className="gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </Button>
-            <Button variant="outline" onClick={handleResetToDefaults} className="gap-2">
-              <Settings className="h-4 w-4" />
-              Reset to Defaults
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving} className="gap-2">
-              {isSaving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
-              {isSaving ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </div>
-
-        {/* Maintenance Mode Alert */}
-        {settings?.system?.maintenance_mode && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div className="flex items-center gap-2 text-yellow-800">
-              <AlertTriangle className="h-5 w-5" />
-              <span className="font-medium">Maintenance Mode Active</span>
+      <div className="min-h-screen bg-background p-6">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h1 className="text-2xl font-semibold text-foreground">System Settings</h1>
+              <p className="text-sm text-muted-foreground">Configure system-wide settings and security policies</p>
             </div>
-            <p className="text-yellow-700 mt-1">
-              System is currently in maintenance mode. Users may experience limited access.
-            </p>
-          </div>
-        )}
-
-        {/* Security Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              Security Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Two-Factor Authentication</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Require 2FA for all admin accounts
-                  </p>
-                </div>
-                <Switch
-                  checked={settings?.security?.enable_two_factor || false}
-                  onCheckedChange={(checked) => updateLocalSetting('security', 'enable_two_factor', checked)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Session Timeout (minutes)</Label>
-                <Input
-                  type="number"
-                  value={settings?.security?.session_timeout || 30}
-                  onChange={(e) => updateLocalSetting('security', 'session_timeout', parseInt(e.target.value))}
-                  min="5"
-                  max="120"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Max Login Attempts</Label>
-                <Input
-                  type="number"
-                  value={settings?.security?.max_login_attempts || 5}
-                  onChange={(e) => updateLocalSetting('security', 'max_login_attempts', parseInt(e.target.value))}
-                  min="3"
-                  max="10"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Password Min Length</Label>
-                <Input
-                  type="number"
-                  value={settings?.security?.password_min_length || 8}
-                  onChange={(e) => updateLocalSetting('security', 'password_min_length', parseInt(e.target.value))}
-                  min="6"
-                  max="20"
-                />
-              </div>
-
-              <div className="flex items-center justify-between md:col-span-2">
-                <div className="space-y-0.5">
-                  <Label>Require Special Characters</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Passwords must contain special characters
-                  </p>
-                </div>
-                <Switch
-                  checked={settings?.security?.require_special_chars || false}
-                  onCheckedChange={(checked) => updateLocalSetting('security', 'require_special_chars', checked)}
-                />
-              </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleRefresh} size="sm">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+              <Button onClick={handleSave} disabled={isSaving} size="sm" className="modern-button">
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                {isSaving ? 'Saving...' : 'Save'}
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* System Configuration */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              System Configuration
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label>System Name</Label>
-                <Input
-                  value={settings?.system?.name || 'Biometric Management System'}
-                  onChange={(e) => updateLocalSetting('system', 'name', e.target.value)}
-                  placeholder="Enter system name"
-                />
+          {/* Maintenance Mode Alert */}
+          {settings?.system?.maintenance_mode && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 text-yellow-800">
+                <AlertTriangle className="h-5 w-5" />
+                <span className="font-medium">Maintenance Mode Active</span>
               </div>
+              <p className="text-yellow-700 mt-1">
+                System is currently in maintenance mode. Users may experience limited access.
+              </p>
+            </div>
+          )}
 
-              <div className="space-y-2">
-                <Label>Admin Email</Label>
-                <Input
-                  type="email"
-                  value={settings?.system?.admin_email || 'admin@system.com'}
-                  onChange={(e) => updateLocalSetting('system', 'admin_email', e.target.value)}
-                  placeholder="admin@system.com"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Max Users Per Batch</Label>
-                <Input
-                  type="number"
-                  value={settings?.system?.max_users_per_batch || 50}
-                  onChange={(e) => updateLocalSetting('system', 'max_users_per_batch', parseInt(e.target.value))}
-                  min="10"
-                  max="200"
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Maintenance Mode</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Enable to restrict system access
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
+          {/* Security Settings */}
+          <Card className="modern-card">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Security Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Two-Factor Authentication</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Require 2FA for all admin accounts
+                    </p>
+                  </div>
                   <Switch
-                    checked={settings?.system?.maintenance_mode || false}
-                    onCheckedChange={(checked) => updateLocalSetting('system', 'maintenance_mode', checked)}
+                    checked={settings?.security?.enable_two_factor || false}
+                    onCheckedChange={(checked) => updateLocalSetting('security', 'enable_two_factor', checked)}
                   />
-                  {settings?.system?.maintenance_mode && (
-                    <Badge variant="destructive">
-                      <AlertTriangle className="h-3 w-3 mr-1" />
-                      Active
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Session Timeout (minutes)</Label>
+                  <Input
+                    type="number"
+                    value={settings?.security?.session_timeout || 30}
+                    onChange={(e) => updateLocalSetting('security', 'session_timeout', parseInt(e.target.value))}
+                    min="5"
+                    max="120"
+                    className="modern-input"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Max Login Attempts</Label>
+                  <Input
+                    type="number"
+                    value={settings?.security?.max_login_attempts || 5}
+                    onChange={(e) => updateLocalSetting('security', 'max_login_attempts', parseInt(e.target.value))}
+                    min="3"
+                    max="10"
+                    className="modern-input"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Password Min Length</Label>
+                  <Input
+                    type="number"
+                    value={settings?.security?.password_min_length || 8}
+                    onChange={(e) => updateLocalSetting('security', 'password_min_length', parseInt(e.target.value))}
+                    min="6"
+                    max="20"
+                    className="modern-input"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between md:col-span-2">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Require Special Characters</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Passwords must contain special characters
+                    </p>
+                  </div>
+                  <Switch
+                    checked={settings?.security?.require_special_chars || false}
+                    onCheckedChange={(checked) => updateLocalSetting('security', 'require_special_chars', checked)}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* System Configuration */}
+          <Card className="modern-card">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                System Configuration
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">System Name</Label>
+                  <Input
+                    value={settings?.system?.name || 'Biometric Management System'}
+                    onChange={(e) => updateLocalSetting('system', 'name', e.target.value)}
+                    placeholder="Enter system name"
+                    className="modern-input"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Admin Email</Label>
+                  <Input
+                    type="email"
+                    value={settings?.system?.admin_email || 'admin@system.com'}
+                    onChange={(e) => updateLocalSetting('system', 'admin_email', e.target.value)}
+                    placeholder="admin@system.com"
+                    className="modern-input"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Max Users Per Batch</Label>
+                  <Input
+                    type="number"
+                    value={settings?.system?.max_users_per_batch || 50}
+                    onChange={(e) => updateLocalSetting('system', 'max_users_per_batch', parseInt(e.target.value))}
+                    min="10"
+                    max="200"
+                    className="modern-input"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Maintenance Mode</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Enable to restrict system access
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={settings?.system?.maintenance_mode || false}
+                      onCheckedChange={(checked) => updateLocalSetting('system', 'maintenance_mode', checked)}
+                    />
+                    {settings?.system?.maintenance_mode && (
+                      <Badge variant="destructive" className="text-xs">
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        Active
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Database Settings */}
+          <Card className="modern-card">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                Database Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Auto Backup</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Automatically backup database daily
+                    </p>
+                  </div>
+                  <Switch
+                    checked={settings?.database?.auto_backup || false}
+                    onCheckedChange={(checked) => updateLocalSetting('database', 'auto_backup', checked)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Backup Retention (days)</Label>
+                  <Input
+                    type="number"
+                    value={settings?.database?.backup_retention_days || 30}
+                    onChange={(e) => updateLocalSetting('database', 'backup_retention_days', parseInt(e.target.value))}
+                    min="7"
+                    max="365"
+                    className="modern-input"
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="text-sm font-medium">Database Status</Label>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default" className="bg-green-100 text-green-800 text-xs">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Connected
                     </Badge>
-                  )}
+                    <Badge variant="outline" className="text-xs">
+                      Last Backup: {systemInfo?.lastBackup || 'Loading...'}
+                    </Badge>
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Notification Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="h-5 w-5" />
-              Notification Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Email Notifications</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Send system alerts via email
-                  </p>
+          {/* System Information */}
+          <Card className="modern-card">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold">System Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoadingInfo ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <span className="ml-2 text-sm">Loading system information...</span>
                 </div>
-                <Switch
-                  checked={settings?.notifications?.email_enabled || false}
-                  onCheckedChange={(checked) => updateLocalSetting('notifications', 'email_enabled', checked)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Audit Log Alerts</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Alert on suspicious activities
-                  </p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Version</Label>
+                    <p className="font-medium">{systemInfo?.version}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Environment</Label>
+                    <p className="font-medium">{systemInfo?.environment}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Active Users</Label>
+                    <p className="font-medium">{systemInfo?.activeUsers}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Database Size</Label>
+                    <p className="font-medium">{systemInfo?.databaseSize}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">System Load</Label>
+                    <p className="font-medium">{systemInfo?.systemLoad}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Uptime</Label>
+                    <p className="font-medium">{systemInfo?.uptime}</p>
+                  </div>
                 </div>
-                <Switch
-                  checked={settings?.notifications?.audit_alerts || false}
-                  onCheckedChange={(checked) => updateLocalSetting('notifications', 'audit_alerts', checked)}
-                />
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <Label>Notification Frequency</Label>
-                <select
-                  className="w-full p-2 border rounded-md"
-                  value={settings?.notifications?.frequency || 'daily'}
-                  onChange={(e) => updateLocalSetting('notifications', 'frequency', e.target.value)}
-                >
-                  <option value="realtime">Real-time</option>
-                  <option value="hourly">Hourly</option>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                </select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Database Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              Database Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Auto Backup</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Automatically backup database daily
-                  </p>
-                </div>
-                <Switch
-                  checked={settings?.database?.auto_backup || false}
-                  onCheckedChange={(checked) => updateLocalSetting('database', 'auto_backup', checked)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Backup Retention (days)</Label>
-                <Input
-                  type="number"
-                  value={settings?.database?.backup_retention_days || 30}
-                  onChange={(e) => updateLocalSetting('database', 'backup_retention_days', parseInt(e.target.value))}
-                  min="7"
-                  max="365"
-                />
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <Label>Performance Mode</Label>
-                <select
-                  className="w-full p-2 border rounded-md"
-                  value={settings?.database?.performance_mode || 'balanced'}
-                  onChange={(e) => updateLocalSetting('database', 'performance_mode', e.target.value)}
-                >
-                  <option value="high_performance">High Performance</option>
-                  <option value="balanced">Balanced</option>
-                  <option value="power_saver">Power Saver</option>
-                </select>
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <Label>Database Status</Label>
-                <div className="flex items-center gap-2">
-                  <Badge variant="default" className="bg-green-100 text-green-800">
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Connected
-                  </Badge>
-                  <Badge variant="outline">
-                    Last Backup: {systemInfo?.lastBackup || 'Loading...'}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* System Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>System Information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoadingInfo ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin" />
-                <span className="ml-2">Loading system information...</span>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <Label className="text-muted-foreground">Version</Label>
-                  <p className="font-medium">{systemInfo?.version}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Environment</Label>
-                  <p className="font-medium">{systemInfo?.environment}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Last Updated</Label>
-                  <p className="font-medium">{systemInfo?.lastUpdated}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Database Size</Label>
-                  <p className="font-medium">{systemInfo?.databaseSize}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Active Users</Label>
-                  <p className="font-medium">{systemInfo?.activeUsers}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">System Load</Label>
-                  <p className="font-medium">{systemInfo?.systemLoad}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Uptime</Label>
-                  <p className="font-medium">{systemInfo?.uptime}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Last Backup</Label>
-                  <p className="font-medium">{systemInfo?.lastBackup}</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </AdminLayout>
   );

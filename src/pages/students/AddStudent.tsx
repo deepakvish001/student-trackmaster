@@ -223,21 +223,19 @@ export default function AddStudent() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Add New Student</h1>
-        <p className="text-gray-600 mt-2">Enter student details and capture biometric data</p>
-      </div>
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold text-foreground">Add Student</h1>
+          <p className="text-sm text-muted-foreground">Enter student details and capture biometric data</p>
+        </div>
 
-      {/* RD Service Status */}
-      <div className="mb-4">
         <RDServiceStatusIndicator />
-      </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-7">
-            <TabsTrigger value="details">Details</TabsTrigger>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-7 modern-tabs">
+              <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="finger-0" className="relative">
               Finger 1
               {capturedFingerprints[0] && (
@@ -273,14 +271,14 @@ export default function AddStudent() {
 
           {/* Student Details Tab */}
           <TabsContent value="details">
-            <Card>
+            <Card className="modern-card">
               <CardHeader>
-                <CardTitle>Student Information</CardTitle>
+                <CardTitle className="text-base font-semibold">Student Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Full Name *</Label>
+                    <Label htmlFor="name" className="text-sm font-medium">Full Name *</Label>
                     <Controller
                       name="name"
                       control={control}
@@ -288,11 +286,11 @@ export default function AddStudent() {
                         <Input
                           {...field}
                           placeholder="Enter full name"
-                          className={errors.name ? 'border-red-500' : ''}
+                          className={`modern-input ${errors.name ? 'border-destructive' : ''}`}
                         />
                       )}
                     />
-                    {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>}
+                    {errors.name && <p className="text-destructive text-xs">{errors.name.message}</p>}
                   </div>
 
                   <div className="space-y-2">
@@ -451,7 +449,8 @@ export default function AddStudent() {
             </Card>
           </TabsContent>
         </Tabs>
-      </form>
+        </form>
+      </div>
     </div>
   );
 }

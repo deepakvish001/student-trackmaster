@@ -123,43 +123,25 @@ export default function Batches() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-gradient-to-br from-surface-dark via-surface-darker to-background">
-        <div className="space-y-8 p-6 animate-fade-in-up">
-          {/* Enhanced Header */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-            <div className="space-y-3">
-              <h1 className="text-5xl font-bold bg-gradient-to-r from-electric-blue via-emerald-green to-pink-rose bg-clip-text text-transparent">
-                🎓 Batch Management
-              </h1>
-              <div className="flex items-center space-x-6 text-sm">
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-5 w-5 text-electric-blue animate-pulse" />
-                  <span className="font-mono text-electric-blue text-lg">
-                    {currentTime.toLocaleTimeString()}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Database className="h-5 w-5 text-emerald-green" />
-                  <span className="text-emerald-green font-semibold">
-                    {stats.totalBatches} Total Batches
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <TrendingUp className="h-5 w-5 text-sunset-orange" />
-                  <span className="text-sunset-orange font-semibold">
-                    {stats.utilizationRate}% Utilized
-                  </span>
-                </div>
-              </div>
+      <div className="min-h-screen bg-background p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h1 className="text-2xl font-semibold text-foreground">Batches</h1>
+              <p className="text-sm text-muted-foreground">
+                {stats.totalBatches} total batches · {stats.utilizationRate}% utilized
+              </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
               <Button
                 onClick={() => refetch()}
-                className="bg-gradient-to-r from-electric-blue to-vibrant-purple hover:scale-105 transition-all duration-300 shadow-glow"
+                variant="outline"
+                className="modern-button-outline"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh Data
+                Refresh
               </Button>
               <BatchCRUD batches={batches} />
             </div>
