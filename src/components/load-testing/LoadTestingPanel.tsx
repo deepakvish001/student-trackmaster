@@ -29,42 +29,44 @@ export function LoadTestingPanel() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header - Mobile Responsive */}
       <Card className="border-accent/20 bg-gradient-to-r from-background to-accent/5">
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardHeader className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                 <BarChart3 className="h-5 w-5 text-primary" />
                 Load Testing & Stress Testing Suite
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm sm:text-base">
                 Comprehensive performance testing for biometric capture, real-time sync, and database operations
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant={getOverallHealth() === 'Excellent' ? 'default' : 'destructive'}>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+              <Badge variant={getOverallHealth() === 'Excellent' ? 'default' : 'destructive'} className="text-xs">
                 System Health: {getOverallHealth()}
               </Badge>
-              {state.isRunning && (
-                <Button variant="outline" size="sm" onClick={stopTest}>
-                  <Square className="h-4 w-4 mr-1" />
-                  Stop Test
-                </Button>
-              )}
-              {state.results.length > 0 && (
-                <Button variant="outline" size="sm" onClick={clearResults}>
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Clear Results
-                </Button>
-              )}
+              <div className="flex gap-2">
+                {state.isRunning && (
+                  <Button variant="outline" size="sm" onClick={stopTest} className="touch-manipulation">
+                    <Square className="h-4 w-4 mr-1" />
+                    <span className="hidden sm:inline">Stop Test</span>
+                  </Button>
+                )}
+                {state.results.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={clearResults} className="touch-manipulation">
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    <span className="hidden sm:inline">Clear Results</span>
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>
         
         {state.isRunning && (
-          <CardContent>
+          <CardContent className="p-4 sm:p-6">
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span>Running: {state.currentTest}</span>
@@ -98,36 +100,36 @@ export function LoadTestingPanel() {
       )}
 
       {/* Test Results */}
-      {state.results.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Test Results Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {state.results.map((result, index) => (
-                <div key={index} className="space-y-2 p-3 border rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium truncate">{result.testName}</h4>
-                    <div className={`w-3 h-3 rounded-full ${getStatusColor(result.successRate)}`} />
+        {state.results.length > 0 && (
+          <Card>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-lg sm:text-xl">Test Results Summary</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                {state.results.map((result, index) => (
+                  <div key={index} className="space-y-2 p-3 border rounded-lg bg-card">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium truncate text-sm">{result.testName}</h4>
+                      <div className={`w-3 h-3 rounded-full ${getStatusColor(result.successRate)}`} />
+                    </div>
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      <div>Success: {result.successRate.toFixed(1)}%</div>
+                      <div>Ops/sec: {result.operationsPerSecond.toFixed(1)}</div>
+                      <div>Avg time: {result.averageResponseTime.toFixed(0)}ms</div>
+                      {result.memoryUsage && (
+                        <div>Memory: {result.memoryUsage}MB</div>
+                      )}
+                    </div>
                   </div>
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <div>Success: {result.successRate.toFixed(1)}%</div>
-                    <div>Ops/sec: {result.operationsPerSecond.toFixed(1)}</div>
-                    <div>Avg time: {result.averageResponseTime.toFixed(0)}ms</div>
-                    {result.memoryUsage && (
-                      <div>Memory: {result.memoryUsage}MB</div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Test Components */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Test Components - Mobile Responsive Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <BiometricLoadTester />
         <RealTimeStressTester />
         <DatabaseLoadTester />
