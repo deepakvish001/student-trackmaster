@@ -20,6 +20,11 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/src/assets/fingerprint-logo.png",
+      "sizes": "64x64",
+      "type": "image/png"
     }
   ],
   "categories": ["business", "productivity", "security"],
