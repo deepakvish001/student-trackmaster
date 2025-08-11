@@ -602,6 +602,10 @@ export type Database = {
         Args: { target_user_id: string; target_batch_id: string }
         Returns: boolean
       }
+      validate_secure_session: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
     }
     Enums: {
       user_role: "super_admin" | "user"
