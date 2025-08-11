@@ -66,7 +66,7 @@ export function StudentDataDebugger() {
         }
       }
 
-      // Main query for display
+      // Main query for display - match the useOptimizedStudents filtering
       const { data, error } = await supabase
         .from('students')
         .select(`
@@ -77,8 +77,12 @@ export function StudentDataDebugger() {
           finger_1,
           finger_1_image,
           created_at,
-          batches(batch_name)
+          batches:batch_id!inner (
+            batch_name,
+            is_enabled
+          )
         `)
+        .eq('is_enabled', true)
         .order('created_at', { ascending: false });
 
       if (error) {
