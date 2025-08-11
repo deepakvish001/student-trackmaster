@@ -33,6 +33,8 @@ import { UltraPerformancePanel } from '@/components/UltraPerformancePanel';
 import { useRealTimePWA } from '@/hooks/useRealTimePWA';
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 import { PerformanceInitializer } from '@/components/PerformanceInitializer';
+import { PerformanceTestPanel } from '@/components/PerformanceTestPanel';
+
 export default function EnhancedDashboard() {
   const { profile: userProfile, hasRole } = useUserProfile();
   const { isConnected, performanceStats } = useRealTimePWA();
@@ -412,6 +414,7 @@ export default function EnhancedDashboard() {
                 <PWAManagementPanel />
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <PerformanceTestPanel />
                 <SecurityDashboard />
               </div>
             </TabsContent>
