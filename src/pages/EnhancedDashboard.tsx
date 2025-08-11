@@ -19,6 +19,7 @@ import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { CollaborationIndicator } from '@/components/CollaborationIndicator';
 import { AdvancedSyncStatus } from '@/components/AdvancedSyncStatus';
 import { PWAManagementPanel } from '@/components/PWAManagementPanel';
+import { SecurityDashboard } from '@/components/SecurityDashboard';
 import { ConflictResolutionDialog } from '@/components/ConflictResolutionDialog';
 import { SyncButton } from '@/components/SyncButton';
 export default function EnhancedDashboard() {
@@ -386,7 +387,12 @@ export default function EnhancedDashboard() {
           <div className="mt-8">
             <PWAManagementPanel />
           </div>
+
+          {/* Security Dashboard */}
+          <div className="mt-8">
+            <SecurityDashboard />
+          </div>
         </div>
       </div>
-    </DashboardLayout>;
+    </DashboardLayout>
 }

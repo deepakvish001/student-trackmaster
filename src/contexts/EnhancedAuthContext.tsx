@@ -17,7 +17,7 @@ import {
   auditBiometricAccess 
 } from '@/utils/biometricSecurity';
 import { offlineDb } from '@/lib/offlineDatabase';
-import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { useSecurityMonitoring } from '@/hooks/useSecurityMonitoring';
 
 interface EnhancedAuthContextType {
   user: User | null;
@@ -50,8 +50,9 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
   });
   
   const navigate = useNavigate();
+  const { logLoginAttempt } = useSecurityMonitoring();
 
-  // Initialize encryption key for biometric data
+  // Initialize offline data after authentication
   const initializeEncryptionKey = async (userId: string) => {
     try {
       // Try to get existing key from localStorage (in production, use secure storage)
@@ -244,6 +245,9 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
           timestamp: new Date().toISOString(),
           userAgent: navigator.userAgent
         });
+        
+        // Enhanced security logging
+        logLoginAttempt(false, email, error.message);
         
         auditBiometricAccess('LOGIN_FAILED', {
           email: email.substring(0, 3) + '***',
