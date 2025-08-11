@@ -167,50 +167,129 @@ export default function StudentList() {
     }
   };
 
-  // Capture current page and save as PDF using browser's print functionality
+  // Download PDF function - fetch ALL students or filtered students in real-time
   const handleDownloadPDF = async () => {
+    // Set loading state
     setIsGeneratingPDF(true);
     
     try {
-      console.log('🖨️ Opening browser print to save as PDF...');
-      toast.loading('🖨️ Opening print dialog - choose "Save as PDF"...', { id: 'pdf-print' });
+      console.log('🔄 PDF download initiated - fetching real-time student data');
       
-      // Add print-specific styles to hide buttons and optimize layout
-      const printStyles = document.createElement('style');
-      printStyles.innerHTML = `
-        @media print {
-          .no-print { display: none !important; }
-          .print-only { display: block !important; }
-          body { background: white !important; }
-          .bg-black { background: white !important; color: black !important; }
-          .text-white { color: black !important; }
-          .border-gray-700 { border-color: #ccc !important; }
+      // Show initial processing message
+      toast.loading('🔄 Starting PDF generation...', { id: 'pdf-generation' });
+      
+      // Check if any filters are applied
+      const hasSearchFilter = searchTerm.trim().length > 0;
+      const hasBatchFilter = selectedBatch !== 'all';
+      const hasFilters = hasSearchFilter || hasBatchFilter;
+      
+      console.log('📊 Filter status:', {
+        hasSearchFilter,
+        hasBatchFilter,
+        searchTerm: searchTerm.trim(),
+        selectedBatch,
+        hasFilters
+      });
+
+      // Build query for ALL students or filtered students
+      let query = supabase
+        .from('students')
+        .select(`
+          id,
+          student_name,
+          mobile_number,
+          address,
+          created_at,
+          updated_at,
+          batch_id,
+          is_enabled,
+          user_id,
+          finger_1,
+          finger_2,
+          finger_3,
+          finger_4,
+          finger_5,
+          finger_1_image,
+          finger_2_image,
+          finger_3_image,
+          finger_4_image,
+          finger_5_image,
+          batches:batch_id!inner (
+            batch_name
+          )
+        `)
+        .eq('is_enabled', true);
+
+      // Apply filters only if they exist
+      if (hasSearchFilter) {
+        console.log('🔍 Applying search filter:', searchTerm.trim());
+        query = query.or(`student_name.ilike.%${searchTerm.trim()}%,mobile_number.ilike.%${searchTerm.trim()}%`);
+      }
+
+      if (hasBatchFilter) {
+        console.log('🏷️ Applying batch filter:', selectedBatch);
+        query = query.eq('batch_id', selectedBatch);
+      }
+
+      // Apply same sorting as current view
+      query = query.order(sortBy, { ascending: sortOrder === 'asc' });
+
+      // Update progress message
+      toast.loading('📊 Fetching student data from database...', { id: 'pdf-generation' });
+
+      // Fetch real-time data
+      const { data: allStudents, error } = await query;
+
+      if (error) {
+        console.error('❌ Error fetching students for PDF:', error);
+        toast.error('Failed to fetch student data for PDF', { id: 'pdf-generation' });
+        return;
+      }
+
+      const studentCount = allStudents?.length || 0;
+      console.log(`✅ Fetched ${studentCount} students for PDF`);
+      
+      // Update progress message
+      toast.loading(`🖼️ Processing ${studentCount} students with fingerprint images...`, { id: 'pdf-generation' });
+      
+      // Prepare filter information for PDF
+      const selectedBatchData = batches.find(batch => batch.id === selectedBatch);
+      const filters = {
+        searchTerm: hasSearchFilter ? searchTerm.trim() : undefined,
+        selectedBatch: hasBatchFilter ? selectedBatch : undefined,
+        batchName: selectedBatchData?.batch_name
+      };
+      
+      // Determine PDF type message
+      let pdfType = '';
+      if (hasFilters) {
+        if (hasSearchFilter && hasBatchFilter) {
+          pdfType = `filtered by search "${searchTerm.trim()}" and batch "${selectedBatchData?.batch_name}"`;
+        } else if (hasSearchFilter) {
+          pdfType = `filtered by search "${searchTerm.trim()}"`;
+        } else if (hasBatchFilter) {
+          pdfType = `filtered by batch "${selectedBatchData?.batch_name}"`;
         }
-      `;
-      document.head.appendChild(printStyles);
+      } else {
+        pdfType = 'complete database (all students)';
+      }
       
-      // Add no-print class to buttons and actions
-      const buttonsToHide = document.querySelectorAll('button, .no-print');
-      buttonsToHide.forEach(btn => btn.classList.add('no-print'));
+      console.log('📄 Generating PDF for:', pdfType);
       
-      // Small delay to ensure styles are applied
-      setTimeout(() => {
-        window.print();
-        
-        // Clean up after print
-        setTimeout(() => {
-          document.head.removeChild(printStyles);
-          buttonsToHide.forEach(btn => btn.classList.remove('no-print'));
-          toast.success('✅ Print dialog opened! Choose "Save as PDF" to save the page.', { id: 'pdf-print' });
-        }, 1000);
-      }, 300);
+      // Final progress message
+      toast.loading('📄 Generating PDF document...', { id: 'pdf-generation' });
+      
+      await exportStudentsToPDF(allStudents || [], filters);
+      
+      // Success message
+      toast.success(`📋 PDF generated successfully with ${studentCount} students (${pdfType})`, { id: 'pdf-generation' });
       
     } catch (error) {
-      console.error('❌ Print error:', error);
-      toast.error('Failed to open print dialog', { id: 'pdf-print' });
+      console.error('❌ PDF generation error:', error);
+      toast.error('Failed to generate PDF report', { id: 'pdf-generation' });
     } finally {
-      // Reset state after a short delay
-      setTimeout(() => setIsGeneratingPDF(false), 2000);
+      // Always reset loading state
+      setIsGeneratingPDF(false);
     }
   };
   if (isLoading) {
@@ -251,12 +330,12 @@ export default function StudentList() {
                 {isGeneratingPDF ? (
                   <>
                     <div className="animate-spin h-5 w-5 mr-3 border-2 border-emerald-green border-t-transparent rounded-full"></div>
-                    Opening Print...
+                    Processing...
                   </>
                 ) : (
                   <>
                     <Download className="h-5 w-5 mr-3" />
-                    Print as PDF
+                    Download PDF
                   </>
                 )}
               </Button>
