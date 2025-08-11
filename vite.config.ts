@@ -10,6 +10,44 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
+  build: {
+    // Target modern browsers to avoid unnecessary polyfills
+    target: ['es2020', 'edge88', 'firefox78', 'chrome87', 'safari14'],
+    // Enable modern JS features without polyfills
+    modulePreload: {
+      polyfill: false
+    },
+    // Optimize chunk splitting for better caching
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Separate vendor chunks for better caching
+          'react-vendor': ['react', 'react-dom'],
+          'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tooltip'],
+          'form-vendor': ['react-hook-form', '@hookform/resolvers'],
+          'query-vendor': ['@tanstack/react-query'],
+          'router-vendor': ['react-router-dom']
+        }
+      }
+    },
+    // Minimize CSS and JS for production
+    cssCodeSplit: true,
+    // Reduce bundle size
+    sourcemap: mode === 'development'
+  },
+  // Configure esbuild for modern syntax
+  esbuild: {
+    target: 'es2020',
+    // Remove unnecessary polyfills
+    supported: {
+      'async-await': true,
+      'arrow-functions': true,
+      'classes': true,
+      'spread': true,
+      'object-assign': true,
+      'array-from': true
+    }
+  },
   plugins: [
     react(),
     mode === 'development' && componentTagger(),
