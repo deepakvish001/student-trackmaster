@@ -529,6 +529,14 @@ export type Database = {
         Args: { event_type: string; event_details?: Json }
         Returns: undefined
       }
+      log_biometric_access: {
+        Args: {
+          access_type: string
+          student_id: string
+          fingerprint_count?: number
+        }
+        Returns: undefined
+      }
       log_file_operation: {
         Args: { operation_type: string; file_details?: Json }
         Returns: undefined
@@ -567,7 +575,9 @@ export type Database = {
         Returns: string[]
       }
       toggle_user_status: {
-        Args: { target_user_id: string }
+        Args:
+          | { target_user_id: string }
+          | { target_user_id: string; calling_user_id?: string }
         Returns: Json
       }
       update_system_setting: {

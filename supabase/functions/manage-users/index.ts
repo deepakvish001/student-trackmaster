@@ -209,9 +209,9 @@ serve(async (req) => {
       }
 
       case 'toggle_status': {
-        // Use optimized database function for atomic toggle
+        // Use optimized database function for atomic toggle with calling user ID
         const { data: toggleResult, error: toggleError } = await supabaseClient
-          .rpc('toggle_user_status', { target_user_id: user_id })
+          .rpc('toggle_user_status', { target_user_id: user_id, calling_user_id: user.id })
 
         if (toggleError) {
           return new Response(
