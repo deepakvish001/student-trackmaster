@@ -7,12 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronDown, Check, RefreshCw } from 'lucide-react';
+import { ChevronDown, Check, RefreshCw, Activity } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UserPlus, Trash2, Ban, Key, UserCheck, Power, Activity, Settings } from 'lucide-react';
+import { UserPlus, Trash2, Ban, Key, UserCheck, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { UserRole } from '@/hooks/useUserProfile';
@@ -379,42 +379,6 @@ export default function UserManagement() {
     }
   });
 
-  // Ban/Unban user mutation
-  const toggleBanMutation = useMutation({
-    mutationFn: async ({ userId, action }: { userId: string; action: 'ban_user' | 'unban_user' }) => {
-      const { data, error } = await supabase.functions.invoke('manage-users', {
-        body: { action, user_id: userId }
-      });
-      
-      if (error) throw error;
-      if (!data.success) throw new Error(data.error);
-      
-      return data;
-    },
-    onSuccess: (data, { userId, action }) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      
-      // Log ban/unban event
-      const targetUser = users?.find(u => u.user_id === userId);
-      logEvent(action === 'ban_user' ? 'USER_BANNED' : 'USER_UNBANNED', `${targetUser?.full_name || 'User'} was ${action === 'ban_user' ? 'banned' : 'unbanned'}`, 'user_profiles', userId, {
-        is_active: targetUser?.is_active
-      }, {
-        is_active: action === 'unban_user'
-      });
-      
-      toast({
-        title: "Success",
-        description: "User status updated successfully"
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  });
 
   // Update password mutation
   const updatePasswordMutation = useMutation({
@@ -795,73 +759,63 @@ export default function UserManagement() {
                   <TableCell>
                     {new Date(user.created_at).toLocaleDateString()}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          updateState({
-                            selectedUserId: user.user_id,
-                            isPasswordDialogOpen: true
-                          });
-                        }}
-                        title="Change Password"
-                      >
-                        <Key className="h-4 w-4" />
-                      </Button>
-                      
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleStatusMutation.mutate(user.user_id)}
-                        disabled={toggleStatusMutation.isPending}
-                        title={user.is_active ? 'Disable User' : 'Enable User'}
-                      >
-                        <Power className={`h-4 w-4 ${user.is_active ? 'text-green-600' : 'text-red-600'}`} />
-                      </Button>
-                      
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => 
-                          toggleBanMutation.mutate({ 
-                            userId: user.user_id, 
-                            action: user.is_active ? 'ban_user' : 'unban_user' 
-                          })
-                        }
-                        disabled={toggleBanMutation.isPending}
-                        title={user.is_active ? 'Ban User' : 'Unban User'}
-                      >
-                        {user.is_active ? <Ban className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
-                      </Button>
+                   <TableCell>
+                     <div className="flex items-center gap-1">
+                       <Button
+                         variant="ghost"
+                         size="sm"
+                         onClick={() => {
+                           updateState({
+                             selectedUserId: user.user_id,
+                             isPasswordDialogOpen: true
+                           });
+                         }}
+                         title="Change Password"
+                       >
+                         <Key className="h-4 w-4" />
+                       </Button>
+                       
+                       <Button
+                         variant="ghost"
+                         size="sm"
+                         onClick={() => toggleStatusMutation.mutate(user.user_id)}
+                         disabled={toggleStatusMutation.isPending}
+                         title={user.is_active ? 'Disable User' : 'Enable User'}
+                         className={user.is_active ? 'text-green-600 hover:text-green-700' : 'text-red-600 hover:text-red-700'}
+                       >
+                         {user.is_active ? (
+                           <UserCheck className="h-4 w-4" />
+                         ) : (
+                           <Ban className="h-4 w-4" />
+                         )}
+                       </Button>
 
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm" title="Delete User">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete User</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete {user.full_name}? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => deleteUserMutation.mutate(user.user_id)}
-                              disabled={deleteUserMutation.isPending}
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
+                       <AlertDialog>
+                         <AlertDialogTrigger asChild>
+                           <Button variant="ghost" size="sm" title="Delete User">
+                             <Trash2 className="h-4 w-4" />
+                           </Button>
+                         </AlertDialogTrigger>
+                         <AlertDialogContent>
+                           <AlertDialogHeader>
+                             <AlertDialogTitle>Delete User</AlertDialogTitle>
+                             <AlertDialogDescription>
+                               Are you sure you want to delete {user.full_name}? This action cannot be undone.
+                             </AlertDialogDescription>
+                           </AlertDialogHeader>
+                           <AlertDialogFooter>
+                             <AlertDialogCancel>Cancel</AlertDialogCancel>
+                             <AlertDialogAction
+                               onClick={() => deleteUserMutation.mutate(user.user_id)}
+                               disabled={deleteUserMutation.isPending}
+                             >
+                               Delete
+                             </AlertDialogAction>
+                           </AlertDialogFooter>
+                         </AlertDialogContent>
+                       </AlertDialog>
+                     </div>
+                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
