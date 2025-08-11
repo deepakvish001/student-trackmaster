@@ -37,7 +37,6 @@ import { PerformanceInitializer } from '@/components/PerformanceInitializer';
 import { PerformanceTestPanel } from '@/components/PerformanceTestPanel';
 import { MobileOptimizationPanel } from '@/components/MobileOptimizationPanel';
 import { OfflineTestSuite } from '@/components/OfflineTestSuite';
-import { PWAUpdatePrompt } from '@/components/PWAUpdatePrompt';
 
 export default function EnhancedDashboard() {
   const { profile: userProfile, hasRole } = useUserProfile();
@@ -95,174 +94,94 @@ export default function EnhancedDashboard() {
   return (
     <DashboardLayout>
       <PerformanceInitializer />
-      <PWAUpdatePrompt />
       <div className="min-h-screen bg-black text-white">
-        <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 lg:space-y-10 p-4 sm:p-6 lg:p-8">
-          {/* Enhanced Premium Header - Mobile Responsive */}
-          <div className="space-y-4 sm:space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center space-x-4 sm:space-x-6">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-xl sm:shadow-2xl shadow-orange-500/30">
-                  <LayoutDashboard className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+        <div className="max-w-7xl mx-auto space-y-10 p-8">
+          {/* Enhanced Premium Header */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-6">
+                <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-3xl flex items-center justify-center shadow-2xl shadow-orange-500/30">
+                  <LayoutDashboard className="w-8 h-8 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-extrabold bg-gradient-to-r from-white via-orange-200 to-orange-400 bg-clip-text text-transparent mb-1 sm:mb-2">
-                    Enhanced Dashboard
+                  <h1 className="text-5xl font-extrabold bg-gradient-to-r from-white via-orange-200 to-orange-400 bg-clip-text text-transparent mb-2">
+                    BiometricHub Dashboard
                   </h1>
-                  <p className="text-sm sm:text-lg lg:text-xl text-gray-300 font-medium">
-                    Real-time biometric system monitoring
+                  <p className="text-xl text-gray-300 font-medium">
+                    Advanced biometric management & analytics platform
                   </p>
                 </div>
               </div>
 
-              {/* Connection Status - Mobile Optimized */}
-              <div className="flex items-center gap-2 sm:gap-4 mt-4 sm:mt-0">
+              {/* Connection Status */}
+              <div className="flex items-center gap-4">
                 <QuickStatus compact={true} showSync={true} />
               </div>
             </div>
             
-              {/* Enhanced Real-Time Stats Dashboard - Premium Design */}
-              <div className={`relative overflow-hidden bg-gradient-to-br from-black/95 via-black/90 to-black/95 backdrop-blur-2xl border rounded-2xl lg:rounded-3xl p-6 sm:p-8 shadow-2xl ${!isOnline ? 'border-amber-500/40 shadow-amber-500/20' : 'border-gray-600/40 shadow-blue-500/10'}`}>
-                {/* Animated Background Pattern */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/5 to-transparent animate-pulse"></div>
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500 via-blue-500 to-purple-500 animate-pulse"></div>
-                
-                {/* Real-Time Status Header */}
-                <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 pb-4 border-b border-gray-700/30">
-                  <div className="flex items-center space-x-3 mb-3 sm:mb-0">
-                    <div className="relative">
-                      <div className="w-4 h-4 bg-green-500 rounded-full animate-pulse shadow-lg shadow-green-500/50"></div>
-                      <div className="absolute inset-0 w-4 h-4 bg-green-400 rounded-full animate-ping opacity-30"></div>
+              {/* Enhanced Stats Summary Bar with Real-time Indicator */}
+              <div className={`bg-black/80 backdrop-blur-xl border rounded-2xl p-6 shadow-2xl ${!isOnline ? 'border-amber-500/30' : 'border-gray-700/50'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-8">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-orange-400">{stats?.totalStudents || 0}</div>
+                      <div className="text-sm text-gray-400 uppercase tracking-wider">Students</div>
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-bold text-green-400 uppercase tracking-wider">System Status</span>
-                      <span className="text-xs text-gray-400">{isOnline ? 'Real-time sync active' : 'Offline mode'}</span>
+                    <div className="w-px h-12 bg-gray-700"></div>
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-blue-400">{stats?.totalBatches || 0}</div>
+                      <div className="text-sm text-gray-400 uppercase tracking-wider">Batches</div>
                     </div>
-                  </div>
-                  
-                  {/* Live Performance Indicator */}
-                  <div className="flex items-center space-x-3">
-                    <div className="flex items-center space-x-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full">
-                      <Activity className="w-3 h-3 text-emerald-400" />
-                      <span className="text-xs font-medium text-emerald-400">Live</span>
+                    <div className="w-px h-12 bg-gray-700"></div>
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-emerald-400">{stats?.totalUsers || 0}</div>
+                      <div className="text-sm text-gray-400 uppercase tracking-wider">Users</div>
                     </div>
-                    {performanceStats && (
-                      <div className="hidden sm:flex items-center space-x-1 text-xs text-gray-400">
-                        <Clock className="w-3 h-3" />
-                        <span>{performanceStats.avgResponseTime}ms</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                    <div className="w-px h-12 bg-gray-700"></div>
+                     <div className="text-center">
+                       <div className="text-3xl font-bold text-purple-400">{stats?.completionRate || 0}%</div>
+                       <div className="text-sm text-gray-400 uppercase tracking-wider">Complete</div>
+                     </div>
 
-                {/* Enhanced Stats Grid */}
-                <div className="relative grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
-                  {/* Students Metric */}
-                  <div className="group relative bg-gradient-to-br from-orange-500/10 to-orange-600/5 border border-orange-500/20 rounded-2xl p-4 hover:border-orange-500/40 transition-all duration-300">
-                    <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <div className="relative text-center space-y-2">
-                      <div className="flex items-center justify-center mb-2">
-                        <Users className="w-5 h-5 text-orange-400 opacity-70" />
-                      </div>
-                      <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-orange-400 tabular-nums animate-pulse">
-                        {stats?.totalStudents || 0}
-                      </div>
-                      <div className="text-xs sm:text-sm text-orange-300/80 uppercase tracking-wider font-medium">
-                        Students
-                      </div>
-                      <div className="w-8 h-0.5 bg-gradient-to-r from-orange-500 to-transparent mx-auto"></div>
-                    </div>
-                  </div>
-
-                  {/* Batches Metric */}
-                  <div className="group relative bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 rounded-2xl p-4 hover:border-blue-500/40 transition-all duration-300">
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <div className="relative text-center space-y-2">
-                      <div className="flex items-center justify-center mb-2">
-                        <GraduationCap className="w-5 h-5 text-blue-400 opacity-70" />
-                      </div>
-                      <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-blue-400 tabular-nums animate-pulse">
-                        {stats?.totalBatches || 0}
-                      </div>
-                      <div className="text-xs sm:text-sm text-blue-300/80 uppercase tracking-wider font-medium">
-                        Batches
-                      </div>
-                      <div className="w-8 h-0.5 bg-gradient-to-r from-blue-500 to-transparent mx-auto"></div>
-                    </div>
-                  </div>
-
-                  {/* Users Metric */}
-                  <div className="group relative bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 rounded-2xl p-4 hover:border-emerald-500/40 transition-all duration-300">
-                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <div className="relative text-center space-y-2">
-                      <div className="flex items-center justify-center mb-2">
-                        <Shield className="w-5 h-5 text-emerald-400 opacity-70" />
-                      </div>
-                      <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-emerald-400 tabular-nums animate-pulse">
-                        {stats?.totalUsers || 0}
-                      </div>
-                      <div className="text-xs sm:text-sm text-emerald-300/80 uppercase tracking-wider font-medium">
-                        Users
-                      </div>
-                      <div className="w-8 h-0.5 bg-gradient-to-r from-emerald-500 to-transparent mx-auto"></div>
-                    </div>
-                  </div>
-
-                  {/* Completion Rate Metric */}
-                  <div className="group relative bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 rounded-2xl p-4 hover:border-purple-500/40 transition-all duration-300">
-                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <div className="relative text-center space-y-2">
-                      <div className="flex items-center justify-center mb-2">
-                        <TrendingUp className="w-5 h-5 text-purple-400 opacity-70" />
-                      </div>
-                      <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-purple-400 tabular-nums animate-pulse">
-                        {stats?.completionRate || 0}%
-                      </div>
-                      <div className="text-xs sm:text-sm text-purple-300/80 uppercase tracking-wider font-medium">
-                        Complete
-                      </div>
-                      <div className="w-8 h-0.5 bg-gradient-to-r from-purple-500 to-transparent mx-auto"></div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Status Indicators & Actions */}
-                <div className="relative flex flex-col sm:flex-row items-center justify-between mt-6 pt-4 border-t border-gray-700/30 gap-4">
-                  {/* Status Indicators */}
-                  <div className="flex items-center space-x-4">
+                    {/* Offline Status Indicator */}
                     {!isOnline && (
-                      <div className="flex items-center space-x-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full">
-                        <WifiOff className="w-3 h-3 text-amber-400" />
-                        <span className="text-xs font-medium text-amber-400">Offline Mode</span>
-                      </div>
+                      <>
+                        <div className="w-px h-12 bg-gray-700"></div>
+                        <div className="text-center">
+                          <div className="flex items-center justify-center text-amber-400 mb-1">
+                            <WifiOff className="w-6 h-6" />
+                          </div>
+                          <div className="text-sm text-amber-400 uppercase tracking-wider">Offline Mode</div>
+                        </div>
+                      </>
                     )}
-                    
-                    {pendingCount > 0 && (
-                      <div className="flex items-center space-x-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full">
-                        <Database className="w-3 h-3 text-amber-400" />
-                        <span className="text-xs font-medium text-amber-400">{pendingCount} Pending</span>
-                      </div>
-                    )}
-                    
-                    <div className="flex items-center space-x-2">
-                      <div className="relative">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <div className="absolute inset-0 w-2 h-2 bg-green-400 rounded-full animate-ping opacity-40"></div>
-                      </div>
-                      <span className="text-xs font-medium text-green-400">Real-time Sync</span>
-                    </div>
-                  </div>
 
-                  {/* Action Button */}
-                  <Button 
-                    onClick={forceRefresh} 
-                    variant="outline" 
-                    size="sm"
-                    className="group border-gray-600/50 bg-gray-800/50 text-gray-300 hover:text-white hover:border-blue-500/50 hover:bg-blue-500/10 touch-manipulation transition-all duration-300"
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2 group-hover:animate-spin" />
-                    Refresh Data
-                  </Button>
+                    {pendingCount > 0 && (
+                      <>
+                        <div className="w-px h-12 bg-gray-700"></div>
+                        <div className="text-center">
+                          <div className="text-3xl font-bold text-amber-400">{pendingCount}</div>
+                          <div className="text-sm text-amber-400 uppercase tracking-wider">Pending Sync</div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    {/* Real-time indicator */}
+                    <div className="flex items-center space-x-2 text-sm">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-emerald-400 font-medium">Live Updates</span>
+                    </div>
+                    <Button 
+                      onClick={forceRefresh} 
+                      variant="outline" 
+                      size="sm"
+                      className="border-gray-600 text-gray-400 hover:text-white hover:border-gray-500"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Refresh
+                    </Button>
+                  </div>
                 </div>
               </div>
           </div>

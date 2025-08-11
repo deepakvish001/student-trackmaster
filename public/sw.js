@@ -1,7 +1,7 @@
 // Ultra-High Performance Service Worker for BiometricHub PWA
 // Optimized for maximum speed, responsiveness, and real-time performance
 
-const CACHE_VERSION = 'v2.1.0';
+const CACHE_VERSION = 'v2.0.0';
 const STATIC_CACHE = `biometric-hub-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `biometric-hub-dynamic-${CACHE_VERSION}`;
 const API_CACHE = `biometric-hub-api-${CACHE_VERSION}`;
@@ -54,8 +54,6 @@ self.addEventListener('install', (event) => {
       })
     ]).then(() => {
       console.log('[SW] ✅ Ultra-fast installation complete');
-      // Store version for update detection
-      self.previousVersion = CACHE_VERSION;
       self.skipWaiting(); // Immediate activation
     })
   );
@@ -83,7 +81,7 @@ self.addEventListener('activate', (event) => {
     ]).then(() => {
       console.log('[SW] ✅ Activation complete - Ultra-fast mode enabled');
       
-      // Notify clients of activation and check for updates
+      // Notify clients of activation
       self.clients.matchAll().then(clients => {
         clients.forEach(client => {
           client.postMessage({
@@ -93,20 +91,6 @@ self.addEventListener('activate', (event) => {
           });
         });
       });
-      
-      // Check if this is an update
-      if (self.previousVersion && self.previousVersion !== CACHE_VERSION) {
-        self.clients.matchAll().then(clients => {
-          clients.forEach(client => {
-            client.postMessage({
-              type: 'SW_UPDATE_AVAILABLE',
-              version: CACHE_VERSION,
-              previousVersion: self.previousVersion,
-              timestamp: Date.now()
-            });
-          });
-        });
-      }
     })
   );
 });
