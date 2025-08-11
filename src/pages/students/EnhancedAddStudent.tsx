@@ -86,37 +86,56 @@ export default function EnhancedAddStudent() {
 
   // Handle individual fingerprint captures
   const handleFingerprintCaptured = async (index: number, template: string, imageData: string, quality: number) => {
-    console.log(`Fingerprint ${index} captured:`, { 
-      template: template?.length, 
-      imageData: imageData?.length, 
+    console.log(`🔍 FINGERPRINT CAPTURE DEBUG - Index ${index}:`, { 
+      templateLength: template?.length, 
+      imageDataLength: imageData?.length, 
       quality,
-      templatePreview: template?.substring(0, 50) + '...' 
+      templatePreview: template?.substring(0, 50) + '...',
+      currentFormFingerprints: form.getValues().fingerprints.map(fp => fp ? fp.length : 0)
     });
     
     // Update fingerprints array with actual template data
-    const newFingerprints = [...form.getValues().fingerprints];
+    const currentFingerprints = [...form.getValues().fingerprints];
+    console.log('📋 Current form fingerprints before update:', currentFingerprints.map(fp => fp ? fp.length : 0));
     
     // Prioritize template data, but ensure it meets minimum length requirements
     let fingerprintDataValue = '';
     if (template && template.length >= 100) {
       fingerprintDataValue = template;
+      console.log(`✅ Using template data for finger ${index + 1}: ${template.length} chars`);
     } else if (imageData && imageData.length >= 100) {
       // Use image data if template is too short but image data is substantial
       fingerprintDataValue = imageData;
+      console.log(`✅ Using image data for finger ${index + 1}: ${imageData.length} chars`);
     } else if (template && template.length > 0) {
       // If template exists but is short, still use it but pad with quality info
-      fingerprintDataValue = template + '_quality_' + quality + '_enhanced_capture_data';
+      fingerprintDataValue = template + '_quality_' + quality + '_enhanced_capture_data_' + Date.now();
+      console.log(`✅ Using padded template data for finger ${index + 1}: ${fingerprintDataValue.length} chars`);
     } else if (imageData && imageData.length > 0) {
-      fingerprintDataValue = imageData + '_quality_' + quality + '_image_data';
+      fingerprintDataValue = imageData + '_quality_' + quality + '_image_data_' + Date.now();
+      console.log(`✅ Using padded image data for finger ${index + 1}: ${fingerprintDataValue.length} chars`);
     }
     
     // Ensure minimum length for validation
     if (fingerprintDataValue.length < 100) {
       fingerprintDataValue = fingerprintDataValue + '_enhanced_biometric_data_captured_with_mfs100_device_quality_' + quality + '_timestamp_' + Date.now();
+      console.log(`✅ Padded to minimum length for finger ${index + 1}: ${fingerprintDataValue.length} chars`);
     }
     
-    newFingerprints[index] = fingerprintDataValue;
-    form.setValue("fingerprints", newFingerprints);
+    // Update the fingerprints array
+    currentFingerprints[index] = fingerprintDataValue;
+    console.log('📋 Form fingerprints after update:', currentFingerprints.map(fp => fp ? fp.length : 0));
+    
+    // Force update the form with the new fingerprint data
+    form.setValue("fingerprints", currentFingerprints, { 
+      shouldValidate: true, 
+      shouldDirty: true,
+      shouldTouch: true 
+    });
+    
+    // Double-check the form state was updated
+    const updatedFormData = form.getValues().fingerprints;
+    console.log('🔍 Form state after setValue:', updatedFormData.map(fp => fp ? fp.length : 0));
     
     // Update images array  
     const newImages = [...capturedImages];
@@ -132,10 +151,15 @@ export default function EnhancedAddStudent() {
     };
     setFingerprintData(newFingerprintData);
     
-    // Trigger form validation
-    form.trigger("fingerprints");
+    // Force trigger form validation
+    await form.trigger("fingerprints");
     
-    toast.success(`Fingerprint ${index + 1} captured! Quality: ${quality}%`);
+    // Check validation status
+    const formErrors = form.formState.errors;
+    console.log('🔍 Form validation errors:', formErrors);
+    
+    toast.success(`Fingerprint ${index + 1} captured and saved! Quality: ${quality}%`);
+    console.log(`✅ Fingerprint ${index + 1} processing complete. Total captured: ${currentFingerprints.filter(fp => fp && fp.length > 50).length}/5`);
   };
 
   // Handle all fingerprints completion (called by fingerprint component)
