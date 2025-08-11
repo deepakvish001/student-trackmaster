@@ -5,7 +5,7 @@ env.allowLocalModels = false;
 env.useBrowserCache = true;
 
 const MAX_IMAGE_DIMENSION = 2048; // Increased for ultra-high quality
-const ENHANCEMENT_SCALE = 4; // 4x upscaling for maximum quality
+const ENHANCEMENT_SCALE = 2; // 2x upscaling for optimal quality
 
 export interface EnhancementOptions {
   removeBackground?: boolean;
