@@ -23,6 +23,7 @@ import { SecurityDashboard } from '@/components/SecurityDashboard';
 import { PWAControlCenter } from '@/components/PWAControlCenter';
 import { RealTimeSystemMonitor } from '@/components/monitoring/RealTimeSystemMonitor';
 import { BiometricAnalyticsDashboard } from '@/components/analytics/BiometricAnalyticsDashboard';
+import { RealtimeCollaborationDashboard } from '@/components/collaboration/RealtimeCollaborationDashboard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConflictResolutionDialog } from '@/components/ConflictResolutionDialog';
 import { SyncButton } from '@/components/SyncButton';
@@ -388,10 +389,11 @@ export default function EnhancedDashboard() {
           </div>
 
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="monitoring">System Monitor</TabsTrigger>
               <TabsTrigger value="analytics">Analytics</TabsTrigger>
+              <TabsTrigger value="collaboration">Live Users</TabsTrigger>
               <TabsTrigger value="security">Security</TabsTrigger>
             </TabsList>
 
@@ -408,6 +410,10 @@ export default function EnhancedDashboard() {
 
             <TabsContent value="analytics">
               <BiometricAnalyticsDashboard />
+            </TabsContent>
+
+            <TabsContent value="collaboration">
+              <RealtimeCollaborationDashboard />
             </TabsContent>
 
             <TabsContent value="security">
