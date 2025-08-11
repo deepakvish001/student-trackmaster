@@ -293,8 +293,21 @@ export const validateFingerprintTemplate = (template: string): {
       quality,
       errors: errors.length > 0 ? errors : 'none',
       templatePreview: template.substring(0, 100) + '...',
-      isValid: errors.length === 0
+      isValid: errors.length === 0,
+      allErrors: errors,
+      templateStartsWith: template.substring(0, 20),
+      suspiciousPatternCheck: 'passed'
     });
+    
+    // Log specific validation failure reasons
+    if (errors.length > 0) {
+      console.error('❌ VALIDATION FAILED:', {
+        template: template.substring(0, 50) + '...',
+        templateLength: template.length,
+        errors: errors,
+        format: format
+      });
+    }
     
     logSecurityEvent('BIOMETRIC_TEMPLATE_VALIDATED', {
       format,

@@ -46,6 +46,28 @@ export function CleanFingerprintGrid({
   } = useMultiFingerprintCapture();
 
   const [savingToSupabase, setSavingToSupabase] = useState(false);
+  const [previousCaptureCount, setPreviousCaptureCount] = useState(0);
+
+  // Auto-notify parent when individual fingerprints are captured
+  React.useEffect(() => {
+    if (completedCount > previousCaptureCount && onFingerprintCaptured) {
+      // A new fingerprint was captured, find which one and notify parent
+      const newFingerprints = fingerprints.filter((fp, index) => 
+        fp.status === 'captured' && index >= previousCaptureCount
+      );
+      
+      newFingerprints.forEach((fp) => {
+        console.log(`🔄 Auto-notifying parent of captured fingerprint ${fp.index}:`, {
+          template: fp.template?.length,
+          imageData: fp.imageData?.length,
+          quality: fp.quality
+        });
+        
+        onFingerprintCaptured(fp.index, fp.template || '', fp.imageData || '', fp.quality || 0);
+      });
+    }
+    setPreviousCaptureCount(completedCount);
+  }, [completedCount, fingerprints, onFingerprintCaptured, previousCaptureCount]);
 
   const fingerNames = [
     "Right Thumb",
