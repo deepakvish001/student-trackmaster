@@ -17,6 +17,7 @@ import {
   auditBiometricAccess 
 } from '@/utils/biometricSecurity';
 import { offlineDb } from '@/lib/offlineDatabase';
+import { useOfflineSync } from '@/hooks/useOfflineSync';
 
 interface EnhancedAuthContextType {
   user: User | null;
