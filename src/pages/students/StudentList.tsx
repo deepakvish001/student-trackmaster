@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import html2pdf from 'html2pdf.js';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -168,52 +167,50 @@ export default function StudentList() {
     }
   };
 
-  // Capture current page visually and save as PDF (like Ctrl+P)
+  // Capture current page and save as PDF using browser's print functionality
   const handleDownloadPDF = async () => {
     setIsGeneratingPDF(true);
     
     try {
-      console.log('📸 Capturing current page visually like Ctrl+P...');
-      toast.loading('📸 Capturing page as it appears on screen...', { id: 'pdf-capture' });
+      console.log('🖨️ Opening browser print to save as PDF...');
+      toast.loading('🖨️ Opening print dialog - choose "Save as PDF"...', { id: 'pdf-print' });
       
-      // Get the main content area to capture
-      const element = document.body;
-      
-      // Configure html2pdf options to capture page like browser print
-      const options = {
-        margin: [10, 10, 10, 10],
-        filename: `Students_List_${new Date().toISOString().split('T')[0]}.pdf`,
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { 
-          scale: 1,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#ffffff',
-          scrollX: 0,
-          scrollY: 0,
-          width: window.innerWidth,
-          height: window.innerHeight
-        },
-        jsPDF: { 
-          unit: 'mm', 
-          format: 'a4', 
-          orientation: 'portrait',
-          compress: true
+      // Add print-specific styles to hide buttons and optimize layout
+      const printStyles = document.createElement('style');
+      printStyles.innerHTML = `
+        @media print {
+          .no-print { display: none !important; }
+          .print-only { display: block !important; }
+          body { background: white !important; }
+          .bg-black { background: white !important; color: black !important; }
+          .text-white { color: black !important; }
+          .border-gray-700 { border-color: #ccc !important; }
         }
-      };
+      `;
+      document.head.appendChild(printStyles);
       
-      toast.loading('🖼️ Converting page to PDF format...', { id: 'pdf-capture' });
+      // Add no-print class to buttons and actions
+      const buttonsToHide = document.querySelectorAll('button, .no-print');
+      buttonsToHide.forEach(btn => btn.classList.add('no-print'));
       
-      // Capture and download the page as PDF (exactly like Ctrl+P)
-      await html2pdf().from(element).set(options).save();
-      
-      toast.success('✅ Page saved as PDF! (Visual copy of current screen)', { id: 'pdf-capture' });
+      // Small delay to ensure styles are applied
+      setTimeout(() => {
+        window.print();
+        
+        // Clean up after print
+        setTimeout(() => {
+          document.head.removeChild(printStyles);
+          buttonsToHide.forEach(btn => btn.classList.remove('no-print'));
+          toast.success('✅ Print dialog opened! Choose "Save as PDF" to save the page.', { id: 'pdf-print' });
+        }, 1000);
+      }, 300);
       
     } catch (error) {
-      console.error('❌ Page capture error:', error);
-      toast.error('Failed to capture page as PDF', { id: 'pdf-capture' });
+      console.error('❌ Print error:', error);
+      toast.error('Failed to open print dialog', { id: 'pdf-print' });
     } finally {
-      setIsGeneratingPDF(false);
+      // Reset state after a short delay
+      setTimeout(() => setIsGeneratingPDF(false), 2000);
     }
   };
   if (isLoading) {
@@ -254,12 +251,12 @@ export default function StudentList() {
                 {isGeneratingPDF ? (
                   <>
                     <div className="animate-spin h-5 w-5 mr-3 border-2 border-emerald-green border-t-transparent rounded-full"></div>
-                    Capturing...
+                    Opening Print...
                   </>
                 ) : (
                   <>
                     <Download className="h-5 w-5 mr-3" />
-                    Save Page as PDF
+                    Print as PDF
                   </>
                 )}
               </Button>
