@@ -19,6 +19,7 @@ import {
   Activity
 } from 'lucide-react';
 import { useAdvancedPWA } from '@/hooks/useAdvancedPWA';
+import { usePWAConnection } from '@/hooks/usePWAConnection';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { toast } from 'sonner';
 
@@ -36,6 +37,7 @@ export function PWAFeatureCenter() {
   } = useAdvancedPWA();
   
   const isOnline = useOnlineStatus();
+  const { connectionQuality, latency, getConnectionText } = usePWAConnection();
   const [settings, setSettings] = useState({
     autoSync: true,
     backgroundSync: true,
@@ -101,7 +103,7 @@ export function PWAFeatureCenter() {
       {isOnline ? (
         <>
           <Wifi className="h-4 w-4 text-green-500" />
-          <span className="text-sm text-green-500">Online</span>
+          <span className="text-sm text-green-500">{getConnectionText()}</span>
         </>
       ) : (
         <>
@@ -124,10 +126,11 @@ export function PWAFeatureCenter() {
       </div>
 
       <Tabs defaultValue="status" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="status">Status</TabsTrigger>
           <TabsTrigger value="install">Install</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="connection">Connection</TabsTrigger>
           <TabsTrigger value="storage">Storage</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
@@ -202,6 +205,54 @@ export function PWAFeatureCenter() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="connection" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Connection Quality
+              </CardTitle>
+              <CardDescription>
+                Real-time connection monitoring and optimization
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span>Status:</span>
+                  <span className="font-medium">{getConnectionText()}</span>
+                </div>
+                
+                <div className="flex justify-between text-sm">
+                  <span>Quality:</span>
+                  <Badge variant={connectionQuality === 'excellent' ? 'default' : 
+                                connectionQuality === 'good' ? 'secondary' : 'destructive'}>
+                    {connectionQuality}
+                  </Badge>
+                </div>
+                
+                {latency > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span>Latency:</span>
+                    <span className="font-medium">{latency}ms</span>
+                  </div>
+                )}
+                
+                <Progress 
+                  value={connectionQuality === 'excellent' ? 100 : 
+                         connectionQuality === 'good' ? 75 : 
+                         connectionQuality === 'poor' ? 50 : 0} 
+                  className="w-full" 
+                />
+                
+                <p className="text-xs text-muted-foreground">
+                  Connection quality affects real-time sync performance
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="install" className="space-y-4">

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useOnlineStatus } from './useOnlineStatus';
 import { useOfflineQueue } from './useOfflineQueue';
-import { toast } from 'sonner';
+import { usePWANotifications } from './usePWANotifications';
 
 interface RealTimePWAState {
   isConnected: boolean;
@@ -53,23 +53,30 @@ export function useRealTimePWA() {
 
   const isOnline = useOnlineStatus();
   const { addToQueue, processQueue, getQueueStats } = useOfflineQueue();
+  const { showSyncNotification, showBiometricNotification } = usePWANotifications();
   const channelsRef = useRef<any[]>([]);
   const performanceRef = useRef<number[]>([]);
+  const hasShownConnectedToast = useRef(false);
+  const isInitializing = useRef(false);
 
   // Real-time presence tracking
   const presenceChannel = useRef<any>(null);
 
   useEffect(() => {
-    if (isOnline) {
+    if (isOnline && !isInitializing.current) {
       initializeRealTimeConnections();
-    } else {
+    } else if (!isOnline) {
       cleanupConnections();
+      hasShownConnectedToast.current = false;
     }
 
     return () => cleanupConnections();
   }, [isOnline]);
 
   const initializeRealTimeConnections = useCallback(async () => {
+    if (isInitializing.current || state.isConnected) return;
+    
+    isInitializing.current = true;
     console.log('[RealTimePWA] Initializing real-time connections...');
 
     try {
@@ -156,10 +163,16 @@ export function useRealTimePWA() {
         lastSync: new Date()
       }));
 
-      toast.success('Real-time sync activated');
+      // Only show toast once per session
+      if (!hasShownConnectedToast.current) {
+        showSyncNotification('Real-time synchronization activated', true);
+        hasShownConnectedToast.current = true;
+      }
     } catch (error) {
       console.error('[RealTimePWA] Failed to initialize:', error);
-      toast.error('Failed to connect real-time sync');
+      showSyncNotification('Failed to connect real-time sync', false);
+    } finally {
+      isInitializing.current = false;
     }
   }, []);
 
@@ -187,7 +200,10 @@ export function useRealTimePWA() {
 
     // Show notification for critical biometric updates
     if (eventType === 'INSERT' && newRecord) {
-      toast.info(`New fingerprint captured for student ${newRecord.student_id}`);
+      showBiometricNotification(
+        `Student ${newRecord.student_id}`, 
+        `Fingerprint #${newRecord.finger_index} captured`
+      );
     }
   }, []);
 
@@ -271,6 +287,7 @@ export function useRealTimePWA() {
     }
     
     channelsRef.current = [];
+    isInitializing.current = false;
     
     setState(prev => ({ 
       ...prev, 
@@ -301,10 +318,10 @@ export function useRealTimePWA() {
         dataVersion: prev.dataVersion + 1
       }));
       
-      toast.success('Sync completed successfully');
+      showSyncNotification('Sync completed successfully', true);
     } catch (error) {
       console.error('[RealTimePWA] Sync failed:', error);
-      toast.error('Sync failed');
+      showSyncNotification('Sync failed', false);
     } finally {
       setState(prev => ({ ...prev, syncInProgress: false }));
     }
@@ -332,7 +349,7 @@ export function useRealTimePWA() {
         }
       }));
       
-      toast.success('Performance optimized');
+      showSyncNotification('Performance optimized', true);
     } catch (error) {
       console.error('[RealTimePWA] Performance optimization failed:', error);
     }
