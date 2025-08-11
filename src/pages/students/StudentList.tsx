@@ -167,128 +167,26 @@ export default function StudentList() {
     }
   };
 
-  // Download PDF function - fetch ALL students or filtered students in real-time
+  // Print/Save current page as PDF (like Ctrl+P)
   const handleDownloadPDF = async () => {
-    // Set loading state
     setIsGeneratingPDF(true);
     
     try {
-      console.log('🔄 PDF download initiated - fetching real-time student data');
+      console.log('🖨️ Printing current page as PDF...');
+      toast.loading('🖨️ Preparing page for printing...', { id: 'pdf-print' });
       
-      // Show initial processing message
-      toast.loading('🔄 Starting PDF generation...', { id: 'pdf-generation' });
+      // Small delay to ensure toast appears
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Check if any filters are applied
-      const hasSearchFilter = searchTerm.trim().length > 0;
-      const hasBatchFilter = selectedBatch !== 'all';
-      const hasFilters = hasSearchFilter || hasBatchFilter;
+      // Use browser's native print functionality (like Ctrl+P)
+      window.print();
       
-      console.log('📊 Filter status:', {
-        hasSearchFilter,
-        hasBatchFilter,
-        searchTerm: searchTerm.trim(),
-        selectedBatch,
-        hasFilters
-      });
-
-      // Build query for ALL students or filtered students
-      let query = supabase
-        .from('students')
-        .select(`
-          id,
-          student_name,
-          mobile_number,
-          address,
-          created_at,
-          updated_at,
-          batch_id,
-          is_enabled,
-          user_id,
-          finger_1,
-          finger_2,
-          finger_3,
-          finger_4,
-          finger_5,
-          finger_1_image,
-          finger_2_image,
-          finger_3_image,
-          finger_4_image,
-          finger_5_image,
-          batches:batch_id!inner (
-            batch_name
-          )
-        `)
-        .eq('is_enabled', true);
-
-      // Apply filters only if they exist
-      if (hasSearchFilter) {
-        console.log('🔍 Applying search filter:', searchTerm.trim());
-        query = query.or(`student_name.ilike.%${searchTerm.trim()}%,mobile_number.ilike.%${searchTerm.trim()}%`);
-      }
-
-      if (hasBatchFilter) {
-        console.log('🏷️ Applying batch filter:', selectedBatch);
-        query = query.eq('batch_id', selectedBatch);
-      }
-
-      // Apply same sorting as current view
-      query = query.order(sortBy, { ascending: sortOrder === 'asc' });
-
-      // Update progress message
-      toast.loading('📊 Fetching student data from database...', { id: 'pdf-generation' });
-
-      // Fetch real-time data
-      const { data: allStudents, error } = await query;
-
-      if (error) {
-        console.error('❌ Error fetching students for PDF:', error);
-        toast.error('Failed to fetch student data for PDF', { id: 'pdf-generation' });
-        return;
-      }
-
-      const studentCount = allStudents?.length || 0;
-      console.log(`✅ Fetched ${studentCount} students for PDF`);
-      
-      // Update progress message
-      toast.loading(`🖼️ Processing ${studentCount} students with fingerprint images...`, { id: 'pdf-generation' });
-      
-      // Prepare filter information for PDF
-      const selectedBatchData = batches.find(batch => batch.id === selectedBatch);
-      const filters = {
-        searchTerm: hasSearchFilter ? searchTerm.trim() : undefined,
-        selectedBatch: hasBatchFilter ? selectedBatch : undefined,
-        batchName: selectedBatchData?.batch_name
-      };
-      
-      // Determine PDF type message
-      let pdfType = '';
-      if (hasFilters) {
-        if (hasSearchFilter && hasBatchFilter) {
-          pdfType = `filtered by search "${searchTerm.trim()}" and batch "${selectedBatchData?.batch_name}"`;
-        } else if (hasSearchFilter) {
-          pdfType = `filtered by search "${searchTerm.trim()}"`;
-        } else if (hasBatchFilter) {
-          pdfType = `filtered by batch "${selectedBatchData?.batch_name}"`;
-        }
-      } else {
-        pdfType = 'complete database (all students)';
-      }
-      
-      console.log('📄 Generating PDF for:', pdfType);
-      
-      // Final progress message
-      toast.loading('📄 Generating PDF document...', { id: 'pdf-generation' });
-      
-      await exportStudentsToPDF(allStudents || [], filters);
-      
-      // Success message
-      toast.success(`📋 PDF generated successfully with ${studentCount} students (${pdfType})`, { id: 'pdf-generation' });
+      toast.success('🖨️ Print dialog opened - Save as PDF or print directly!', { id: 'pdf-print' });
       
     } catch (error) {
-      console.error('❌ PDF generation error:', error);
-      toast.error('Failed to generate PDF report', { id: 'pdf-generation' });
+      console.error('❌ Print error:', error);
+      toast.error('Failed to open print dialog', { id: 'pdf-print' });
     } finally {
-      // Always reset loading state
       setIsGeneratingPDF(false);
     }
   };
@@ -330,12 +228,12 @@ export default function StudentList() {
                 {isGeneratingPDF ? (
                   <>
                     <div className="animate-spin h-5 w-5 mr-3 border-2 border-emerald-green border-t-transparent rounded-full"></div>
-                    Processing...
+                    Opening Print...
                   </>
                 ) : (
                   <>
                     <Download className="h-5 w-5 mr-3" />
-                    Download PDF
+                    Print Page as PDF
                   </>
                 )}
               </Button>
