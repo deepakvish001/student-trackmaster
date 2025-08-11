@@ -167,157 +167,25 @@ export default function StudentList() {
     }
   };
 
-  // Download PDF function - automatically print page as PDF
-  const handleDownloadPDF = async () => {
+  // Download PDF function - exactly like Ctrl+P
+  const handleDownloadPDF = () => {
     setIsGeneratingPDF(true);
     
     try {
-      console.log('🔄 PDF download initiated - preparing page for print');
-      toast.loading('📄 Preparing PDF...', { id: 'pdf-generation' });
-
-      // Add print-specific styles
-      const printStyles = document.createElement('style');
-      printStyles.id = 'pdf-print-styles';
-      printStyles.textContent = `
-        @media print {
-          @page {
-            size: A4;
-            margin: 0.5in;
-          }
-          
-          body * {
-            visibility: hidden;
-          }
-          
-          .print-area, .print-area * {
-            visibility: visible;
-          }
-          
-          .print-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          
-          /* Hide elements that shouldn't be in PDF */
-          .no-print,
-          button:not(.print-button),
-          .hover\\:scale-105,
-          nav,
-          aside,
-          .sidebar,
-          .navigation,
-          .filters-section {
-            display: none !important;
-          }
-          
-          /* Ensure tables and content are properly formatted */
-          table {
-            page-break-inside: auto;
-            width: 100% !important;
-          }
-          
-          tr {
-            page-break-inside: avoid;
-            page-break-after: auto;
-          }
-          
-          thead {
-            display: table-header-group;
-          }
-          
-          /* Fingerprint images in print */
-          img {
-            max-width: 60px !important;
-            max-height: 60px !important;
-            page-break-inside: avoid;
-          }
-          
-          /* Maintain proper spacing */
-          .premium-card {
-            box-shadow: none !important;
-            border: 1px solid #ddd !important;
-            margin-bottom: 20px !important;
-          }
-          
-          /* Header styling for print */
-          h1, h2, h3 {
-            color: black !important;
-            page-break-after: avoid;
-          }
-          
-          /* Badge and status styling */
-          .badge {
-            border: 1px solid #000 !important;
-            color: black !important;
-            background: white !important;
-          }
-        }
-      `;
-      document.head.appendChild(printStyles);
-
-      // Mark the main content area for printing
-      const mainContent = document.querySelector('.min-h-screen');
-      if (mainContent) {
-        mainContent.classList.add('print-area');
-      }
-
-      // Hide buttons and interactive elements
-      const interactiveElements = document.querySelectorAll('button, .no-print');
-      interactiveElements.forEach(el => {
-        if (!el.classList.contains('print-button')) {
-          el.classList.add('no-print');
-        }
-      });
-
-      // Small delay to ensure styles are applied
-      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('🔄 Opening print dialog (same as Ctrl+P)');
+      toast.success('📄 Opening print dialog - save as PDF!', { duration: 2000 });
       
-      toast.loading('🖨️ Generating PDF...', { id: 'pdf-generation' });
-
-      // Configure print settings and trigger print
-      const printPromise = new Promise<void>((resolve) => {
-        const afterPrint = () => {
-          window.removeEventListener('afterprint', afterPrint);
-          resolve();
-        };
-        window.addEventListener('afterprint', afterPrint);
-        
-        // For browsers that support it, try to set the default filename
-        if ('showSaveFilePicker' in window) {
-          // Modern browsers with File System Access API
-          window.print();
-        } else {
-          // Fallback for older browsers
-          window.print();
-        }
-      });
-
-      // Trigger the print dialog
-      await printPromise;
-
-      // Clean up - remove print styles and classes
-      const styleElement = document.getElementById('pdf-print-styles');
-      if (styleElement) {
-        styleElement.remove();
-      }
-      
-      if (mainContent) {
-        mainContent.classList.remove('print-area');
-      }
-      
-      interactiveElements.forEach(el => {
-        el.classList.remove('no-print');
-      });
-
-      toast.success('📋 PDF ready for download! Please save as "view_students.pdf"', { id: 'pdf-generation' });
+      // Exactly like pressing Ctrl+P
+      window.print();
       
     } catch (error) {
-      console.error('❌ PDF generation error:', error);
-      toast.error('Failed to generate PDF', { id: 'pdf-generation' });
+      console.error('❌ Print dialog error:', error);
+      toast.error('Failed to open print dialog');
     } finally {
-      setIsGeneratingPDF(false);
+      // Reset loading state after a short delay
+      setTimeout(() => {
+        setIsGeneratingPDF(false);
+      }, 1000);
     }
   };
   if (isLoading) {
