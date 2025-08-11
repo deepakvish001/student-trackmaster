@@ -122,15 +122,18 @@ export default function AddStudent() {
 
       const studentId = uuidv4();
       
-      // Prepare fingerprint data for validation and storage in students table
+      // Prepare fingerprint data for validation and storage - only save captured fingerprints
       const fingerprintData: Record<string, string> = {};
       const fingerprintImages: Record<string, string> = {};
       
       Object.entries(capturedFingerprints).forEach(([index, fingerprint]) => {
         const fingerNum = parseInt(index) + 1;
-        fingerprintData[`finger_${fingerNum}`] = fingerprint.pidData;
-        if (fingerprint.imageData) {
-          fingerprintImages[`finger_${fingerNum}_image`] = fingerprint.imageData;
+        // Only save if fingerprint was actually captured (has valid pidData)
+        if (fingerprint.pidData && fingerprint.pidData.trim() !== '') {
+          fingerprintData[`finger_${fingerNum}`] = fingerprint.pidData;
+          if (fingerprint.imageData && fingerprint.imageData.trim() !== '') {
+            fingerprintImages[`finger_${fingerNum}_image`] = fingerprint.imageData;
+          }
         }
       });
 
