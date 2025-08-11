@@ -38,15 +38,8 @@ export default defineConfig(({ mode }) => ({
   // Configure esbuild for modern syntax
   esbuild: {
     target: 'es2020',
-    // Remove unnecessary polyfills
-    supported: {
-      'async-await': true,
-      'arrow-functions': true,
-      'classes': true,
-      'spread': true,
-      'object-assign': true,
-      'array-from': true
-    }
+    // Keep only standard esbuild options - remove invalid 'supported' config
+    drop: mode === 'production' ? ['console', 'debugger'] : undefined,
   },
   plugins: [
     react(),
