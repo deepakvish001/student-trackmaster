@@ -83,24 +83,48 @@ export const BatchActions = ({ batch }: BatchActionsProps) => {
     }
   });
 
-  // Delete mutation (soft delete by disabling)
+  // Complete delete mutation (hard delete from database)
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
+      // First, check if there are any students in this batch
+      const { data: students, error: studentsError } = await supabase
+        .from('students')
+        .select('id')
+        .eq('batch_id', batch.id)
+        .eq('is_enabled', true);
+      
+      if (studentsError) throw studentsError;
+      
+      if (students && students.length > 0) {
+        throw new Error(`Cannot delete batch "${batch.batch_name}" because it contains ${students.length} active student(s). Please remove or disable all students first.`);
+      }
+      
+      // Delete user_batch_access records first (foreign key constraint)
+      const { error: accessError } = await supabase
+        .from('user_batch_access')
+        .delete()
+        .eq('batch_id', batch.id);
+      
+      if (accessError) throw accessError;
+      
+      // Finally, delete the batch itself
+      const { error: batchError } = await supabase
         .from('batches')
-        .update({ is_enabled: false })
+        .delete()
         .eq('id', batch.id);
       
-      if (error) throw error;
+      if (batchError) throw batchError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['batches'] });
-      toast.success('Batch deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ['students-optimized'] });
+      queryClient.invalidateQueries({ queryKey: ['students-count'] });
+      toast.success(`Batch "${batch.batch_name}" deleted completely from the database`);
       setShowDeleteDialog(false);
     },
     onError: (error) => {
       console.error('Error deleting batch:', error);
-      toast.error('Failed to delete batch');
+      toast.error(error.message || 'Failed to delete batch');
     }
   });
 
@@ -376,7 +400,18 @@ export const BatchActions = ({ batch }: BatchActionsProps) => {
               <span>Delete Batch</span>
             </AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
-              Are you sure you want to delete the batch "{batch.batch_name}"? This action will disable the batch and cannot be undone.
+              <div className="space-y-2">
+                <p className="font-medium text-destructive">⚠️ Are you sure you want to permanently delete the batch "{batch.batch_name}"?</p>
+                <div className="text-sm">
+                  <p>This action will:</p>
+                  <ul className="list-disc list-inside mt-1 space-y-1">
+                    <li>Completely remove the batch from the database</li>
+                    <li>Remove all user access permissions for this batch</li>
+                    <li>Cannot be undone</li>
+                  </ul>
+                  <p className="mt-2 text-amber-600 font-medium">Note: Batches with active students cannot be deleted.</p>
+                </div>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

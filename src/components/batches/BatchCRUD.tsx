@@ -145,31 +145,55 @@ export function BatchCRUD({ batches }: BatchCRUDProps) {
     }
   });
 
-  // Delete mutation
+  // Complete delete mutation (hard delete from database)
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      console.log('Deleting batch:', id);
-      const { error } = await supabase
-        .from('batches')
-        .update({ is_enabled: false })
-        .eq('id', id);
-      if (error) {
-        console.error('Delete error:', error);
-        throw error;
+      console.log('Deleting batch completely:', id);
+      
+      // First, check if there are any students in this batch
+      const { data: students, error: studentsError } = await supabase
+        .from('students')
+        .select('id')
+        .eq('batch_id', id)
+        .eq('is_enabled', true);
+      
+      if (studentsError) throw studentsError;
+      
+      if (students && students.length > 0) {
+        const batchName = selectedBatch?.batch_name || 'this batch';
+        throw new Error(`Cannot delete batch "${batchName}" because it contains ${students.length} active student(s). Please remove or disable all students first.`);
       }
+      
+      // Delete user_batch_access records first (foreign key constraint)
+      const { error: accessError } = await supabase
+        .from('user_batch_access')
+        .delete()
+        .eq('batch_id', id);
+      
+      if (accessError) throw accessError;
+      
+      // Finally, delete the batch itself
+      const { error: batchError } = await supabase
+        .from('batches')
+        .delete()
+        .eq('id', id);
+      
+      if (batchError) throw batchError;
     },
     onSuccess: async (_, batchId) => {
       if (selectedBatch) {
         await auditLogger.logBatchAction('deleted', batchId, selectedBatch.batch_name);
       }
       queryClient.invalidateQueries({ queryKey: ['batches'] });
-      toast.success('Batch deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ['students-optimized'] });
+      queryClient.invalidateQueries({ queryKey: ['students-count'] });
+      toast.success(`Batch "${selectedBatch?.batch_name || 'selected batch'}" deleted completely from the database`);
       setShowDeleteDialog(false);
       setSelectedBatch(null);
     },
     onError: (error) => {
       console.error('Error deleting batch:', error);
-      toast.error('Failed to delete batch');
+      toast.error(error.message || 'Failed to delete batch');
     }
   });
 
@@ -535,11 +559,23 @@ export function BatchCRUD({ batches }: BatchCRUDProps) {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center space-x-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              <span>Permanently Delete Batch</span>
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This action will disable the batch "{selectedBatch?.batch_name}". 
-              All students in this batch will remain but the batch will be inactive.
-              You can re-enable it later if needed.
+              <div className="space-y-2">
+                <p className="font-medium text-destructive">⚠️ Are you sure you want to permanently delete the batch "{selectedBatch?.batch_name}"?</p>
+                <div className="text-sm">
+                  <p>This action will:</p>
+                  <ul className="list-disc list-inside mt-1 space-y-1">
+                    <li>Completely remove the batch from the database</li>
+                    <li>Remove all user access permissions for this batch</li>
+                    <li>Cannot be undone</li>
+                  </ul>
+                  <p className="mt-2 text-amber-600 font-medium">Note: Batches with active students cannot be deleted.</p>
+                </div>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
