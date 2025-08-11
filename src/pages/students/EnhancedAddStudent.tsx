@@ -357,7 +357,10 @@ export default function EnhancedAddStudent() {
         fingerprints: ["", "", "", "", ""],
       });
       
-      // Reset all capture states
+      // Force form validation reset
+      form.clearErrors();
+      
+      // Reset all capture states immediately
       setCapturedImages([null, null, null, null, null]);
       setFingerprintData([
         { pidData: "", quality: 0 },
@@ -367,22 +370,29 @@ export default function EnhancedAddStudent() {
         { pidData: "", quality: 0 }
       ]);
       
-      // Force re-render of fingerprint component
+      // Force trigger form update
       setTimeout(() => {
+        // Clear all form inputs manually as backup
+        const formInputs = document.querySelectorAll('input[type="text"], input[type="email"], textarea');
+        formInputs.forEach((input) => {
+          if (input.getAttribute('name') !== 'batchId') {
+            (input as HTMLInputElement).value = '';
+          }
+        });
+        
+        // Reset fingerprint component
         const fingerprintGrid = document.querySelector('[data-fingerprint-grid]');
         if (fingerprintGrid) {
           (fingerprintGrid as any).reset?.();
         }
-      }, 100);
-      
-      // Auto-focus on name field for next student
-      setTimeout(() => {
+        
+        // Auto-focus on name field for next student
         const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement;
         if (nameInput) {
           nameInput.focus();
           nameInput.select();
         }
-      }, 200);
+      }, 100);
       
       console.log('✅ Form completely reset and ready for next student entry');
       
