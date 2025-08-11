@@ -6,6 +6,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,6 +60,7 @@ interface FingerprintData {
 
 export default function EnhancedAddStudent() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, encryptionKey } = useEnhancedAuth();
   const { logEvent } = useAuditLog();
   
@@ -330,6 +332,12 @@ export default function EnhancedAddStudent() {
         imagesCount: capturedImages.filter(img => img).length,
         success: true
       });
+      
+      // Invalidate student queries to trigger immediate refresh on all pages
+      queryClient.invalidateQueries({ queryKey: ['students-optimized'] });
+      queryClient.invalidateQueries({ queryKey: ['students-count'] });
+      queryClient.invalidateQueries({ queryKey: ['students-list'] });
+      queryClient.invalidateQueries({ queryKey: ['ultra-fast-students'] });
       
       toast.success(`Student registered successfully!`);
       
