@@ -158,6 +158,15 @@ export default function EnhancedAddStudent() {
       return;
     }
 
+    // Debug: Check what's actually in the form values
+    console.log('🔍 FORM SUBMISSION DEBUG:', {
+      formValues: values,
+      fingerprintArray: values.fingerprints,
+      fingerprintLengths: values.fingerprints.map(fp => fp ? fp.length : 0),
+      capturedImagesCount: capturedImages.filter(img => img).length,
+      fingerprintDataArray: fingerprintData
+    });
+
     // Check if all fingerprints are captured before submission
     const validFingerprints = values.fingerprints.filter(fp => fp && fp.length > 50);
     console.log('🔍 Pre-submission fingerprint check:', {
