@@ -91,8 +91,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <SidebarProvider>
       <FixedHeader />
-      <div className="pt-20 min-h-screen flex w-full bg-background">
-        <Sidebar className="bg-card border-r border-border">
+      <div className="pt-16 sm:pt-20 min-h-screen flex w-full bg-background">
+        <Sidebar className="bg-card border-r border-border hidden lg:flex lg:w-64"
+                 collapsible="icon"
+                 variant="sidebar">
           <SidebarHeader className="p-6 border-b border-border">
             <div className="flex items-center space-x-4">
               <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
@@ -176,7 +178,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </Sidebar>
 
         <main className="flex-1 overflow-y-auto bg-background">
-          <div className="p-8">
+          <div className="p-4 sm:p-6 lg:p-8">
             <div className="max-w-7xl mx-auto">
               {children}
             </div>

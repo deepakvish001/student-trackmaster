@@ -87,9 +87,9 @@ export default function Login() {
   }
 
   return (
-    <div className="h-screen flex overflow-hidden">
+    <div className="min-h-screen flex flex-col lg:flex-row overflow-hidden">
       {/* Left Hero Section - Dark with Orange Accents */}
-      <div className="flex-1 bg-black relative flex items-center justify-center p-8 lg:p-12 xl:p-16">
+      <div className="flex-1 bg-black relative flex items-center justify-center p-4 sm:p-6 md:p-8 lg:p-12 xl:p-16 min-h-[50vh] lg:min-h-full">
         {/* Subtle Background Pattern */}
         <div className="absolute inset-0 opacity-5">
           <div className="absolute inset-0 bg-gradient-to-br from-orange-500/20 via-transparent to-orange-600/10"></div>
@@ -99,29 +99,29 @@ export default function Login() {
         {/* Hero Content */}
         <div className="relative z-10 text-center max-w-lg mx-auto">
           {/* Large Branding Icon */}
-          <div className="mb-12">
-            <div className="w-32 h-32 mx-auto bg-gradient-to-br from-orange-500 to-orange-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-orange-500/25 mb-8">
-              <Fingerprint className="w-16 h-16 text-white" />
+          <div className="mb-8 lg:mb-12">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 mx-auto bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl lg:rounded-3xl flex items-center justify-center shadow-2xl shadow-orange-500/25 mb-6 lg:mb-8">
+              <Fingerprint className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 text-white" />
             </div>
-            <div className="space-y-4">
-              <h1 className="text-5xl font-bold text-white mb-2">
+            <div className="space-y-3 lg:space-y-4">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-2">
                 Biometric
                 <span className="text-orange-500">Hub</span>
               </h1>
-              <div className="w-20 h-1 bg-orange-500 mx-auto rounded-full"></div>
+              <div className="w-16 sm:w-20 h-1 bg-orange-500 mx-auto rounded-full"></div>
             </div>
           </div>
 
           {/* Features List */}
-          <div className="space-y-6">
-            <p className="text-2xl font-light text-gray-300 leading-relaxed">
+          <div className="space-y-4 lg:space-y-6">
+            <p className="text-lg sm:text-xl lg:text-2xl font-light text-gray-300 leading-relaxed">
               Enterprise Security
               <br />
               <span className="text-orange-400 font-medium">Authentication Platform</span>
             </p>
             
             {/* Feature Badges */}
-            <div className="space-y-3">
+            <div className="space-y-2 lg:space-y-3">
               <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/5 backdrop-blur-sm rounded-full border border-white/10">
                 <Shield className="w-5 h-5 text-orange-400" />
                 <span className="text-white/90 font-medium">Enterprise Grade Security</span>
@@ -144,7 +144,7 @@ export default function Login() {
       </div>
 
       {/* Right Login Form Section - Dark Black */}
-      <div className="flex-1 bg-black relative flex items-center justify-center p-8 lg:p-12 xl:p-16">
+      <div className="flex-1 bg-black relative flex items-center justify-center p-4 sm:p-6 md:p-8 lg:p-12 xl:p-16 min-h-[50vh] lg:min-h-full">
         {/* Subtle Background Pattern */}
         <div className="absolute inset-0 opacity-5">
           <div className="absolute inset-0 bg-gradient-to-bl from-orange-500/20 via-transparent to-orange-600/10"></div>
@@ -194,15 +194,15 @@ export default function Login() {
           )}
 
           {/* Form Container */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-3xl shadow-2xl shadow-black/20 p-8 lg:p-10 border border-white/10">
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl lg:rounded-3xl shadow-2xl shadow-black/20 p-6 sm:p-8 lg:p-10 border border-white/10">
             {/* Form Header */}
-            <div className="text-center mb-10">
-              <h2 className="text-3xl font-bold text-white mb-3">Welcome Back</h2>
-              <p className="text-gray-300 text-lg">Sign in to your secure account</p>
+            <div className="text-center mb-8 lg:mb-10">
+              <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 lg:mb-3">Welcome Back</h2>
+              <p className="text-gray-300 text-base lg:text-lg">Sign in to your secure account</p>
             </div>
 
             {/* Login Form */}
-            <form onSubmit={handleSubmit} className="space-y-7">
+            <form onSubmit={handleSubmit} className="space-y-5 lg:space-y-7">
               {/* Email Field */}
               <div className="space-y-3">
                 <label className="block text-sm font-semibold text-gray-300 uppercase tracking-wider">
@@ -218,7 +218,7 @@ export default function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="pl-12 h-14 bg-white/10 border-white/20 focus:border-orange-400 focus:bg-white/15 rounded-xl text-white placeholder-gray-400 transition-all duration-200 focus:ring-2 focus:ring-orange-400/30"
+                    className="pl-12 h-12 sm:h-14 bg-white/10 border-white/20 focus:border-orange-400 focus:bg-white/15 rounded-xl text-white placeholder-gray-400 transition-all duration-200 focus:ring-2 focus:ring-orange-400/30 text-sm sm:text-base"
                   />
                 </div>
               </div>
@@ -238,7 +238,7 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="pl-12 pr-12 h-14 bg-white/10 border-white/20 focus:border-orange-400 focus:bg-white/15 rounded-xl text-white placeholder-gray-400 transition-all duration-200 focus:ring-2 focus:ring-orange-400/30"
+                    className="pl-12 pr-12 h-12 sm:h-14 bg-white/10 border-white/20 focus:border-orange-400 focus:bg-white/15 rounded-xl text-white placeholder-gray-400 transition-all duration-200 focus:ring-2 focus:ring-orange-400/30 text-sm sm:text-base"
                   />
                   <button
                     type="button"
@@ -259,7 +259,7 @@ export default function Login() {
                 <Button
                   type="submit"
                   disabled={isLoading || !isOnline}
-                  className="w-full h-14 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-xl transition-all duration-300 disabled:opacity-50 shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 transform hover:-translate-y-0.5 disabled:transform-none disabled:hover:shadow-lg"
+                  className="w-full h-12 sm:h-14 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-xl transition-all duration-300 disabled:opacity-50 shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 transform hover:-translate-y-0.5 disabled:transform-none disabled:hover:shadow-lg text-sm sm:text-base"
                 >
                   {isLoading ? (
                     <div className="flex items-center justify-center gap-3">
