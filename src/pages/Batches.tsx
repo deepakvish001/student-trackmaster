@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { BatchTable } from '@/components/batches/BatchTable';
 import { BatchListSkeleton } from '@/components/batches/BatchListSkeleton';
 import { CreateBatchDialog } from '@/components/batches/CreateBatchDialog';
-import { useOptimizedBatches } from '@/hooks/useOptimizedBatches';
-import { useRealTimeBatchAccess } from '@/hooks/useRealTimeBatchAccess';
+import { useOfflineBatches } from '@/hooks/useOfflineBatches';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { OfflineTooltip } from '@/components/OfflineTooltip';
 import { Batch } from '@/types/batch';
 import { GraduationCap, Home, ChevronRight, Plus } from 'lucide-react';
 
@@ -15,9 +16,10 @@ export default function Batches() {
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
-  // Enable real-time batch access updates
-  const { isSubscribed } = useRealTimeBatchAccess();
+  // Get online status
+  const { isOnline } = useOnlineStatus();
   
+  // Use offline-capable batches hook
   const {
     batches,
     stats,
@@ -26,7 +28,7 @@ export default function Batches() {
     actions,
     loading,
     error
-  } = useOptimizedBatches({
+  } = useOfflineBatches({
     pageSize: 10,
     enablePrefetch: true
   });
