@@ -1,0 +1,55 @@
+{
+  "name": "BiometricHub - Enterprise Security Platform",
+  "short_name": "BiometricHub",
+  "description": "Enterprise-grade biometric authentication and management platform with offline capabilities",
+  "theme_color": "#f97316",
+  "background_color": "#000000",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "/public/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/public/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity", "security"],
+  "lang": "en",
+  "dir": "ltr",
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View system dashboard",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/public/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Students",
+      "short_name": "Students",
+      "description": "Manage students",
+      "url": "/students",
+      "icons": [
+        {
+          "src": "/public/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false
+}
