@@ -167,25 +167,48 @@ export default function StudentList() {
     }
   };
 
-  // Print/Save current page as PDF (like Ctrl+P)
+  // Generate and download PDF directly with current page data
   const handleDownloadPDF = async () => {
     setIsGeneratingPDF(true);
     
     try {
-      console.log('🖨️ Printing current page as PDF...');
-      toast.loading('🖨️ Preparing page for printing...', { id: 'pdf-print' });
+      console.log('📄 Generating PDF with current page data...');
+      toast.loading('📄 Generating PDF from current view...', { id: 'pdf-generation' });
       
-      // Small delay to ensure toast appears
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Use the currently displayed students data (already filtered and sorted)
+      const currentStudents = students.map(student => {
+        const batchData = batches.find(batch => batch.id === student.batch_id);
+        return {
+          ...student,
+          batches: batchData ? 
+            { batch_name: batchData.batch_name, is_enabled: batchData.is_enabled } : 
+            { batch_name: "Unknown Batch", is_enabled: false }
+        };
+      });
+
+      console.log(`📊 Using ${currentStudents.length} students from current view`);
       
-      // Use browser's native print functionality (like Ctrl+P)
-      window.print();
+      // Prepare filter information for PDF header
+      const selectedBatchData = batches.find(batch => batch.id === selectedBatch);
+      const hasSearchFilter = searchTerm.trim().length > 0;
+      const hasBatchFilter = selectedBatch !== 'all';
       
-      toast.success('🖨️ Print dialog opened - Save as PDF or print directly!', { id: 'pdf-print' });
+      const filters = {
+        searchTerm: hasSearchFilter ? searchTerm.trim() : undefined,
+        selectedBatch: hasBatchFilter ? selectedBatch : undefined,
+        batchName: selectedBatchData?.batch_name
+      };
+      
+      toast.loading('📋 Creating PDF document...', { id: 'pdf-generation' });
+      
+      // Generate PDF with current page data
+      await exportStudentsToPDF(currentStudents, filters);
+      
+      toast.success(`✅ PDF downloaded with ${currentStudents.length} students!`, { id: 'pdf-generation' });
       
     } catch (error) {
-      console.error('❌ Print error:', error);
-      toast.error('Failed to open print dialog', { id: 'pdf-print' });
+      console.error('❌ PDF generation error:', error);
+      toast.error('Failed to generate PDF', { id: 'pdf-generation' });
     } finally {
       setIsGeneratingPDF(false);
     }
@@ -228,12 +251,12 @@ export default function StudentList() {
                 {isGeneratingPDF ? (
                   <>
                     <div className="animate-spin h-5 w-5 mr-3 border-2 border-emerald-green border-t-transparent rounded-full"></div>
-                    Opening Print...
+                    Generating...
                   </>
                 ) : (
                   <>
                     <Download className="h-5 w-5 mr-3" />
-                    Print Page as PDF
+                    Download PDF
                   </>
                 )}
               </Button>
