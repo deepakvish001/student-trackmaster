@@ -34,6 +34,8 @@ import { useRealTimePWA } from '@/hooks/useRealTimePWA';
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 import { PerformanceInitializer } from '@/components/PerformanceInitializer';
 import { PerformanceTestPanel } from '@/components/PerformanceTestPanel';
+import { MobileOptimizationPanel } from '@/components/MobileOptimizationPanel';
+import { OfflineTestSuite } from '@/components/OfflineTestSuite';
 
 export default function EnhancedDashboard() {
   const { profile: userProfile, hasRole } = useUserProfile();
@@ -397,16 +399,17 @@ export default function EnhancedDashboard() {
             </Card>
           </div>
 
-          <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-7">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="realtime">Real-time</TabsTrigger>
-              <TabsTrigger value="pwa">PWA Center</TabsTrigger>
-              <TabsTrigger value="monitoring">Monitor</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
-              <TabsTrigger value="collaboration">Collaboration</TabsTrigger>
-              <TabsTrigger value="security">Security</TabsTrigger>
-            </TabsList>
+           <Tabs defaultValue="overview" className="space-y-6">
+             <TabsList className="grid w-full grid-cols-8">
+               <TabsTrigger value="overview">Overview</TabsTrigger>
+               <TabsTrigger value="mobile">Mobile</TabsTrigger>
+               <TabsTrigger value="realtime">Real-time</TabsTrigger>
+               <TabsTrigger value="pwa">PWA Center</TabsTrigger>
+               <TabsTrigger value="monitoring">Monitor</TabsTrigger>
+               <TabsTrigger value="analytics">Analytics</TabsTrigger>
+               <TabsTrigger value="collaboration">Collaboration</TabsTrigger>
+               <TabsTrigger value="security">Security</TabsTrigger>
+             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -417,11 +420,18 @@ export default function EnhancedDashboard() {
                 <PerformanceTestPanel />
                 <SecurityDashboard />
               </div>
-            </TabsContent>
+             </TabsContent>
 
-            <TabsContent value="realtime" className="space-y-6">
-              <RealTimePWADashboard />
-            </TabsContent>
+             <TabsContent value="mobile" className="space-y-6">
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                 <MobileOptimizationPanel />
+                 <OfflineTestSuite />
+               </div>
+             </TabsContent>
+
+             <TabsContent value="realtime" className="space-y-6">
+               <RealTimePWADashboard />
+             </TabsContent>
 
             <TabsContent value="pwa" className="space-y-6">
               <PWAFeatureCenter />
