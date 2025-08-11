@@ -339,9 +339,9 @@ export default function EnhancedAddStudent() {
       queryClient.invalidateQueries({ queryKey: ['students-list'] });
       queryClient.invalidateQueries({ queryKey: ['ultra-fast-students'] });
       
-      toast.success(`Student registered successfully!`);
+      toast.success(`Student "${validation.sanitizedData!.student_name}" registered successfully! Ready for next student.`);
       
-      // Reset form
+      // Reset form for next student
       form.reset();
       setCapturedImages([null, null, null, null, null]);
       setFingerprintData([
@@ -352,8 +352,7 @@ export default function EnhancedAddStudent() {
         { pidData: "", quality: 0 }
       ]);
       
-      // Navigate to students list
-      navigate("/students");
+      // Stay on the same page for next student registration
       
     } catch (error) {
       console.error('Error adding student:', error);
