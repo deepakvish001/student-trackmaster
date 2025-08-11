@@ -25,13 +25,38 @@
     <link rel="apple-touch-icon" href="/public/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png" />
     
     <title>BiometricHub - Enterprise Security Platform</title>
-    <!-- jQuery required by MFS100 SDK -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- MFS100 SDK for fingerprint device -->
-    <script src="/mfs100-9.0.2.6.js"></script>
+    
+    <!-- Preload critical fonts to reduce render blocking -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Geist:wght@300;400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Geist:wght@300;400;500;600;700;800&display=swap"></noscript>
+    
+    <!-- Preload jQuery and MFS100 SDK but defer execution -->
+    <link rel="preload" href="https://code.jquery.com/jquery-3.6.0.min.js" as="script">
+    <link rel="preload" href="/mfs100-9.0.2.6.js" as="script">
   </head>
   <body>
     <div id="root"></div>
+    
+    <!-- Load jQuery and MFS100 SDK asynchronously after critical content -->
+    <script>
+      // Load jQuery asynchronously
+      function loadScript(src, callback) {
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        if (callback) script.onload = callback;
+        document.head.appendChild(script);
+      }
+      
+      // Load jQuery first, then MFS100 SDK
+      loadScript('https://code.jquery.com/jquery-3.6.0.min.js', function() {
+        // jQuery loaded, now load MFS100 SDK
+        loadScript('/mfs100-9.0.2.6.js');
+      });
+    </script>
+    
     <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
