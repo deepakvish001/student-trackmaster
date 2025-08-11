@@ -9,6 +9,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Mail, Lock, Eye, EyeOff, Fingerprint, Shield, Wifi, WifiOff, AlertCircle, CheckCircle, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import loginHeroLogo from '@/assets/login-hero-logo.png';
+import fingerprintLogo from '@/assets/fingerprint-logo.png';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -98,44 +100,56 @@ export default function Login() {
 
         {/* Hero Content */}
         <div className="relative z-10 text-center max-w-lg mx-auto">
-          {/* Large Branding Icon */}
+          {/* Large Branding Icon with Custom Logo */}
           <div className="mb-12">
-            <div className="w-32 h-32 mx-auto bg-gradient-to-br from-orange-500 to-orange-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-orange-500/25 mb-8">
-              <Fingerprint className="w-16 h-16 text-white" />
+            <div className="w-40 h-40 mx-auto bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-500/30 mb-8 border border-white/10 relative overflow-hidden">
+              {/* Background glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-purple-600/20 animate-pulse"></div>
+              <img 
+                src={fingerprintLogo} 
+                alt="SecureAuth Fingerprint" 
+                className="w-24 h-24 object-contain relative z-10 filter drop-shadow-lg"
+              />
             </div>
             <div className="space-y-4">
               <h1 className="text-5xl font-bold text-white mb-2">
-                Biometric
-                <span className="text-orange-500">Hub</span>
+                Secure
+                <span className="text-blue-400">Auth</span>
               </h1>
-              <div className="w-20 h-1 bg-orange-500 mx-auto rounded-full"></div>
+              <div className="w-20 h-1 bg-gradient-to-r from-blue-400 to-purple-500 mx-auto rounded-full"></div>
+              <p className="text-xl text-gray-300 font-light">Biometric Security Platform</p>
             </div>
           </div>
 
           {/* Features List */}
           <div className="space-y-6">
             <p className="text-2xl font-light text-gray-300 leading-relaxed">
-              Enterprise Security
+              Next-Generation
               <br />
-              <span className="text-orange-400 font-medium">Authentication Platform</span>
+              <span className="text-blue-400 font-medium">Biometric Authentication</span>
             </p>
             
             {/* Feature Badges */}
             <div className="space-y-3">
               <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/5 backdrop-blur-sm rounded-full border border-white/10">
-                <Shield className="w-5 h-5 text-orange-400" />
-                <span className="text-white/90 font-medium">Enterprise Grade Security</span>
+                <Shield className="w-5 h-5 text-blue-400" />
+                <span className="text-white/90 font-medium">Multi-Factor Security</span>
+              </div>
+              
+              <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/5 backdrop-blur-sm rounded-full border border-white/10">
+                <Fingerprint className="w-5 h-5 text-purple-400" />
+                <span className="text-white/90 font-medium">Fingerprint Authentication</span>
               </div>
               
               <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/5 backdrop-blur-sm rounded-full border border-white/10">
                 <CheckCircle className="w-5 h-5 text-green-400" />
-                <span className="text-white/90 font-medium">Works Offline</span>
+                <span className="text-white/90 font-medium">Offline Capability</span>
               </div>
               
               {showInstallPrompt && (
-                <div className="inline-flex items-center gap-3 px-6 py-3 bg-orange-500/10 backdrop-blur-sm rounded-full border border-orange-500/20 cursor-pointer hover:bg-orange-500/20 transition-all duration-300" onClick={handleInstallPWA}>
-                  <Download className="w-5 h-5 text-orange-400" />
-                  <span className="text-orange-400 font-medium">Install App</span>
+                <div className="inline-flex items-center gap-3 px-6 py-3 bg-blue-500/10 backdrop-blur-sm rounded-full border border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition-all duration-300" onClick={handleInstallPWA}>
+                  <Download className="w-5 h-5 text-blue-400" />
+                  <span className="text-blue-400 font-medium">Install SecureAuth App</span>
                 </div>
               )}
             </div>
@@ -210,7 +224,7 @@ export default function Login() {
                 </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-orange-400 group-focus-within:text-orange-300 transition-colors" />
+                    <Mail className="h-5 w-5 text-blue-400 group-focus-within:text-blue-300 transition-colors" />
                   </div>
                   <Input
                     type="email"
@@ -218,7 +232,7 @@ export default function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="pl-12 h-14 bg-white/10 border-white/20 focus:border-orange-400 focus:bg-white/15 rounded-xl text-white placeholder-gray-400 transition-all duration-200 focus:ring-2 focus:ring-orange-400/30"
+                    className="pl-12 h-14 bg-white/10 border-white/20 focus:border-blue-400 focus:bg-white/15 rounded-xl text-white placeholder-gray-400 transition-all duration-200 focus:ring-2 focus:ring-blue-400/30"
                   />
                 </div>
               </div>
@@ -230,7 +244,7 @@ export default function Login() {
                 </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-orange-400 group-focus-within:text-orange-300 transition-colors" />
+                    <Lock className="h-5 w-5 text-blue-400 group-focus-within:text-blue-300 transition-colors" />
                   </div>
                   <Input
                     type={showPassword ? "text" : "password"}
@@ -238,12 +252,12 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="pl-12 pr-12 h-14 bg-white/10 border-white/20 focus:border-orange-400 focus:bg-white/15 rounded-xl text-white placeholder-gray-400 transition-all duration-200 focus:ring-2 focus:ring-orange-400/30"
+                    className="pl-12 pr-12 h-14 bg-white/10 border-white/20 focus:border-blue-400 focus:bg-white/15 rounded-xl text-white placeholder-gray-400 transition-all duration-200 focus:ring-2 focus:ring-blue-400/30"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-orange-400 transition-colors"
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-blue-400 transition-colors"
                   >
                     {showPassword ? (
                       <EyeOff className="h-5 w-5" />
@@ -259,7 +273,7 @@ export default function Login() {
                 <Button
                   type="submit"
                   disabled={isLoading || !isOnline}
-                  className="w-full h-14 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-xl transition-all duration-300 disabled:opacity-50 shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 transform hover:-translate-y-0.5 disabled:transform-none disabled:hover:shadow-lg"
+                  className="w-full h-14 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-300 disabled:opacity-50 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transform hover:-translate-y-0.5 disabled:transform-none disabled:hover:shadow-lg"
                 >
                   {isLoading ? (
                     <div className="flex items-center justify-center gap-3">
@@ -281,9 +295,9 @@ export default function Login() {
             {/* Security Footer */}
             <div className="mt-8 pt-6 border-t border-white/10">
               <div className="text-center">
-                <div className="inline-flex items-center gap-2 text-orange-400 mb-2">
+                <div className="inline-flex items-center gap-2 text-blue-400 mb-2">
                   <Shield className="w-4 h-4" />
-                  <span className="text-sm font-semibold">256-bit SSL Encrypted</span>
+                  <span className="text-sm font-semibold">Enterprise-Grade Encryption</span>
                 </div>
                 <p className="text-xs text-gray-400 leading-relaxed">
                   Your data is protected by enterprise-grade security protocols
