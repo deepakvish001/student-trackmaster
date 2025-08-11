@@ -20,12 +20,14 @@ import {
 import { useMultiFingerprintCapture } from "@/hooks/useMultiFingerprintCapture";
 
 interface CleanFingerprintGridProps {
-  onAllCaptured: (fingerprintData: any[]) => void;
+  onFingerprintCaptured?: (index: number, template: string, imageData: string, quality: number) => void;
+  onAllCaptured?: (fingerprintData: any[]) => void;
   disabled?: boolean;
   targetQuality?: number;
 }
 
 export function CleanFingerprintGrid({ 
+  onFingerprintCaptured,
   onAllCaptured, 
   disabled = false,
   targetQuality = 70
@@ -73,6 +75,24 @@ export function CleanFingerprintGrid({
           toast.success(`${fingerNames[index]} captured!`, {
             description: `Quality: ${fingerprint.quality}%`
           });
+          
+          // Notify parent component immediately when each fingerprint is captured
+          if (onFingerprintCaptured) {
+            onFingerprintCaptured(index, fingerprint.template, fingerprint.imageData, fingerprint.quality);
+          }
+          
+          // Check if all fingerprints are captured and auto-trigger completion
+          const allCapturedNow = fingerprints.filter(fp => fp.status === 'captured').length === 5;
+          if (allCapturedNow && onAllCaptured) {
+            const allData = fingerprints.map(fp => ({
+              index: fp.index,
+              template: fp.template,
+              imageData: fp.imageData,
+              quality: fp.quality,
+              timestamp: fp.timestamp
+            }));
+            setTimeout(() => onAllCaptured(allData), 500); // Small delay to ensure state is updated
+          }
         }
       }
     } catch (error) {
@@ -95,7 +115,7 @@ export function CleanFingerprintGrid({
     }
   }, [retryCapture, fingerNames]);
 
-  // Handle Save All action (manual save)
+  // Handle manual save (optional - for compatibility)
   const handleSaveAll = useCallback(async () => {
     if (!allCaptured) {
       toast.error("Please capture all 5 fingerprints first");
@@ -106,10 +126,6 @@ export function CleanFingerprintGrid({
     try {
       const capturedData = getAllCapturedData();
       
-      toast.success("Starting secure upload...", {
-        description: "Encrypting and saving fingerprint data"
-      });
-      
       // Convert to format expected by parent component
       const fingerprintData = capturedData.fingerprints.map(fp => ({
         index: fp.index,
@@ -119,29 +135,21 @@ export function CleanFingerprintGrid({
         timestamp: fp.timestamp
       }));
       
-      await onAllCaptured(fingerprintData);
+      if (onAllCaptured) {
+        await onAllCaptured(fingerprintData);
+      }
       
-      toast.success("All fingerprints saved successfully!", {
-        description: `${completedCount} fingerprints uploaded to secure database`
-      });
-
-      // Auto-reset after successful save for new capture
-      setTimeout(() => {
-        resetAll();
-        toast.info("System ready for new fingerprint capture", {
-          description: "All data cleared - ready for next student"
-        });
-      }, 2000);
+      toast.success("All fingerprints processed successfully!");
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Save failed';
-      toast.error("Failed to save fingerprints", {
+      toast.error("Failed to process fingerprints", {
         description: errorMessage
       });
     } finally {
       setSavingToSupabase(false);
     }
-  }, [allCaptured, getAllCapturedData, onAllCaptured, completedCount, resetAll]);
+  }, [allCaptured, getAllCapturedData, onAllCaptured]);
 
   // Handle Reset Device
   const handleResetDevice = useCallback(() => {
@@ -346,7 +354,7 @@ export function CleanFingerprintGrid({
         ))}
       </div>
 
-      {/* Save All Button - Only show when all captured */}
+      {/* Success Message - Show when all captured */}
       {allCaptured && (
         <Card className="border-2 border-green-500 bg-green-500/10 text-white">
           <CardContent className="pt-6 pb-4">
@@ -360,27 +368,9 @@ export function CleanFingerprintGrid({
                 <h3 className="text-lg font-bold text-white mb-2">
                   All Fingerprints Captured Successfully!
                 </h3>
-                <p className="text-sm text-gray-300 mb-4">
-                  Average Quality: {averageQuality}% • Enhanced 2x Scale • Ready to Save
+                <p className="text-sm text-gray-300">
+                  Average Quality: {averageQuality}% • Enhanced 2x Scale • Ready to Submit Form
                 </p>
-                <Button
-                  size="lg"
-                  onClick={handleSaveAll}
-                  disabled={savingToSupabase}
-                  className="bg-green-500 hover:bg-green-600 text-white font-bold px-8 py-3"
-                >
-                  {savingToSupabase ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Saving to Database...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-5 w-5" />
-                      Save All Fingerprints
-                    </>
-                  )}
-                </Button>
               </div>
             </div>
           </CardContent>

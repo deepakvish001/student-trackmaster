@@ -84,37 +84,47 @@ export default function EnhancedAddStudent() {
     { pidData: "", quality: 0 }
   ]);
 
-  // Handle multi-fingerprint capture completion
-  const handleAllFingerprintsCaptured = async (fingerprintData: any[]) => {
-    console.log('All fingerprints captured:', fingerprintData);
+  // Handle individual fingerprint captures
+  const handleFingerprintCaptured = async (index: number, template: string, imageData: string, quality: number) => {
+    console.log(`Fingerprint ${index} captured:`, { template: template?.length, imageData: imageData?.length, quality });
     
-    // Convert to form format
-    const fingerprints = ["", "", "", "", ""];
-    const images: (string | null)[] = [null, null, null, null, null];
-    const newFingerprintData: FingerprintData[] = [];
+    // Update fingerprints array
+    const newFingerprints = [...form.getValues().fingerprints];
+    newFingerprints[index] = template || imageData || 'captured';
+    form.setValue("fingerprints", newFingerprints);
     
-    fingerprintData.forEach((fp) => {
-      if (fp.index >= 0 && fp.index < 5) {
-        fingerprints[fp.index] = fp.template || fp.imageData || 'captured';
-        images[fp.index] = fp.imageData || null;
-        
-        newFingerprintData[fp.index] = {
-          pidData: fp.template || 'enhanced_capture',
-          imageData: fp.imageData,
-          quality: fp.quality
-        };
-      }
-    });
+    // Update images array  
+    const newImages = [...capturedImages];
+    newImages[index] = imageData || null;
+    setCapturedImages(newImages);
     
-    // Update form state
-    form.setValue("fingerprints", fingerprints);
-    setCapturedImages(images);
+    // Update fingerprint data
+    const newFingerprintData = [...fingerprintData];
+    newFingerprintData[index] = {
+      pidData: template || 'enhanced_capture',
+      imageData: imageData,
+      quality: quality || 0
+    };
     setFingerprintData(newFingerprintData);
     
     // Trigger form validation
     form.trigger("fingerprints");
     
-    toast.success(`All 5 fingerprints captured successfully!`);
+    toast.success(`Fingerprint ${index + 1} captured! Quality: ${quality}%`);
+  };
+
+  // Handle all fingerprints completion (called by fingerprint component)
+  const handleAllFingerprintsCaptured = async (fingerprintData: any[]) => {
+    console.log('All fingerprints captured automatically:', fingerprintData);
+    
+    // Process each fingerprint
+    fingerprintData.forEach((fp, index) => {
+      if (fp && index < 5) {
+        handleFingerprintCaptured(index, fp.template, fp.imageData, fp.quality);
+      }
+    });
+    
+    toast.success("All 5 fingerprints captured! Ready to submit.");
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -399,8 +409,10 @@ export default function EnhancedAddStudent() {
             {/* Fingerprint Capture */}
             <div className="mb-8">
               <CleanFingerprintGrid
+                onFingerprintCaptured={handleFingerprintCaptured}
                 onAllCaptured={handleAllFingerprintsCaptured}
                 disabled={isSubmitting}
+                targetQuality={70}
               />
             </div>
               
