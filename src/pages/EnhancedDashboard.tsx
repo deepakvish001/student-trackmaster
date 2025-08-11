@@ -16,6 +16,11 @@ import { useInstantStudentUpdates } from '@/hooks/useInstantStudentUpdates';
 import { useUltraFastDashboard } from '@/hooks/useUltraFastDashboard';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { CollaborationIndicator } from '@/components/CollaborationIndicator';
+import { AdvancedSyncStatus } from '@/components/AdvancedSyncStatus';
+import { PWAManagementPanel } from '@/components/PWAManagementPanel';
+import { ConflictResolutionDialog } from '@/components/ConflictResolutionDialog';
+import { SyncButton } from '@/components/SyncButton';
 export default function EnhancedDashboard() {
   const {
     profile,
@@ -375,6 +380,11 @@ export default function EnhancedDashboard() {
                 )}
               </CardContent>
             </Card>
+          </div>
+
+          {/* PWA Management Panel */}
+          <div className="mt-8">
+            <PWAManagementPanel />
           </div>
         </div>
       </div>
