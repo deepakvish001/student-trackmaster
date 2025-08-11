@@ -140,6 +140,13 @@ export default function EnhancedAddStudent() {
       return;
     }
 
+    // Check if all fingerprints are captured before submission
+    const validFingerprints = values.fingerprints.filter(fp => fp && fp.length > 100);
+    if (validFingerprints.length < 5) {
+      toast.error("Please capture all 5 fingerprints before submitting");
+      return;
+    }
+
     setIsSubmitting(true);
     console.log('Starting form submission...', {
       name: values.name,
