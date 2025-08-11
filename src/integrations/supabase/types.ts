@@ -561,6 +561,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      security_check_passed: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       set_limit: {
         Args: { "": number }
         Returns: number
