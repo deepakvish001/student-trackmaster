@@ -60,7 +60,16 @@ export default function StudentList() {
     sortBy,
     sortOrder,
     pageSize: 1000 // Show all students without pagination
-  });
+   });
+
+  // Debug students data
+  useEffect(() => {
+    console.log('🔍 StudentList: Students data updated:', {
+      count: students.length,
+      totalStats: stats.totalStudents,
+      students: students.map(s => ({ id: s.id, name: s.student_name }))
+    });
+  }, [students, stats.totalStudents]);
 
   // Real-time clock update
   useEffect(() => {

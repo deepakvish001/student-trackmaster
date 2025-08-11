@@ -165,6 +165,8 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
     );
   };
 
+  console.log('🔍 EnhancedStudentTable: Rendering', students.length, 'students');
+  
   return (
     <>
       <div className="rounded-md border">
@@ -186,7 +188,9 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
                 </TableCell>
               </TableRow>
             ) : (
-              students.map((student) => (
+              students.map((student, index) => {
+                console.log('🔍 Rendering student row:', index + 1, student.student_name);
+                return (
                 <TableRow key={student.id} className="hover:bg-muted/50 hover:text-foreground transition-colors duration-300">
                   <TableCell className="font-medium">
                     <div>
@@ -239,10 +243,11 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
                     />
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
-        </Table>
+      </Table>
       </div>
 
       {/* Fullscreen Fingerprint Preview */}
