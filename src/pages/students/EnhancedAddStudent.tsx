@@ -19,8 +19,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
-import { OfflineCapableForm } from "@/components/OfflineCapableForm";
-import { useOfflineStudent } from "@/hooks/useOfflineStudent";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BatchSelector } from "@/components/BatchSelector";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,8 +61,6 @@ export default function EnhancedAddStudent() {
   const navigate = useNavigate();
   const { user, encryptionKey } = useEnhancedAuth();
   const { logEvent } = useAuditLog();
-  const { useCreateStudent } = useOfflineStudent();
-  const createStudentMutation = useCreateStudent();
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -289,39 +285,33 @@ export default function EnhancedAddStudent() {
   return (
     <DashboardLayout>
       <div className="min-h-screen bg-black text-white">
-        <OfflineCapableForm 
-          className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto bg-transparent border-0"
-          formData={form.getValues()}
-          isDirty={form.formState.isDirty}
-          isSubmitting={isSubmitting}
-        >
-          <div className="mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
+        <div className="p-8 max-w-7xl mx-auto">
+          
+          {/* Page Heading */}
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold text-white">
               Add <span className="text-orange-500">Student</span>
             </h1>
           </div>
 
-          {/* Form Fields with Responsive Grid */}
+          {/* Form Fields with Labels */}
           <Form {...form}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            <div className="grid grid-cols-5 gap-6 mb-8">
               {/* Student Name */}
               <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
-                  <FormItem className="col-span-1 sm:col-span-2 lg:col-span-1">
-                    <FormLabel className="text-white font-medium mb-2 block flex items-center gap-2">
-                      <User className="w-4 h-4 text-orange-500" />
-                      Student Name
-                    </FormLabel>
+                  <FormItem>
+                    <FormLabel className="text-white font-medium mb-2 block">Student Name</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Enter Student Name"
                         {...field}
-                        className="h-12 sm:h-14 bg-black border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400 text-sm sm:text-base"
+                        className="h-12 bg-black border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400"
                       />
                     </FormControl>
-                    <FormMessage className="text-red-400 mt-1 text-xs sm:text-sm" />
+                    <FormMessage className="text-red-400 mt-1" />
                   </FormItem>
                 )}
               />
@@ -331,19 +321,16 @@ export default function EnhancedAddStudent() {
                 control={form.control}
                 name="mobile"
                 render={({ field }) => (
-                  <FormItem className="col-span-1">
-                    <FormLabel className="text-white font-medium mb-2 block flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-orange-500" />
-                      Mobile
-                    </FormLabel>
+                  <FormItem>
+                    <FormLabel className="text-white font-medium mb-2 block">Mobile</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Enter Mobile"
                         {...field}
-                        className="h-12 sm:h-14 bg-black border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400 text-sm sm:text-base"
+                        className="h-12 bg-black border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400"
                       />
                     </FormControl>
-                    <FormMessage className="text-red-400 mt-1 text-xs sm:text-sm" />
+                    <FormMessage className="text-red-400 mt-1" />
                   </FormItem>
                 )}
               />
@@ -353,20 +340,17 @@ export default function EnhancedAddStudent() {
                 control={form.control}
                 name="email"
                 render={({ field }) => (
-                  <FormItem className="col-span-1 sm:col-span-2 lg:col-span-1">
-                    <FormLabel className="text-white font-medium mb-2 block flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-orange-500" />
-                      Email
-                    </FormLabel>
+                  <FormItem>
+                    <FormLabel className="text-white font-medium mb-2 block">Email</FormLabel>
                     <FormControl>
                       <Input
                         type="email"
                         placeholder="Enter Email"
                         {...field}
-                        className="h-12 sm:h-14 bg-black border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400 text-sm sm:text-base"
+                        className="h-12 bg-black border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400"
                       />
                     </FormControl>
-                    <FormMessage className="text-red-400 mt-1 text-xs sm:text-sm" />
+                    <FormMessage className="text-red-400 mt-1" />
                   </FormItem>
                 )}
               />
@@ -376,13 +360,10 @@ export default function EnhancedAddStudent() {
                 control={form.control}
                 name="batchId"
                 render={({ field }) => (
-                  <FormItem className="col-span-1">
-                    <FormLabel className="text-white font-medium mb-2 block flex items-center gap-2">
-                      <GraduationCap className="w-4 h-4 text-orange-500" />
-                      Batch
-                    </FormLabel>
+                  <FormItem>
+                    <FormLabel className="text-white font-medium mb-2 block">Batch</FormLabel>
                     <FormControl>
-                      <div className="h-12 sm:h-14 bg-black border border-gray-600 focus-within:border-orange-500 rounded-lg">
+                      <div className="h-12 bg-black border border-gray-600 focus-within:border-orange-500 rounded-lg">
                         <BatchSelector 
                           value={field.value} 
                           onChange={field.onChange}
@@ -390,7 +371,7 @@ export default function EnhancedAddStudent() {
                         />
                       </div>
                     </FormControl>
-                    <FormMessage className="text-red-400 mt-1 text-xs sm:text-sm" />
+                    <FormMessage className="text-red-400 mt-1" />
                   </FormItem>
                 )}
               />
@@ -400,26 +381,23 @@ export default function EnhancedAddStudent() {
                 control={form.control}
                 name="address"
                 render={({ field }) => (
-                  <FormItem className="col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-1">
-                    <FormLabel className="text-white font-medium mb-2 block flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-orange-500" />
-                      Address
-                    </FormLabel>
+                  <FormItem>
+                    <FormLabel className="text-white font-medium mb-2 block">Address</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Enter Address"
                         {...field}
-                        className="h-12 sm:h-14 bg-black border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400 text-sm sm:text-base"
+                        className="h-12 bg-black border border-gray-600 focus:border-orange-500 rounded-lg text-white placeholder:text-gray-400"
                       />
                     </FormControl>
-                    <FormMessage className="text-red-400 mt-1 text-xs sm:text-sm" />
+                    <FormMessage className="text-red-400 mt-1" />
                   </FormItem>
                 )}
               />
             </div>
 
             {/* Fingerprint Capture */}
-            <div className="mb-6 sm:mb-8">
+            <div className="mb-8">
               <CleanFingerprintGrid
                 onAllCaptured={handleAllFingerprintsCaptured}
                 disabled={isSubmitting}
@@ -427,12 +405,12 @@ export default function EnhancedAddStudent() {
             </div>
               
             {/* Submit Button */}
-            <div className="text-center sm:text-left">
+            <div className="text-left">
               <Button
                 type="submit"
                 disabled={isSubmitting}
                 onClick={form.handleSubmit(onSubmit)}
-                className="w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg font-medium bg-orange-500 hover:bg-orange-600 text-white transition-all duration-300 rounded-lg border-0 disabled:opacity-50 touch-manipulation"
+                className="h-12 px-8 text-lg font-medium bg-orange-500 hover:bg-orange-600 text-white transition-all duration-300 rounded-lg border-0 disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>
@@ -445,7 +423,7 @@ export default function EnhancedAddStudent() {
               </Button>
             </div>
           </Form>
-        </OfflineCapableForm>
+        </div>
       </div>
     </DashboardLayout>
   );

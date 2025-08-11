@@ -529,14 +529,6 @@ export type Database = {
         Args: { event_type: string; event_details?: Json }
         Returns: undefined
       }
-      log_biometric_access: {
-        Args: {
-          access_type: string
-          student_id: string
-          fingerprint_count?: number
-        }
-        Returns: undefined
-      }
       log_file_operation: {
         Args: { operation_type: string; file_details?: Json }
         Returns: undefined

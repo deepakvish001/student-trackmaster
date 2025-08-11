@@ -5,8 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Navigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Fingerprint, Shield } from 'lucide-react';
-import { OfflineStatusIndicator } from '@/components/ui/offline-status-indicator';
-import { PWAInstallBanner } from '@/components/PWAInstallBanner';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -33,14 +31,7 @@ export default function Login() {
   }
 
   return (
-    <>
-      {/* Offline Status and PWA Install */}
-      <div className="fixed top-4 right-4 z-50">
-        <OfflineStatusIndicator />
-      </div>
-      <PWAInstallBanner />
-      
-      <div className="h-screen flex overflow-hidden">
+    <div className="h-screen flex overflow-hidden">
       {/* Left Hero Section - Dark with Orange Accents */}
       <div className="flex-1 bg-black relative flex items-center justify-center p-8 lg:p-12 xl:p-16">
         {/* Subtle Background Pattern */}
@@ -188,7 +179,6 @@ export default function Login() {
           </div>
         </div>
       </div>
-      </div>
-    </>
+    </div>
   );
 }

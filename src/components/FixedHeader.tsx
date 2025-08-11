@@ -6,14 +6,12 @@ interface FixedHeaderProps {
   showSidebarTrigger?: boolean;
   title?: string;
   subtitle?: string;
-  children?: React.ReactNode;
 }
 
 export default function FixedHeader({ 
   showSidebarTrigger = true, 
   title = "BiometricHub",
-  subtitle = "Enterprise Platform",
-  children
+  subtitle = "Enterprise Platform"
 }: FixedHeaderProps) {
 
   return (
@@ -21,9 +19,8 @@ export default function FixedHeader({
       <div className="flex items-center justify-between px-6 py-4">
         {/* Left Section */}
         <div className="flex items-center gap-4">
-          {children}
           {showSidebarTrigger && (
-            <SidebarTrigger className="p-2 hover:bg-muted rounded-lg transition-colors hidden lg:flex" />
+            <SidebarTrigger className="p-2 hover:bg-muted rounded-lg transition-colors" />
           )}
           
           {/* Logo and Title */}
