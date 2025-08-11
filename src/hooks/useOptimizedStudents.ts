@@ -55,7 +55,8 @@ export function useOptimizedStudents(options: UseOptimizedStudentsOptions = {}) 
           finger_4_image,
           finger_5_image,
           batches:batch_id!inner (
-            batch_name
+            batch_name,
+            is_enabled
           )
         `)
         .eq('is_enabled', true);
@@ -126,8 +127,7 @@ export function useOptimizedStudents(options: UseOptimizedStudentsOptions = {}) 
     queryFn: async () => {
       const { data, error } = await supabase
         .from('batches')
-        .select('id, batch_name')
-        .eq('is_enabled', true)
+        .select('id, batch_name, is_enabled')
         .order('batch_name');
       
       if (error) throw error;

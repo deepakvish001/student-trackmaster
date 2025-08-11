@@ -328,7 +328,17 @@ export default function StudentList() {
                   </>
                 )}
               </Button>
-              <Button onClick={() => window.location.href = '/students/enhanced-add'} className="h-12 px-6 bg-sunset-orange hover:bg-sunset-orange/90 text-white rounded-2xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg">
+              <Button 
+                onClick={() => {
+                  const enabledBatches = batches.filter(batch => batch.is_enabled);
+                  if (enabledBatches.length === 0) {
+                    toast.error('No enabled batches available. Enable a batch first to add students.');
+                    return;
+                  }
+                  window.location.href = '/students/enhanced-add';
+                }} 
+                className="h-12 px-6 bg-sunset-orange hover:bg-sunset-orange/90 text-white rounded-2xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg"
+              >
                 <Plus className="h-5 w-5 mr-3" />
                 Add New Student
               </Button>
@@ -371,9 +381,11 @@ export default function StudentList() {
                       <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-vibrant-purple group-focus-within:scale-110 transition-transform duration-300" />
                       <select value={selectedBatch} onChange={e => setSelectedBatch(e.target.value)} className="pl-12 pr-4 h-12 w-full bg-muted/20 border-2 border-border/50 focus:border-vibrant-purple focus:bg-background rounded-xl transition-all duration-300 text-foreground">
                         <option value="all">All Batches</option>
-                        {batches.map(batch => <option key={batch.id} value={batch.id}>
-                            {batch.batch_name}
-                          </option>)}
+                        {batches.map(batch => (
+                          <option key={batch.id} value={batch.id}>
+                            {batch.batch_name} {!batch.is_enabled ? '(Disabled)' : ''}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>

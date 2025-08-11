@@ -35,6 +35,7 @@ export interface Student {
   user_id?: string | null;
   batches?: {
     batch_name: string;
+    is_enabled?: boolean;
   };
 }
 

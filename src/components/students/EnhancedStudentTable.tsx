@@ -197,9 +197,16 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
                     </div>
                   </TableCell>
                   <TableCell>
-                    {student.batches?.batch_name || (
-                      <span className="text-muted-foreground text-sm">No Batch</span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {student.batches?.batch_name || (
+                        <span className="text-muted-foreground text-sm">No Batch</span>
+                      )}
+                      {student.batches?.is_enabled === false && (
+                        <Badge variant="destructive" className="text-xs">
+                          Disabled
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="py-4">
                     <div className="flex space-x-3 justify-center items-center">
