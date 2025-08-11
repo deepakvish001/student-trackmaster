@@ -14,6 +14,8 @@ import { Student } from '@/types';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useOfflineStudents } from '@/hooks/useOfflineStudents';
 import { useOfflineMutations } from '@/hooks/useOfflineMutations';
+import { useCollaborativeStudents } from '@/hooks/useCollaborativeStudents';
+import { SyncButton } from '@/components/SyncButton';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { OfflineTooltip } from '@/components/OfflineTooltip';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -56,7 +58,7 @@ export default function StudentList() {
     goToPreviousPage,
     resetPage,
     refetch
-  } = useOfflineStudents({
+  } = useCollaborativeStudents({
     searchTerm,
     selectedBatch,
     sortBy,
@@ -198,6 +200,8 @@ export default function StudentList() {
             </div>
 
             <div className="flex items-center gap-4">
+              <SyncButton />
+              
               <OfflineTooltip requiresOnline={false}>
                 <Button 
                   onClick={handleDownloadPDF} 

@@ -29,6 +29,9 @@ export interface OfflineStudent {
   local_id?: string;
   operation?: 'insert' | 'update' | 'delete';
   last_sync_attempt?: string;
+  last_synced_at?: string;
+  conflict_resolution?: 'local_wins' | 'remote_wins' | 'merged';
+  version?: number;
 }
 
 export interface OfflineBatch {
@@ -46,6 +49,9 @@ export interface OfflineBatch {
   local_id?: string;
   operation?: 'insert' | 'update' | 'delete';
   last_sync_attempt?: string;
+  last_synced_at?: string;
+  conflict_resolution?: 'local_wins' | 'remote_wins' | 'merged';
+  version?: number;
 }
 
 export interface OfflineFingerprint {
@@ -109,6 +115,8 @@ export interface SyncQueue {
   created_at: string;
   retry_count: number;
   last_error?: string;
+  conflict_data?: any;
+  resolution_strategy?: 'local_wins' | 'remote_wins' | 'merge' | 'manual';
 }
 
 export interface AppMetadata {

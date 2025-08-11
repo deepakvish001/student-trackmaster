@@ -27,7 +27,7 @@ export function useOfflineSync() {
     }
   }, [user]);
 
-  // Sync a single item to Supabase
+  // Sync a single item to Supabase with conflict resolution
   const syncItem = async (item: SyncQueue): Promise<boolean> => {
     if (!user) return false;
 
@@ -36,6 +36,56 @@ export function useOfflineSync() {
       
       // Ensure user_id is set for the operation
       const dataWithUser = { ...data, user_id: user.id };
+
+      // For updates, check for conflicts first
+      if (operation === 'update') {
+        const { data: remoteData, error: fetchError } = await supabase
+          .from(table_name as any)
+          .select('*')
+          .eq('id', record_id)
+          .single();
+
+        if (!fetchError && remoteData && 'updated_at' in remoteData) {
+          const localTimestamp = new Date(data.updated_at).getTime();
+          const remoteTimestamp = new Date((remoteData as any).updated_at).getTime();
+
+          if (remoteTimestamp > localTimestamp) {
+            // Remote is newer - potential conflict
+            console.log('🔄 Conflict detected during sync:', {
+              table: table_name,
+              record_id,
+              local: new Date(data.updated_at).toISOString(),
+              remote: new Date((remoteData as any).updated_at).toISOString()
+            });
+
+            // Update conflict data in sync queue
+            if (item.id) {
+              await offlineDb.sync_queue.update(item.id, {
+                conflict_data: remoteData,
+                resolution_strategy: 'local_wins', // Default to local wins for pending items
+                last_error: 'Conflict detected - remote version is newer'
+              });
+            }
+
+            // Continue with local update (local wins strategy)
+            const conflictResolvedData = {
+              ...dataWithUser,
+              updated_at: new Date().toISOString(), // Update timestamp to make it newest
+              conflict_resolution: 'local_wins'
+            };
+
+            const { error: updateError } = await supabase
+              .from(table_name as any)
+              .update(conflictResolvedData)
+              .eq('id', record_id);
+            
+            if (updateError) throw updateError;
+
+            console.log('✅ Conflict resolved: local wins');
+            return true;
+          }
+        }
+      }
 
       switch (operation) {
         case 'insert':
