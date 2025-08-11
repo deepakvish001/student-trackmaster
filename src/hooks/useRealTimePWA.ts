@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOnlineStatus } from './useOnlineStatus';
 import { useOfflineQueue } from './useOfflineQueue';
 import { usePWANotifications } from './usePWANotifications';
-import { useStableEffect } from './useStableEffect';
 
 interface RealTimePWAState {
   isConnected: boolean;
@@ -63,24 +62,36 @@ export function useRealTimePWA() {
   // Real-time presence tracking
   const presenceChannel = useRef<any>(null);
   const isCleaningUp = useRef(false);
+  const connectionTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // Use stable effect to prevent infinite loops
-  useStableEffect(() => {
-    console.log('[RealTimePWA] Connection effect triggered, online:', isOnline, 'connected:', state.isConnected);
-    
-    if (isOnline && !isInitializing.current && !state.isConnected && !isCleaningUp.current) {
-      initializeRealTimeConnections();
-    } else if (!isOnline && state.isConnected) {
+  // Simple, stable effect with proper cleanup
+  useEffect(() => {
+    // Clear any pending connection attempts
+    if (connectionTimeout.current) {
+      clearTimeout(connectionTimeout.current);
+    }
+
+    // Only initialize if online and not already connected/connecting
+    if (isOnline && !state.isConnected && !isInitializing.current && !isCleaningUp.current) {
+      connectionTimeout.current = setTimeout(() => {
+        initializeRealTimeConnections();
+      }, 1000); // 1 second delay to prevent rapid connections
+    }
+
+    // Cleanup when going offline
+    if (!isOnline && state.isConnected) {
       cleanupConnections();
     }
 
     return () => {
-      cleanupConnections();
+      if (connectionTimeout.current) {
+        clearTimeout(connectionTimeout.current);
+      }
     };
-  }, [isOnline, state.isConnected], 500); // 500ms debounce
+  }, [isOnline]); // Only depend on isOnline
 
   const initializeRealTimeConnections = useCallback(async () => {
-    if (isInitializing.current || state.isConnected || isCleaningUp.current) return;
+    if (isInitializing.current || state.isConnected || isCleaningUp.current || !isOnline) return;
     
     isInitializing.current = true;
     console.log('[RealTimePWA] Initializing real-time connections...');
@@ -284,30 +295,46 @@ export function useRealTimePWA() {
     console.log('[RealTimePWA] Cleaning up connections...');
     isCleaningUp.current = true;
     
+    // Clear connection timeout
+    if (connectionTimeout.current) {
+      clearTimeout(connectionTimeout.current);
+      connectionTimeout.current = null;
+    }
+    
     channelsRef.current.forEach(channel => {
       if (channel) {
-        supabase.removeChannel(channel);
+        try {
+          supabase.removeChannel(channel);
+        } catch (error) {
+          console.warn('[RealTimePWA] Error removing channel:', error);
+        }
       }
     });
     
     if (presenceChannel.current) {
-      supabase.removeChannel(presenceChannel.current);
+      try {
+        supabase.removeChannel(presenceChannel.current);
+      } catch (error) {
+        console.warn('[RealTimePWA] Error removing presence channel:', error);
+      }
       presenceChannel.current = null;
     }
     
     channelsRef.current = [];
     isInitializing.current = false;
     
-    // Use setTimeout to avoid triggering re-render during cleanup
+    // Update state without triggering re-render loop
+    setState(prev => ({ 
+      ...prev, 
+      isConnected: false,
+      activeUsers: 0
+    }));
+    
+    // Reset flags after a small delay
     setTimeout(() => {
-      setState(prev => ({ 
-        ...prev, 
-        isConnected: false,
-        activeUsers: 0
-      }));
       isCleaningUp.current = false;
       hasShownConnectedToast.current = false;
-    }, 100);
+    }, 500);
   }, []);
 
   const forceSync = useCallback(async () => {

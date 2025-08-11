@@ -34,7 +34,6 @@ import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 export default function EnhancedDashboard() {
   const { profile: userProfile } = useUserProfile();
   const { isConnected, performanceStats } = useRealTimePWA();
-  const [activeTab, setActiveTab] = useState('overview');
   
   const {
     hasRole
@@ -395,7 +394,7 @@ export default function EnhancedDashboard() {
             </Card>
           </div>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <Tabs defaultValue="overview" className="space-y-6">
             <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="realtime">Real-time</TabsTrigger>
