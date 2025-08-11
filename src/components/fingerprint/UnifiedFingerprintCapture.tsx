@@ -36,14 +36,35 @@ export function UnifiedFingerprintCapture({
       // Import from the correct module based on device type
       if (deviceType === 'mfs100') {
         const { captureFingerprint } = await import('@/utils/mfs100Native');
+        const { convertBitmapToUltraCanvas } = await import('@/utils/ultraFingerprintEnhancer');
+        const { ultraMaxQualityEnhanceFingerprint } = await import('@/utils/fingerprintImageEnhancer');
         
         const result = await captureFingerprint(60, 30);
 
         if (result.httpStaus && result.data && result.data.ErrorCode === "0") {
           const quality = result.data.Quality || 60;
           setQuality(quality);
-          onChange(result.data.BitmapData || '', quality);
-          toast.success(`${fingerName} captured (Quality: ${quality}%)`);
+          
+          // Convert bitmap to ultra-high quality image
+          let processedImage = '';
+          if (result.data.BitmapData) {
+            try {
+              // Convert bitmap to ultra-high quality canvas
+              processedImage = convertBitmapToUltraCanvas(result.data.BitmapData, 2048, 2048);
+              
+              // Apply ultra-maximum quality enhancement
+              if (processedImage) {
+                processedImage = await ultraMaxQualityEnhanceFingerprint(processedImage);
+                console.log('✅ Ultra-high quality enhancement applied successfully');
+              }
+            } catch (error) {
+              console.warn('⚠️ Image enhancement failed, using raw bitmap:', error);
+              processedImage = `data:image/bmp;base64,${result.data.BitmapData}`;
+            }
+          }
+          
+          onChange(processedImage, quality);
+          toast.success(`${fingerName} captured with ultra-high quality (${quality}%)`);
         } else {
           throw new Error(result.data?.ErrorDescription || result.err || 'Capture failed');
         }
