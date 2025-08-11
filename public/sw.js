@@ -1,7 +1,7 @@
 // Ultra-High Performance Service Worker for BiometricHub PWA
 // Optimized for maximum speed, responsiveness, and real-time performance
 
-const CACHE_VERSION = 'v2.2.0';
+const CACHE_VERSION = 'v2.3.0';
 const STATIC_CACHE = `biometric-hub-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `biometric-hub-dynamic-${CACHE_VERSION}`;
 const API_CACHE = `biometric-hub-api-${CACHE_VERSION}`;
@@ -54,7 +54,7 @@ self.addEventListener('install', (event) => {
       })
     ]).then(() => {
       console.log('[SW] ✅ Ultra-fast installation complete');
-      self.skipWaiting(); // Immediate activation
+      // Don't skip waiting on install, wait for user action
     })
   );
 });
@@ -386,24 +386,36 @@ self.addEventListener('notificationclick', (event) => {
   }
 });
 
-// High-performance message handling with update support
+// High-performance message handling with enhanced update support
 self.addEventListener('message', (event) => {
   const { type, payload } = event.data || {};
   
   switch (type) {
     case 'SKIP_WAITING':
       console.log('[SW] 🔄 SKIP_WAITING received - activating new service worker');
+      
+      // Skip waiting immediately
       self.skipWaiting().then(() => {
-        // Notify all clients that the update is complete
-        self.clients.matchAll().then(clients => {
-          clients.forEach(client => {
-            client.postMessage({
-              type: 'UPDATE_COMPLETE',
-              version: CACHE_VERSION,
-              timestamp: Date.now()
+        console.log('[SW] ✅ Skip waiting completed');
+        
+        // Claim all clients to ensure immediate control
+        self.clients.claim().then(() => {
+          console.log('[SW] ✅ Clients claimed successfully');
+          
+          // Notify all clients that the update is complete
+          self.clients.matchAll().then(clients => {
+            console.log('[SW] 📢 Notifying clients of update completion');
+            clients.forEach(client => {
+              client.postMessage({
+                type: 'UPDATE_COMPLETE',
+                version: CACHE_VERSION,
+                timestamp: Date.now()
+              });
             });
           });
         });
+      }).catch(error => {
+        console.error('[SW] ❌ Error during skip waiting:', error);
       });
       break;
       
@@ -422,6 +434,16 @@ self.addEventListener('message', (event) => {
     case 'GET_VERSION':
       // Return current service worker version
       event.ports[0]?.postMessage({
+        version: CACHE_VERSION,
+        timestamp: Date.now()
+      });
+      break;
+      
+    case 'CHECK_UPDATE_STATUS':
+      // Help clients check if update is ready
+      const updateReady = self.registration.waiting !== null;
+      event.ports[0]?.postMessage({
+        updateReady,
         version: CACHE_VERSION,
         timestamp: Date.now()
       });

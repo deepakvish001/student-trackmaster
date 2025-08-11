@@ -44,6 +44,141 @@ export function PWAUpdatePrompt({ registration }: PWAUpdatePromptProps) {
     }, 3000);
   }, []);
 
+  // Check if update was in progress and handle post-reload success
+  useEffect(() => {
+    const updateInProgress = sessionStorage.getItem('pwa_update_in_progress');
+    const updateTimestamp = sessionStorage.getItem('pwa_update_timestamp');
+    
+    if (updateInProgress === 'true' && updateTimestamp) {
+      const timeSinceUpdate = Date.now() - parseInt(updateTimestamp);
+      
+      // If update was recent (within 30 seconds), consider it successful
+      if (timeSinceUpdate < 30000) {
+        console.log('Update completed after page refresh');
+        
+        // Clean up session storage
+        sessionStorage.removeItem('pwa_update_in_progress');
+        sessionStorage.removeItem('pwa_update_timestamp');
+        
+        // Show success message
+        setTimeout(() => {
+          handleUpdateComplete();
+        }, 1000);
+      } else {
+        // Clean up old entries
+        sessionStorage.removeItem('pwa_update_in_progress');
+        sessionStorage.removeItem('pwa_update_timestamp');
+      }
+    }
+  }, [handleUpdateComplete]);
+
+  const handleUpdate = useCallback(async () => {
+    if (!newWorker) {
+      handleUpdateError('No service worker available for update');
+      return;
+    }
+
+    setUpdateState('updating');
+    setUpdateProgress(0);
+    
+    try {
+      console.log('Starting update process...');
+      
+      // Show immediate feedback
+      toast.info('📦 Installing update...', {
+        description: 'Please wait while we update the app'
+      });
+      
+      // Progress animation to 90% then pause
+      let currentProgress = 0;
+      const progressInterval = setInterval(() => {
+        if (currentProgress < 90) {
+          currentProgress += 15;
+          setUpdateProgress(currentProgress);
+        }
+        
+        // Stop at 90% and wait for service worker response
+        if (currentProgress >= 90) {
+          clearInterval(progressInterval);
+          setUpdateProgress(90);
+        }
+      }, 300);
+      
+      // Set up success handler for controllerchange
+      const handleControllerChange = () => {
+        console.log('Service worker controller changed - update successful');
+        clearInterval(progressInterval);
+        clearTimeout(stuckTimeout);
+        setUpdateProgress(100);
+        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+        
+        // Show success and reload
+        setTimeout(() => {
+          handleUpdateComplete();
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        }, 300);
+      };
+      
+      // Listen for controller change
+      navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+      
+      // Tell the waiting service worker to skip waiting and become active
+      console.log('Posting SKIP_WAITING message to service worker');
+      newWorker.postMessage({ type: 'SKIP_WAITING' });
+      
+      // Handle case where update gets stuck at 90%
+      const stuckTimeout = setTimeout(() => {
+        console.log('Update stuck at 90% - showing warning message');
+        
+        // Show "taking longer than expected" message
+        toast.warning('⏳ Update taking longer than expected...', {
+          description: 'Refreshing page to complete update',
+          duration: 2000
+        });
+        
+        // Clean up listeners
+        clearInterval(progressInterval);
+        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+        
+        // Wait a moment for user to see the message, then refresh
+        setTimeout(() => {
+          console.log('Force refreshing to complete update');
+          
+          // Mark that we're expecting an update completion
+          sessionStorage.setItem('pwa_update_in_progress', 'true');
+          sessionStorage.setItem('pwa_update_timestamp', Date.now().toString());
+          
+          // Force reload to complete the update
+          window.location.reload();
+        }, 2000);
+        
+      }, 5000); // Wait 5 seconds at 90% before showing stuck message
+      
+      // Fallback: Complete update after reasonable time regardless
+      setTimeout(() => {
+        if (updateState === 'updating') {
+          console.log('Fallback: Force completing update');
+          clearInterval(progressInterval);
+          clearTimeout(stuckTimeout);
+          navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+          
+          setUpdateProgress(100);
+          handleUpdateComplete();
+          
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        }
+      }, 8000); // Total fallback after 8 seconds
+      
+    } catch (error) {
+      console.error('Update failed:', error);
+      handleUpdateError('Update failed. Please try refreshing the page.');
+    }
+  }, [newWorker, updateState, handleUpdateComplete, handleUpdateError]);
+
   useEffect(() => {
     if (!registration) return;
 
@@ -102,79 +237,7 @@ export function PWAUpdatePrompt({ registration }: PWAUpdatePromptProps) {
       registration.removeEventListener('updatefound', handleUpdateFound);
       navigator.serviceWorker.removeEventListener('message', handleMessage);
     };
-  }, [registration, handleUpdateComplete]);
-
-  const handleUpdate = useCallback(async () => {
-    if (!newWorker) {
-      handleUpdateError('No service worker available for update');
-      return;
-    }
-
-    setUpdateState('updating');
-    setUpdateProgress(0);
-    
-    try {
-      console.log('Starting update process...');
-      
-      // Show immediate feedback
-      toast.info('📦 Installing update...', {
-        description: 'Please wait while we update the app'
-      });
-      
-      // Start progress animation
-      let currentProgress = 0;
-      const progressInterval = setInterval(() => {
-        currentProgress += 15;
-        if (currentProgress <= 100) {
-          setUpdateProgress(currentProgress);
-        }
-        if (currentProgress >= 100) {
-          clearInterval(progressInterval);
-        }
-      }, 300);
-      
-      // Set up success handler for controllerchange
-      const handleControllerChange = () => {
-        console.log('Service worker controller changed - update successful');
-        clearInterval(progressInterval);
-        setUpdateProgress(100);
-        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
-        
-        // Show success and reload
-        setTimeout(() => {
-          handleUpdateComplete();
-          setTimeout(() => {
-            window.location.reload();
-          }, 1000);
-        }, 300);
-      };
-      
-      // Listen for controller change
-      navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
-      
-      // Tell the waiting service worker to skip waiting and become active
-      console.log('Posting SKIP_WAITING message to service worker');
-      newWorker.postMessage({ type: 'SKIP_WAITING' });
-      
-      // Simplified timeout - if no response in 3 seconds, force reload
-      setTimeout(() => {
-        console.log('Force completing update after 3 seconds');
-        clearInterval(progressInterval);
-        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
-        
-        setUpdateProgress(100);
-        handleUpdateComplete();
-        
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
-      }, 3000);
-      
-    } catch (error) {
-      console.error('Update failed:', error);
-      handleUpdateError('Update failed. Please try refreshing the page.');
-    }
-  }, [newWorker, handleUpdateComplete, handleUpdateError]);
+  }, [registration, handleUpdate, handleUpdateComplete]);
 
   // Don't show if hidden or no update available
   if (updateState === 'hidden') return null;
