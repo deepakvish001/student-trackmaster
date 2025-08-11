@@ -20,6 +20,10 @@ import { CollaborationIndicator } from '@/components/CollaborationIndicator';
 import { AdvancedSyncStatus } from '@/components/AdvancedSyncStatus';
 import { PWAManagementPanel } from '@/components/PWAManagementPanel';
 import { SecurityDashboard } from '@/components/SecurityDashboard';
+import { PWAControlCenter } from '@/components/PWAControlCenter';
+import { RealTimeSystemMonitor } from '@/components/monitoring/RealTimeSystemMonitor';
+import { BiometricAnalyticsDashboard } from '@/components/analytics/BiometricAnalyticsDashboard';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConflictResolutionDialog } from '@/components/ConflictResolutionDialog';
 import { SyncButton } from '@/components/SyncButton';
 export default function EnhancedDashboard() {
@@ -383,15 +387,36 @@ export default function EnhancedDashboard() {
             </Card>
           </div>
 
-          {/* PWA Management Panel */}
-          <div className="mt-8">
-            <PWAManagementPanel />
-          </div>
+          <Tabs defaultValue="overview" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="monitoring">System Monitor</TabsTrigger>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
+              <TabsTrigger value="security">Security</TabsTrigger>
+            </TabsList>
 
-          {/* Security Dashboard */}
-          <div className="mt-8">
-            <SecurityDashboard />
-          </div>
+            <TabsContent value="overview" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <PWAManagementPanel />
+                <SecurityDashboard />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="monitoring">
+              <RealTimeSystemMonitor />
+            </TabsContent>
+
+            <TabsContent value="analytics">
+              <BiometricAnalyticsDashboard />
+            </TabsContent>
+
+            <TabsContent value="security">
+              <div className="grid grid-cols-1 gap-6">
+                <SecurityDashboard />
+                <PWAControlCenter />
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </DashboardLayout>
