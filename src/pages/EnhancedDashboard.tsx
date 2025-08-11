@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import DashboardLayout from '@/components/DashboardLayout';
+import { LoadTestingPanel } from '@/components/load-testing/LoadTestingPanel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -400,8 +401,9 @@ export default function EnhancedDashboard() {
           </div>
 
            <Tabs defaultValue="overview" className="space-y-6">
-             <TabsList className="grid w-full grid-cols-8">
+             <TabsList className="grid w-full grid-cols-9">
                <TabsTrigger value="overview">Overview</TabsTrigger>
+               <TabsTrigger value="load-testing">Load Testing</TabsTrigger>
                <TabsTrigger value="mobile">Mobile</TabsTrigger>
                <TabsTrigger value="realtime">Real-time</TabsTrigger>
                <TabsTrigger value="pwa">PWA Center</TabsTrigger>
@@ -411,16 +413,20 @@ export default function EnhancedDashboard() {
                <TabsTrigger value="security">Security</TabsTrigger>
              </TabsList>
 
-            <TabsContent value="overview" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <UltraPerformancePanel />
-                <PWAManagementPanel />
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <PerformanceTestPanel />
-                <SecurityDashboard />
-              </div>
-             </TabsContent>
+             <TabsContent value="overview" className="space-y-6">
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                 <UltraPerformancePanel />
+                 <PWAManagementPanel />
+               </div>
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                 <PerformanceTestPanel />
+                 <SecurityDashboard />
+               </div>
+              </TabsContent>
+
+              <TabsContent value="load-testing" className="space-y-6">
+                <LoadTestingPanel />
+              </TabsContent>
 
              <TabsContent value="mobile" className="space-y-6">
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
