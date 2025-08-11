@@ -70,19 +70,21 @@ export function useOptimizedStudents(options: UseOptimizedStudentsOptions = {}) 
         query = query.eq('batch_id', selectedBatch);
       }
 
-      // Apply sorting - no pagination to show all students
+      // Apply sorting - fetch all students at once for real-time display
       query = query.order(sortBy, { ascending: sortOrder === 'asc' });
 
-      const { data, error, count } = await query;
+      const { data, error } = await query;
       if (error) {
         console.error('Error fetching students:', error);
         throw error;
       }
 
+      console.log(`✅ Fetched ${data?.length || 0} students in real-time`);
+
       return {
         students: data || [],
-        totalCount: count || 0,
-        hasMore: (data?.length || 0) === pageSize
+        totalCount: data?.length || 0,
+        hasMore: false // No pagination needed
       };
     },
     enabled,
@@ -185,11 +187,13 @@ export function useOptimizedStudents(options: UseOptimizedStudentsOptions = {}) 
     };
   }, [queryClient]);
 
-  // Computed stats for better performance
+  // Computed stats for better performance using actual student data
   const stats = useMemo(() => {
     const students = studentsQuery.data?.students || [];
+    const totalStudents = students.length; // Use actual fetched students count
+    
     return {
-      totalStudents: countQuery.data || 0,
+      totalStudents,
       completeBiometrics: students.filter(s => 
         [s.finger_1, s.finger_2, s.finger_3, s.finger_4, s.finger_5].filter(Boolean).length === 5
       ).length,
@@ -201,12 +205,12 @@ export function useOptimizedStudents(options: UseOptimizedStudentsOptions = {}) 
         [s.finger_1, s.finger_2, s.finger_3, s.finger_4, s.finger_5].filter(Boolean).length === 0
       ).length
     };
-  }, [studentsQuery.data?.students, countQuery.data]);
+  }, [studentsQuery.data?.students]);
 
-  // Pagination helpers
-  const totalPages = Math.ceil((countQuery.data || 0) / pageSize);
-  const hasNextPage = currentPage < totalPages - 1;
-  const hasPreviousPage = currentPage > 0;
+  // Pagination helpers (simplified since we're showing all students)
+  const totalPages = 1; // Only one page with all students
+  const hasNextPage = false;
+  const hasPreviousPage = false;
 
   const goToPage = (page: number) => {
     if (page >= 0 && page < totalPages) {
@@ -244,7 +248,7 @@ export function useOptimizedStudents(options: UseOptimizedStudentsOptions = {}) 
     students: studentsQuery.data?.students || [],
     batches: batchesQuery.data || [],
     stats,
-    totalCount: countQuery.data || 0,
+    totalCount: studentsQuery.data?.students?.length || 0, // Use actual count of fetched students
     
     // Loading states
     isLoading: studentsQuery.isLoading || countQuery.isLoading,

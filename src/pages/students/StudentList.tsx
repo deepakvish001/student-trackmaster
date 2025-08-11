@@ -420,7 +420,7 @@ export default function StudentList() {
                 </div>
                 <div>
                   <CardTitle className="text-xl font-bold text-foreground">Student Database</CardTitle>
-                  <p className="text-sm text-muted-foreground">{students.length} active student records</p>
+                  <p className="text-sm text-muted-foreground">{stats.totalStudents} active student records</p>
                 </div>
               </div>
             </CardHeader>
