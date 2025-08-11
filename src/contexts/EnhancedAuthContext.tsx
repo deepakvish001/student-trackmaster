@@ -1,14 +1,8 @@
-
-/**
- * Phase 2: Enhanced Authentication Context with Biometric Security
- * Advanced auth context with encryption key management and audit logging
- */
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { Session, User } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
-import type { User, Session } from '@supabase/supabase-js';
 import { logSecurityEvent } from '@/utils/inputSanitization';
 import { 
   generateEncryptionKey, 
@@ -37,7 +31,15 @@ interface EnhancedAuthContextType {
 const EnhancedAuthContext = createContext<EnhancedAuthContextType | undefined>(undefined);
 
 export function EnhancedAuthProvider({ children }: { children: React.ReactNode }) {
-  console.log('EnhancedAuthProvider mounting');
+  const mountRef = useRef(false);
+  const initializingRef = useRef(false);
+  
+  // Only log mounting once
+  if (!mountRef.current) {
+    console.log('EnhancedAuthProvider mounting');
+    mountRef.current = true;
+  }
+  
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
@@ -51,11 +53,10 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
   
   const navigate = useNavigate();
 
-  // Simple security logging without circular dependency
-  const logAuthEvent = async (type: string, data?: any) => {
+  // Stable callbacks
+  const logAuthEvent = useCallback(async (type: string, data?: any) => {
     try {
       console.log('Auth Event:', type, data);
-      // Store in local storage for now to avoid circular dependency
       const event = {
         type,
         data,
@@ -66,12 +67,13 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
     } catch (error) {
       console.error('Failed to log auth event:', error);
     }
-  };
+  }, [user?.id]);
 
-  // Initialize offline data after authentication
-  const initializeEncryptionKey = async (userId: string) => {
+  const initializeEncryptionKey = useCallback(async (userId: string) => {
+    if (initializingRef.current) return;
+    initializingRef.current = true;
+    
     try {
-      // Try to get existing key from localStorage (in production, use secure storage)
       const storedKey = localStorage.getItem(`biometric_key_${userId}`);
       
       if (storedKey) {
@@ -83,10 +85,7 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
         console.log('Generating new encryption key');
         const key = await generateEncryptionKey();
         const exportedKey = await exportEncryptionKey(key);
-        
-        // Store key securely (in production, use proper key management)
         localStorage.setItem(`biometric_key_${userId}`, exportedKey);
-        
         setEncryptionKey(key);
         logSecurityEvent('ENCRYPTION_KEY_CREATED', { userId });
       }
@@ -99,153 +98,20 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
         error: error instanceof Error ? error.message : 'Unknown error'
       });
       setSecurityLevel('low');
+    } finally {
+      initializingRef.current = false;
     }
-  };
+  }, []);
 
-  // Update activity metrics
-  const updateActivity = () => {
+  const updateActivity = useCallback(() => {
     setSessionMetrics(prev => ({
       ...prev,
       lastActivity: new Date(),
       activityCount: prev.activityCount + 1
     }));
-  };
-
-  // Monitor user activity
-  useEffect(() => {
-    if (user) {
-      const handleActivity = () => updateActivity();
-      
-      // Add activity listeners
-      document.addEventListener('click', handleActivity);
-      document.addEventListener('keypress', handleActivity);
-      document.addEventListener('scroll', handleActivity);
-      
-      // Activity monitoring interval
-      const activityInterval = setInterval(() => {
-        if (sessionMetrics.lastActivity) {
-          const timeSinceActivity = Date.now() - sessionMetrics.lastActivity.getTime();
-          
-          // Log suspicious inactivity (more than 30 minutes)
-          if (timeSinceActivity > 30 * 60 * 1000) {
-            logSecurityEvent('SUSPICIOUS_INACTIVITY', {
-              userId: user.id,
-              inactivityMinutes: Math.floor(timeSinceActivity / 60000)
-            });
-          }
-        }
-      }, 5 * 60 * 1000); // Check every 5 minutes
-      
-      return () => {
-        document.removeEventListener('click', handleActivity);
-        document.removeEventListener('keypress', handleActivity);
-        document.removeEventListener('scroll', handleActivity);
-        clearInterval(activityInterval);
-      };
-    }
-  }, [user, sessionMetrics.lastActivity]);
-
-  useEffect(() => {
-    // Enhanced session management with security monitoring
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        logSecurityEvent('AUTH_SESSION_ERROR', { error: error.message });
-        console.error('Session retrieval error:', error);
-      }
-      
-      if (session?.user) {
-        setUser(session.user);
-        setSession(session);
-        setSessionMetrics({
-          loginTime: new Date(),
-          lastActivity: new Date(),
-          activityCount: 1
-        });
-        
-        // Initialize encryption for biometric data
-        initializeEncryptionKey(session.user.id);
-        
-        auditBiometricAccess('SESSION_RESTORED', {
-          userId: session.user.id,
-          success: true
-        });
-      }
-      
-      setIsLoading(false);
-    });
-
-    // Enhanced auth state monitoring
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state change:', event);
-      
-      setUser(session?.user ?? null);
-      setSession(session);
-      setIsLoading(false);
-
-      // Enhanced security logging with session validation
-      if (event === 'SIGNED_IN' && session?.user) {
-        setSessionMetrics({
-          loginTime: new Date(),
-          lastActivity: new Date(),
-          activityCount: 1
-        });
-        
-        await initializeEncryptionKey(session.user.id);
-        
-        logSecurityEvent('USER_LOGIN', { 
-          userId: session.user.id,
-          timestamp: new Date().toISOString(),
-          sessionExpiry: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : null
-        });
-        
-        auditBiometricAccess('USER_LOGIN', {
-          userId: session.user.id,
-          success: true
-        });
-        
-      } else if (event === 'SIGNED_OUT') {
-        // Clean up encryption key
-        if (user?.id) {
-          localStorage.removeItem(`biometric_key_${user.id}`);
-        }
-        
-        setEncryptionKey(null);
-        setSecurityLevel('low');
-        setSessionMetrics({
-          loginTime: null,
-          lastActivity: null,
-          activityCount: 0
-        });
-        
-        logSecurityEvent('USER_LOGOUT', { 
-          timestamp: new Date().toISOString()
-        });
-        
-        auditBiometricAccess('USER_LOGOUT', {
-          success: true
-        });
-        
-      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-        logSecurityEvent('TOKEN_REFRESH', { 
-          userId: session.user.id,
-          timestamp: new Date().toISOString()
-        });
-        
-        updateActivity();
-        
-      } else if (event === 'PASSWORD_RECOVERY') {
-        logSecurityEvent('PASSWORD_RECOVERY_INITIATED', {
-          timestamp: new Date().toISOString()
-        });
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     try {
       setIsLoading(true);
       
@@ -262,7 +128,6 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
           userAgent: navigator.userAgent
         });
         
-        // Enhanced security logging
         logAuthEvent('LOGIN_FAILED', { success: false, email, error: error.message });
         
         auditBiometricAccess('LOGIN_FAILED', {
@@ -274,7 +139,6 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
         throw error;
       }
 
-      // Check if user is active after successful authentication
       if (data.user) {
         const { data: profile, error: profileError } = await supabase
           .from('user_profiles')
@@ -298,12 +162,10 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
             fullName: profile.full_name
           });
           
-          // Sign out the user immediately
           await supabase.auth.signOut();
           throw new Error('Your account has been disabled. Please contact your administrator.');
         }
 
-        // Update last login timestamp
         await supabase
           .from('user_profiles')
           .update({ last_login_at: new Date().toISOString() })
@@ -317,7 +179,6 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
       
       toast.success('Successfully logged in');
       
-      // Handle post-login redirect
       const redirectPath = localStorage.getItem('redirectAfterLogin');
       if (redirectPath && redirectPath !== '/login') {
         localStorage.removeItem('redirectAfterLogin');
@@ -333,9 +194,9 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [logAuthEvent, navigate]);
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = useCallback(async (email: string, password: string) => {
     try {
       setIsLoading(true);
       
@@ -383,9 +244,9 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [navigate]);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
@@ -396,36 +257,179 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
         throw error;
       }
       
-      // Clear offline data when logging out
       try {
         await offlineDb.clearAllData();
         console.log('✅ Offline data cleared on logout');
       } catch (offlineError) {
         console.error('Failed to clear offline data:', offlineError);
-        // Don't throw error - logout should still succeed
       }
       
-      // Clean up will be handled by onAuthStateChange
       toast.success('Successfully logged out');
       navigate('/login');
       
     } catch (error: any) {
       toast.error(error.message || 'Error logging out');
     }
-  };
+  }, [navigate]);
+
+  // Initialize session - only once
+  useEffect(() => {
+    let isMounted = true;
+    
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (!isMounted) return;
+      
+      if (error) {
+        logSecurityEvent('AUTH_SESSION_ERROR', { error: error.message });
+        console.error('Session retrieval error:', error);
+      }
+      
+      if (session?.user) {
+        setUser(session.user);
+        setSession(session);
+        setSessionMetrics({
+          loginTime: new Date(),
+          lastActivity: new Date(),
+          activityCount: 1
+        });
+        
+        initializeEncryptionKey(session.user.id);
+        
+        auditBiometricAccess('SESSION_RESTORED', {
+          userId: session.user.id,
+          success: true
+        });
+      }
+      
+      setIsLoading(false);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [initializeEncryptionKey]);
+
+  // Auth state change listener - stable
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change:', event);
+      
+      setUser(session?.user ?? null);
+      setSession(session);
+      setIsLoading(false);
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        setSessionMetrics({
+          loginTime: new Date(),
+          lastActivity: new Date(),
+          activityCount: 1
+        });
+        
+        await initializeEncryptionKey(session.user.id);
+        
+        logSecurityEvent('USER_LOGIN', { 
+          userId: session.user.id,
+          timestamp: new Date().toISOString(),
+          sessionExpiry: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : null
+        });
+        
+        auditBiometricAccess('USER_LOGIN', {
+          userId: session.user.id,
+          success: true
+        });
+        
+      } else if (event === 'SIGNED_OUT') {
+        if (user?.id) {
+          localStorage.removeItem(`biometric_key_${user.id}`);
+        }
+        
+        setEncryptionKey(null);
+        setSecurityLevel('low');
+        setSessionMetrics({
+          loginTime: null,
+          lastActivity: null,
+          activityCount: 0
+        });
+        
+        logSecurityEvent('USER_LOGOUT', { 
+          timestamp: new Date().toISOString()
+        });
+        
+        auditBiometricAccess('USER_LOGOUT', {
+          success: true
+        });
+        
+      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+        logSecurityEvent('TOKEN_REFRESH', { 
+          userId: session.user.id,
+          timestamp: new Date().toISOString()
+        });
+        
+        updateActivity();
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [user?.id, initializeEncryptionKey, updateActivity]);
+
+  // Activity monitoring - stable
+  useEffect(() => {
+    if (!user) return;
+
+    const handleActivity = () => updateActivity();
+    
+    document.addEventListener('click', handleActivity, { passive: true });
+    document.addEventListener('keypress', handleActivity, { passive: true });
+    document.addEventListener('scroll', handleActivity, { passive: true });
+    
+    const activityInterval = setInterval(() => {
+      if (sessionMetrics.lastActivity) {
+        const timeSinceActivity = Date.now() - sessionMetrics.lastActivity.getTime();
+        
+        if (timeSinceActivity > 30 * 60 * 1000) {
+          logSecurityEvent('SUSPICIOUS_INACTIVITY', {
+            userId: user.id,
+            inactivityMinutes: Math.floor(timeSinceActivity / 60000)
+          });
+        }
+      }
+    }, 5 * 60 * 1000);
+    
+    return () => {
+      document.removeEventListener('click', handleActivity);
+      document.removeEventListener('keypress', handleActivity);
+      document.removeEventListener('scroll', handleActivity);
+      clearInterval(activityInterval);
+    };
+  }, [user?.id, sessionMetrics.lastActivity, updateActivity]);
+
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    user,
+    session,
+    encryptionKey,
+    login,
+    signUp,
+    logout,
+    isLoading,
+    securityLevel,
+    sessionMetrics
+  }), [
+    user,
+    session, 
+    encryptionKey,
+    login,
+    signUp,
+    logout,
+    isLoading,
+    securityLevel,
+    sessionMetrics
+  ]);
 
   return (
-    <EnhancedAuthContext.Provider value={{ 
-      user, 
-      session, 
-      encryptionKey,
-      login, 
-      signUp, 
-      logout, 
-      isLoading,
-      securityLevel,
-      sessionMetrics
-    }}>
+    <EnhancedAuthContext.Provider value={contextValue}>
       {children}
     </EnhancedAuthContext.Provider>
   );
