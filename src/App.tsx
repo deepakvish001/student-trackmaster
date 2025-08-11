@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -6,6 +6,7 @@ import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { PWAFeatureCenter } from "@/components/PWAFeatureCenter";
 import { CollaborationIndicator } from "@/components/CollaborationIndicator";
 import { MobileOptimizedLayout } from "@/components/MobileOptimizedLayout";
+import { PWAUpdatePrompt } from "@/components/PWAUpdatePrompt";
 import { QueryClient as TanstackQueryClient, QueryClientProvider as TanstackQueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
@@ -35,6 +36,24 @@ function App() {
 }
 
 function AppWithQueryClient() {
+  const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
+
+  useEffect(() => {
+    // Get the service worker registration
+    const checkRegistration = () => {
+      const registration = (window as any).swRegistration;
+      if (registration) {
+        setSwRegistration(registration);
+      }
+    };
+
+    // Check immediately and then periodically
+    checkRegistration();
+    const interval = setInterval(checkRegistration, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <BrowserRouter>
       <EnhancedAuthProvider>
@@ -47,6 +66,7 @@ function AppWithQueryClient() {
                 <CollaborationIndicator />
               </div>
               <PWAInstallPrompt />
+              <PWAUpdatePrompt registration={swRegistration} />
               <Toaster />
           <Routes>
             {/* Public route - Login only */}
