@@ -15,6 +15,7 @@ import AuditLogs from "./pages/admin/AuditLogs";
 import SystemSettings from "./pages/admin/SystemSettings";
 import { EnhancedAuthProvider } from "./contexts/EnhancedAuthContext";
 import { useGlobalPerformanceOptimization } from "./hooks/useGlobalPerformanceOptimization";
+import { useUltraFastRealTime } from "./hooks/useUltraFastRealTime";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SecurityWrapper from "./components/SecurityWrapper";
 import { SuperAdminRoute, UserRoute } from "./components/RoleBasedRoute";
@@ -30,6 +31,9 @@ function App() {
 function AppWithQueryClient() {
   // Initialize global performance optimization (now inside QueryClient provider)
   useGlobalPerformanceOptimization();
+  
+  // Initialize ultra-fast real-time synchronization for immediate data updates
+  useUltraFastRealTime();
 
   return (
     <BrowserRouter>
