@@ -41,6 +41,7 @@ function AppWithQueryClient() {
     <BrowserRouter>
       <EnhancedAuthProvider>
         <TooltipProvider>
+          <CollaborationBanner />
           <OfflineBanner />
           <PWAInstallPrompt />
           <Toaster />

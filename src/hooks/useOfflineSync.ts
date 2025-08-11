@@ -13,6 +13,7 @@ export function useOfflineSync() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const [syncProgress, setSyncProgress] = useState({ completed: 0, total: 0 });
 
   // Update pending count when data changes
   const updatePendingCount = useCallback(async () => {
@@ -27,7 +28,7 @@ export function useOfflineSync() {
     }
   }, [user]);
 
-  // Sync a single item to Supabase
+  // Enhanced sync with conflict detection and resolution
   const syncItem = async (item: SyncQueue): Promise<boolean> => {
     if (!user) return false;
 
@@ -39,15 +40,109 @@ export function useOfflineSync() {
 
       switch (operation) {
         case 'insert':
-          const { error: insertError } = await supabase
+          // Check if record already exists (could have been created by another user)
+          const { data: existing } = await supabase
             .from(table_name as any)
-            .insert(dataWithUser);
-          
-          if (insertError) throw insertError;
+            .select('id, updated_at')
+            .eq('id', record_id)
+            .single();
+
+          if (existing) {
+            // Record exists - convert to update
+            console.log(`🔄 Converting insert to update for ${table_name}:${record_id}`);
+            const { error: updateError } = await supabase
+              .from(table_name as any)
+              .update({ 
+                ...dataWithUser, 
+                updated_at: new Date().toISOString() 
+              })
+              .eq('id', record_id);
+            
+            if (updateError) throw updateError;
+          } else {
+            // Normal insert
+            const { error: insertError } = await supabase
+              .from(table_name as any)
+              .insert(dataWithUser);
+            
+            if (insertError) throw insertError;
+          }
           break;
 
         case 'update':
+          // Get current remote version for conflict detection
+          const { data: remoteData } = await supabase
+            .from(table_name as any)
+            .select('updated_at')
+            .eq('id', record_id)
+            .single();
+
+          if (remoteData) {
+            const localTimestamp = new Date(data.updated_at).getTime();
+            const remoteTimestamp = new Date(remoteData.updated_at).getTime();
+
+            if (remoteTimestamp > localTimestamp) {
+              // Remote is newer - potential conflict
+              console.log(`⚠️ Conflict detected for ${table_name}:${record_id}`);
+              
+              // Mark sync queue item with conflict
+              await offlineDb.syncQueue.update(item.id, {
+                conflict_detected: true,
+                remote_version: remoteData
+              });
+
+              toast.warning('Data conflict detected', {
+                description: 'Remote version is newer. Using latest timestamp strategy.',
+                duration: 5000,
+              });
+
+              // Don't update - let the conflict resolution handle it
+              return false;
+            }
+          }
+
           const { error: updateError } = await supabase
+            .from(table_name as any)
+            .update({ 
+              ...dataWithUser, 
+              updated_at: new Date().toISOString() 
+            })
+            .eq('id', record_id);
+          
+          if (updateError) throw updateError;
+          break;
+
+        case 'delete':
+          const { error: deleteError } = await supabase
+            .from(table_name as any)
+            .delete()
+            .eq('id', record_id);
+          
+          if (deleteError) throw deleteError;
+          break;
+      }
+
+      // Update local record sync status
+      await updateLocalRecordSyncStatus(table_name, record_id, 'synced');
+      
+      console.log(`✅ Synced ${operation} for ${table_name}:${record_id}`);
+      return true;
+
+    } catch (error: any) {
+      console.error(`❌ Sync failed for ${item.table_name}:${item.record_id}:`, error);
+      
+      // Update retry count
+      await offlineDb.syncQueue.update(item.id, {
+        retry_count: item.retry_count + 1,
+        last_error: error.message
+      });
+
+      // Mark local record with error
+      await updateLocalRecordSyncStatus(item.table_name, item.record_id, 'error');
+      
+      return false;
+    }
+  };
             .from(table_name as any)
             .update(dataWithUser)
             .eq('id', record_id);

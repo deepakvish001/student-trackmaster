@@ -2,9 +2,24 @@ import Dexie, { Table } from 'dexie';
 import type { Database } from '@/integrations/supabase/types';
 
 // Define sync status type
-export type SyncStatus = 'synced' | 'pending' | 'error';
+export type SyncStatus = 'synced' | 'pending' | 'error' | 'conflict';
 
-// Define offline data types with sync metadata
+// Define conflict resolution strategy
+export type ConflictResolution = 'local_wins' | 'remote_wins' | 'latest_timestamp' | 'manual_review';
+
+// Enhanced sync metadata
+export interface SyncMetadata {
+  sync_status: SyncStatus;
+  last_synced_at: string | null;
+  last_sync_attempt: string | null;
+  sync_retries: number;
+  conflict_resolution?: ConflictResolution;
+  remote_updated_at?: string;
+  local_id?: string;
+  operation?: 'insert' | 'update' | 'delete';
+}
+
+// Define offline data types with enhanced sync metadata
 export interface OfflineStudent {
   id: string;
   student_name: string;
@@ -25,10 +40,15 @@ export interface OfflineStudent {
   finger_5_image: string | null;
   mobile_number: string | null;
   address: string | null;
+  // Enhanced sync metadata
   sync_status: SyncStatus;
+  last_synced_at: string | null;
+  last_sync_attempt: string | null;
+  sync_retries: number;
+  conflict_resolution?: ConflictResolution;
+  remote_updated_at?: string;
   local_id?: string;
   operation?: 'insert' | 'update' | 'delete';
-  last_sync_attempt?: string;
 }
 
 export interface OfflineBatch {
@@ -42,6 +62,7 @@ export interface OfflineBatch {
   created_at: string;
   updated_at: string;
   user_id: string | null;
+  // Enhanced sync metadata
   sync_status: SyncStatus;
   local_id?: string;
   operation?: 'insert' | 'update' | 'delete';
