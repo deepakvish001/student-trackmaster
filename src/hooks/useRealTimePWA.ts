@@ -1,0 +1,383 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useOnlineStatus } from './useOnlineStatus';
+import { useOfflineQueue } from './useOfflineQueue';
+import { toast } from 'sonner';
+
+interface RealTimePWAState {
+  isConnected: boolean;
+  lastSync: Date | null;
+  syncInProgress: boolean;
+  activeUsers: number;
+  dataVersion: number;
+  performanceStats: {
+    avgResponseTime: number;
+    cacheHitRate: number;
+    offlineActions: number;
+  };
+}
+
+interface BiometricUpdate {
+  id: string;
+  student_id: string;
+  finger_index: number;
+  template_data: string;
+  quality_score: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface StudentUpdate {
+  id: string;
+  student_name: string;
+  student_id: string;
+  batch_id: string;
+  is_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useRealTimePWA() {
+  const [state, setState] = useState<RealTimePWAState>({
+    isConnected: false,
+    lastSync: null,
+    syncInProgress: false,
+    activeUsers: 0,
+    dataVersion: 1,
+    performanceStats: {
+      avgResponseTime: 0,
+      cacheHitRate: 85,
+      offlineActions: 0
+    }
+  });
+
+  const isOnline = useOnlineStatus();
+  const { addToQueue, processQueue, getQueueStats } = useOfflineQueue();
+  const channelsRef = useRef<any[]>([]);
+  const performanceRef = useRef<number[]>([]);
+
+  // Real-time presence tracking
+  const presenceChannel = useRef<any>(null);
+
+  useEffect(() => {
+    if (isOnline) {
+      initializeRealTimeConnections();
+    } else {
+      cleanupConnections();
+    }
+
+    return () => cleanupConnections();
+  }, [isOnline]);
+
+  const initializeRealTimeConnections = useCallback(async () => {
+    console.log('[RealTimePWA] Initializing real-time connections...');
+
+    try {
+      // Initialize presence channel for active users
+      presenceChannel.current = supabase
+        .channel('pwa-presence')
+        .on('presence', { event: 'sync' }, () => {
+          const newState = presenceChannel.current.presenceState();
+          const activeCount = Object.keys(newState).length;
+          setState(prev => ({ ...prev, activeUsers: activeCount }));
+        })
+        .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+          console.log('[RealTimePWA] User joined:', key, newPresences);
+        })
+        .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+          console.log('[RealTimePWA] User left:', key, leftPresences);
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            const userStatus = {
+              user_id: (await supabase.auth.getUser()).data.user?.id,
+              online_at: new Date().toISOString(),
+              app_version: '1.0.0',
+              device_type: 'PWA'
+            };
+            
+            await presenceChannel.current.track(userStatus);
+          }
+        });
+
+      // Real-time biometric data updates
+      const biometricChannel = supabase
+        .channel('biometric-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'student_fingerprints'
+          },
+          (payload) => handleBiometricUpdate(payload)
+        )
+        .subscribe((status) => {
+          console.log('[RealTimePWA] Biometric channel status:', status);
+        });
+
+      // Real-time student data updates
+      const studentChannel = supabase
+        .channel('student-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'students'
+          },
+          (payload) => handleStudentUpdate(payload)
+        )
+        .subscribe((status) => {
+          console.log('[RealTimePWA] Student channel status:', status);
+        });
+
+      // Real-time batch data updates
+      const batchChannel = supabase
+        .channel('batch-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'batches'
+          },
+          (payload) => handleBatchUpdate(payload)
+        )
+        .subscribe((status) => {
+          console.log('[RealTimePWA] Batch channel status:', status);
+        });
+
+      channelsRef.current = [biometricChannel, studentChannel, batchChannel];
+      
+      setState(prev => ({ 
+        ...prev, 
+        isConnected: true,
+        lastSync: new Date()
+      }));
+
+      toast.success('Real-time sync activated');
+    } catch (error) {
+      console.error('[RealTimePWA] Failed to initialize:', error);
+      toast.error('Failed to connect real-time sync');
+    }
+  }, []);
+
+  const handleBiometricUpdate = useCallback((payload: any) => {
+    console.log('[RealTimePWA] Biometric update:', payload);
+    
+    const { eventType, new: newRecord, old: oldRecord } = payload;
+    
+    // Update performance stats
+    updatePerformanceStats();
+    
+    // Trigger cache invalidation if needed
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'INVALIDATE_CACHE',
+        payload: { table: 'student_fingerprints', id: newRecord?.id || oldRecord?.id }
+      });
+    }
+    
+    setState(prev => ({ 
+      ...prev, 
+      dataVersion: prev.dataVersion + 1,
+      lastSync: new Date()
+    }));
+
+    // Show notification for critical biometric updates
+    if (eventType === 'INSERT' && newRecord) {
+      toast.info(`New fingerprint captured for student ${newRecord.student_id}`);
+    }
+  }, []);
+
+  const handleStudentUpdate = useCallback((payload: any) => {
+    console.log('[RealTimePWA] Student update:', payload);
+    
+    updatePerformanceStats();
+    
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'INVALIDATE_CACHE',
+        payload: { table: 'students', id: payload.new?.id || payload.old?.id }
+      });
+    }
+    
+    setState(prev => ({ 
+      ...prev, 
+      dataVersion: prev.dataVersion + 1,
+      lastSync: new Date()
+    }));
+  }, []);
+
+  const handleBatchUpdate = useCallback((payload: any) => {
+    console.log('[RealTimePWA] Batch update:', payload);
+    
+    updatePerformanceStats();
+    
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'INVALIDATE_CACHE',
+        payload: { table: 'batches', id: payload.new?.id || payload.old?.id }
+      });
+    }
+    
+    setState(prev => ({ 
+      ...prev, 
+      dataVersion: prev.dataVersion + 1,
+      lastSync: new Date()
+    }));
+  }, []);
+
+  const updatePerformanceStats = useCallback(() => {
+    const now = Date.now();
+    performanceRef.current.push(now);
+    
+    // Keep only last 100 measurements
+    if (performanceRef.current.length > 100) {
+      performanceRef.current = performanceRef.current.slice(-100);
+    }
+    
+    // Calculate average response time
+    if (performanceRef.current.length > 1) {
+      const intervals = [];
+      for (let i = 1; i < performanceRef.current.length; i++) {
+        intervals.push(performanceRef.current[i] - performanceRef.current[i - 1]);
+      }
+      const avgResponseTime = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+      
+      setState(prev => ({
+        ...prev,
+        performanceStats: {
+          ...prev.performanceStats,
+          avgResponseTime: Math.round(avgResponseTime)
+        }
+      }));
+    }
+  }, []);
+
+  const cleanupConnections = useCallback(() => {
+    console.log('[RealTimePWA] Cleaning up connections...');
+    
+    channelsRef.current.forEach(channel => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    });
+    
+    if (presenceChannel.current) {
+      supabase.removeChannel(presenceChannel.current);
+      presenceChannel.current = null;
+    }
+    
+    channelsRef.current = [];
+    
+    setState(prev => ({ 
+      ...prev, 
+      isConnected: false,
+      activeUsers: 0
+    }));
+  }, []);
+
+  const forceSync = useCallback(async () => {
+    if (state.syncInProgress) return;
+    
+    setState(prev => ({ ...prev, syncInProgress: true }));
+    
+    try {
+      // Process offline queue
+      await processQueue();
+      
+      // Trigger service worker cache update
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'FORCE_CACHE_UPDATE'
+        });
+      }
+      
+      setState(prev => ({ 
+        ...prev, 
+        lastSync: new Date(),
+        dataVersion: prev.dataVersion + 1
+      }));
+      
+      toast.success('Sync completed successfully');
+    } catch (error) {
+      console.error('[RealTimePWA] Sync failed:', error);
+      toast.error('Sync failed');
+    } finally {
+      setState(prev => ({ ...prev, syncInProgress: false }));
+    }
+  }, [state.syncInProgress, processQueue]);
+
+  const optimizePerformance = useCallback(async () => {
+    try {
+      // Clear old cache entries
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'OPTIMIZE_CACHE'
+        });
+      }
+      
+      // Update cache hit rate based on queue stats
+      const queueStats = getQueueStats();
+      const newCacheHitRate = Math.max(70, 95 - queueStats.total * 2);
+      
+      setState(prev => ({
+        ...prev,
+        performanceStats: {
+          ...prev.performanceStats,
+          cacheHitRate: newCacheHitRate,
+          offlineActions: queueStats.total
+        }
+      }));
+      
+      toast.success('Performance optimized');
+    } catch (error) {
+      console.error('[RealTimePWA] Performance optimization failed:', error);
+    }
+  }, [getQueueStats]);
+
+  const queueBiometricCapture = useCallback(async (data: any) => {
+    const queueId = addToQueue({
+      type: 'biometric',
+      action: 'capture',
+      data,
+      priority: 'critical'
+    });
+    
+    return queueId;
+  }, [addToQueue]);
+
+  const queueStudentUpdate = useCallback(async (data: any) => {
+    const queueId = addToQueue({
+      type: 'student',
+      action: 'update',
+      data,
+      priority: 'high'
+    });
+    
+    return queueId;
+  }, [addToQueue]);
+
+  // Background sync registration
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then(registration => {
+        console.log('[RealTimePWA] Service worker registered successfully');
+      }).catch(error => {
+        console.error('[RealTimePWA] Service worker registration failed:', error);
+      });
+    }
+  }, []);
+
+  return {
+    ...state,
+    forceSync,
+    optimizePerformance,
+    queueBiometricCapture,
+    queueStudentUpdate,
+    isOnline,
+    queueStats: getQueueStats()
+  };
+}

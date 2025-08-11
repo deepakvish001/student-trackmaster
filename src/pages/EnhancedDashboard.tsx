@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,12 +24,19 @@ import { PWAControlCenter } from '@/components/PWAControlCenter';
 import { RealTimeSystemMonitor } from '@/components/monitoring/RealTimeSystemMonitor';
 import { BiometricAnalyticsDashboard } from '@/components/analytics/BiometricAnalyticsDashboard';
 import { RealtimeCollaborationDashboard } from '@/components/collaboration/RealtimeCollaborationDashboard';
+import { RealTimePWADashboard } from '@/components/RealTimePWADashboard';
+import { PWAFeatureCenter } from '@/components/PWAFeatureCenter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConflictResolutionDialog } from '@/components/ConflictResolutionDialog';
 import { SyncButton } from '@/components/SyncButton';
+import { useRealTimePWA } from '@/hooks/useRealTimePWA';
+import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 export default function EnhancedDashboard() {
+  const { profile: userProfile } = useUserProfile();
+  const { isConnected, performanceStats } = useRealTimePWA();
+  const [activeTab, setActiveTab] = useState('overview');
+  
   const {
-    profile,
     hasRole
   } = useUserProfile();
   const {
@@ -388,12 +395,14 @@ export default function EnhancedDashboard() {
             </Card>
           </div>
 
-          <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="monitoring">System Monitor</TabsTrigger>
+              <TabsTrigger value="realtime">Real-time</TabsTrigger>
+              <TabsTrigger value="pwa">PWA Center</TabsTrigger>
+              <TabsTrigger value="monitoring">Monitor</TabsTrigger>
               <TabsTrigger value="analytics">Analytics</TabsTrigger>
-              <TabsTrigger value="collaboration">Live Users</TabsTrigger>
+              <TabsTrigger value="collaboration">Collaboration</TabsTrigger>
               <TabsTrigger value="security">Security</TabsTrigger>
             </TabsList>
 
@@ -402,6 +411,14 @@ export default function EnhancedDashboard() {
                 <PWAManagementPanel />
                 <SecurityDashboard />
               </div>
+            </TabsContent>
+
+            <TabsContent value="realtime" className="space-y-6">
+              <RealTimePWADashboard />
+            </TabsContent>
+
+            <TabsContent value="pwa" className="space-y-6">
+              <PWAFeatureCenter />
             </TabsContent>
 
             <TabsContent value="monitoring">
