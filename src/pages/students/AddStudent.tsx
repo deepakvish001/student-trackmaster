@@ -200,14 +200,37 @@ export default function AddStudent() {
         if (fingerprintError) throw fingerprintError;
       }
 
-      // Reset form and captured fingerprints
-      reset();
+      // Comprehensive reset for immediate next student entry  
+      reset({
+        name: '',
+        mobile: '',
+        email: '',
+        address: '',
+        batchId: data.batchId, // Keep same batch for efficiency
+      });
       setCapturedFingerprints({});
       setActiveTab("details");
 
-      // Success feedback
-      toast.success(`Student added successfully with ${fingerprintInserts.length} fingerprint(s)!`);
-      navigate('/students');
+      // Success feedback with enhanced message
+      toast.success(`Student "${data.name}" added successfully with ${fingerprintInserts.length} fingerprint(s)! Ready for next student.`, {
+        duration: 4000,
+        action: {
+          label: "View Students",
+          onClick: () => navigate("/students")
+        }
+      });
+      
+      // Auto-focus on name field for next student
+      setTimeout(() => {
+        const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement;
+        if (nameInput) {
+          nameInput.focus();
+          nameInput.select();
+        }
+      }, 200);
+      
+      // Stay on page for continuous student entry
+      // navigate('/students'); // Commented out to stay on form
 
     } catch (error) {
       console.error('Error submitting student:', error);

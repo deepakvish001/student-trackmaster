@@ -339,10 +339,25 @@ export default function EnhancedAddStudent() {
       queryClient.invalidateQueries({ queryKey: ['students-list'] });
       queryClient.invalidateQueries({ queryKey: ['ultra-fast-students'] });
       
-      toast.success(`Student "${validation.sanitizedData!.student_name}" registered successfully! Ready for next student.`);
+      toast.success(`Student "${validation.sanitizedData!.student_name}" registered successfully! Ready for next student.`, {
+        duration: 4000,
+        action: {
+          label: "View Students",
+          onClick: () => navigate("/students")
+        }
+      });
       
-      // Reset form for next student
-      form.reset();
+      // Comprehensive form reset for immediate next student entry
+      form.reset({
+        name: "",
+        mobile: "",
+        batchId: values.batchId, // Keep the same batch for efficiency
+        address: "",
+        email: "",
+        fingerprints: ["", "", "", "", ""],
+      });
+      
+      // Reset all capture states
       setCapturedImages([null, null, null, null, null]);
       setFingerprintData([
         { pidData: "", quality: 0 },
@@ -352,7 +367,24 @@ export default function EnhancedAddStudent() {
         { pidData: "", quality: 0 }
       ]);
       
-      // Stay on the same page for next student registration
+      // Force re-render of fingerprint component
+      setTimeout(() => {
+        const fingerprintGrid = document.querySelector('[data-fingerprint-grid]');
+        if (fingerprintGrid) {
+          (fingerprintGrid as any).reset?.();
+        }
+      }, 100);
+      
+      // Auto-focus on name field for next student
+      setTimeout(() => {
+        const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement;
+        if (nameInput) {
+          nameInput.focus();
+          nameInput.select();
+        }
+      }, 200);
+      
+      console.log('✅ Form completely reset and ready for next student entry');
       
     } catch (error) {
       console.error('Error adding student:', error);

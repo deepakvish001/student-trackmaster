@@ -32,6 +32,7 @@ export function CleanFingerprintGrid({
   disabled = false,
   targetQuality = 70
 }: CleanFingerprintGridProps) {
+  
   const {
     fingerprints,
     completedCount,
@@ -47,6 +48,19 @@ export function CleanFingerprintGrid({
 
   const [savingToSupabase, setSavingToSupabase] = useState(false);
   const [previousCaptureCount, setPreviousCaptureCount] = useState(0);
+  
+  // Add ref to component for external reset
+  React.useEffect(() => {
+    const element = document.querySelector('[data-fingerprint-grid]');
+    if (element) {
+      (element as any).reset = () => {
+        console.log('🔄 Fingerprint grid reset triggered externally');
+        resetAll();
+        setPreviousCaptureCount(0);
+        setSavingToSupabase(false);
+      };
+    }
+  }, [resetAll]);
 
   // Auto-notify parent when individual fingerprints are captured
   React.useEffect(() => {
@@ -201,7 +215,7 @@ export function CleanFingerprintGrid({
   const getProgressPercentage = () => (completedCount / 5) * 100;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-fingerprint-grid>
       {/* Enhanced Header with Controls */}
       <Card className="border border-gray-600 bg-black text-white">
         <CardHeader className="pb-4">
