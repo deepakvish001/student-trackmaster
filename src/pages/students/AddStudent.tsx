@@ -206,8 +206,7 @@ export default function AddStudent() {
       setActiveTab("details");
 
       // Success feedback
-      toast.success(`Student added successfully with ${fingerprintInserts.length} fingerprint(s)!`);
-      navigate('/students');
+      toast.success(`Student added successfully with ${fingerprintInserts.length} fingerprint(s)! Ready for next student.`);
 
     } catch (error) {
       console.error('Error submitting student:', error);
