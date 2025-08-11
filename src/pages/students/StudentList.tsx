@@ -38,7 +38,7 @@ export default function StudentList() {
   // Enable real-time batch access updates
   const { isSubscribed } = useRealTimeBatchAccess();
 
-  // Enable instant student updates for real-time CRUD operations
+  // Enable instant student updates for real-time CRUD operations (shared with Dashboard)
   const { forceRefresh } = useInstantStudentUpdates();
 
   // Use optimized data fetching hook with debounced search
@@ -313,10 +313,10 @@ export default function StudentList() {
                 </div>
               </div>
               
-              {/* Real-time indicator */}
+              {/* Real-time indicator (synced with Dashboard) */}
               <div className="flex items-center space-x-2 text-sm">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-emerald-green font-medium">Real-time Updates Active</span>
+                <span className="text-emerald-green font-medium">Live Updates Active (Synced)</span>
               </div>
             </div>
 
