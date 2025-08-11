@@ -17,6 +17,8 @@ export default defineConfig(({ mode }) => ({
     modulePreload: {
       polyfill: false
     },
+    // More aggressive minification for modern browsers
+    minify: 'esbuild',
     // Optimize chunk splitting for better caching
     rollupOptions: {
       output: {
@@ -27,19 +29,46 @@ export default defineConfig(({ mode }) => ({
           'form-vendor': ['react-hook-form', '@hookform/resolvers'],
           'query-vendor': ['@tanstack/react-query'],
           'router-vendor': ['react-router-dom']
+        },
+        // Modern ES module format
+        format: 'es',
+        // Use modern syntax in output
+        generatedCode: {
+          constBindings: true,
+          objectShorthand: true,
+          reservedNamesAsProps: false,
+          symbols: true
         }
       }
     },
-    // Minimize CSS and JS for production
-    cssCodeSplit: true,
     // Reduce bundle size
+    cssCodeSplit: true,
+    // Modern sourcemap for production
     sourcemap: mode === 'development'
   },
-  // Configure esbuild for modern syntax
+  // Configure esbuild for modern syntax with explicit feature support
   esbuild: {
     target: 'es2020',
-    // Keep only standard esbuild options - remove invalid 'supported' config
+    // Explicitly keep modern syntax
+    keepNames: true,
+    // Remove development code in production
     drop: mode === 'production' ? ['console', 'debugger'] : undefined,
+    // Force modern output without legacy transforms
+    format: 'esm',
+    // Platform-specific optimizations
+    platform: 'browser',
+    // Ensure modern features are preserved
+    tsconfigRaw: {
+      compilerOptions: {
+        target: 'ES2020',
+        module: 'ESNext',
+        moduleResolution: 'node',
+        allowSyntheticDefaultImports: true,
+        esModuleInterop: true,
+        useDefineForClassFields: true,
+        lib: ['ES2020', 'DOM', 'DOM.Iterable']
+      }
+    }
   },
   plugins: [
     react(),
