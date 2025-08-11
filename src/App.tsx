@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import { PWAUpdatePrompt } from "@/components/PWAUpdatePrompt";
 import { PWAFeatureCenter } from "@/components/PWAFeatureCenter";
 import { CollaborationIndicator } from "@/components/CollaborationIndicator";
 import { MobileOptimizedLayout } from "@/components/MobileOptimizedLayout";
@@ -47,6 +48,7 @@ function AppWithQueryClient() {
                 <CollaborationIndicator />
               </div>
               <PWAInstallPrompt />
+              <PWAUpdatePrompt />
               <Toaster />
           <Routes>
             {/* Public route - Login only */}
