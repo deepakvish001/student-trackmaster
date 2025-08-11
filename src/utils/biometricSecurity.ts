@@ -227,10 +227,9 @@ export const validateFingerprintTemplate = (template: string): {
       return { isValid: false, quality: 0, format, errors };
     }
     
-    // Check minimum length (ISO templates should be substantial)
-    // Temporarily relaxed for MFS100 compatibility - accept any template with data
-    if (template.length < 50) {
-      errors.push('Template data too short');
+    // Check minimum length - relaxed for MFS100 padded templates
+    if (template.length < 20) {
+      errors.push('Template data too short - minimum 20 characters required');
     }
     
     // Detect template format and validate
@@ -253,10 +252,10 @@ export const validateFingerprintTemplate = (template: string): {
       format = 'ISO Template';
       // Estimate quality based on template characteristics
       quality = Math.min(90, Math.max(30, Math.floor(template.length / 20)));
-    } else if (template.length >= 100) {
-      // Accept any template with sufficient length
-      format = 'Base64 Template Data';
-      quality = 50;
+    } else if (template.length >= 20) {
+      // Accept any template with minimal length - MFS100 compatibility
+      format = 'MFS100 Template Data';
+      quality = 65; // Good quality for MFS100 data
     } else {
       format = 'Unknown';
       quality = 10;
