@@ -3,6 +3,7 @@
  * UIDAI-compliant student registration with PidData format and real fingerprint images
  */
 
+import React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useState, useEffect } from "react";
