@@ -131,13 +131,6 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
               View Full
             </Button>
           </div>
-          
-          {/* Enhanced Finger label */}
-          <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
-            <span className="text-xs bg-electric-blue/90 text-white px-3 py-1 rounded-full border border-electric-blue/30 font-bold shadow-lg">
-              {index + 1}
-            </span>
-          </div>
         </div>
       );
     }
@@ -146,20 +139,12 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
     return (
       <div className="relative group cursor-pointer">
         <div className="w-24 h-28 border-2 border-dashed border-border/50 rounded-xl flex flex-col items-center justify-center bg-muted/10 hover:bg-muted/20 hover:border-electric-blue/30 transition-all duration-300 transform hover:scale-105">
-          <Fingerprint className="h-6 w-6 text-muted-foreground/60 mb-1 group-hover:text-electric-blue/70 transition-colors duration-300" />
-          <span className="text-xs text-muted-foreground/60 font-medium group-hover:text-electric-blue/70 transition-colors duration-300">{index + 1}</span>
+          <span className="text-xs text-muted-foreground/60 font-medium group-hover:text-electric-blue/70 transition-colors duration-300">No Image</span>
         </div>
         
         {/* Hover overlay for empty slots */}
         <div className="absolute inset-0 bg-gradient-to-t from-electric-blue/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center rounded-xl">
           <span className="text-xs text-electric-blue font-medium bg-white/90 px-2 py-1 rounded-full">No Image</span>
-        </div>
-        
-        {/* Finger label for empty slots */}
-        <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
-          <span className="text-xs bg-muted text-muted-foreground px-3 py-1 rounded-full border border-border/50 font-bold shadow-sm">
-            {index + 1}
-          </span>
         </div>
       </div>
     );
@@ -219,14 +204,6 @@ export function EnhancedStudentTable({ students, onEdit, onDelete }: EnhancedStu
                       {renderFingerprintPreview(student, 2)}
                       {renderFingerprintPreview(student, 3)}
                       {renderFingerprintPreview(student, 4)}
-                    </div>
-                    <div className="text-center mt-3">
-                      <Badge 
-                        variant={getFingerprintCount(student) === 5 ? "default" : "secondary"}
-                        className="text-xs font-medium"
-                      >
-                        {getFingerprintCount(student)}/5 fingerprints captured
-                      </Badge>
                     </div>
                   </TableCell>
                   <TableCell>
