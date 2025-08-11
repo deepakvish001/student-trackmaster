@@ -125,15 +125,15 @@ export const exportStudentsToPDF = async (students: Student[], filters?: {
       fillColor: [248, 250, 252], // Light gray alternating rows
     },
     columnStyles: {
-      0: { halign: 'center', cellWidth: 8, minCellHeight: 35 },   // #
-      1: { halign: 'left', cellWidth: 35, minCellHeight: 35 },    // Student Name  
-      2: { halign: 'center', cellWidth: 25, minCellHeight: 35 },  // Mobile Number
-      3: { halign: 'left', cellWidth: 30, minCellHeight: 35 },    // Address
-      4: { halign: 'center', cellWidth: 20, minCellHeight: 35 },  // Batch
-      5: { halign: 'center', cellWidth: 90, minCellHeight: 35 },  // Fingerprint Images (wide for 5 images)
-      6: { halign: 'center', cellWidth: 18, minCellHeight: 35 },  // Bio Status
-      7: { halign: 'center', cellWidth: 15, minCellHeight: 35 },  // Status
-      8: { halign: 'center', cellWidth: 20, minCellHeight: 35 },  // Created Date
+      0: { halign: 'center', cellWidth: 8, minCellHeight: 40 },   // #
+      1: { halign: 'left', cellWidth: 40, minCellHeight: 40 },    // Student Name  
+      2: { halign: 'center', cellWidth: 30, minCellHeight: 40 },  // Mobile Number (wider)
+      3: { halign: 'left', cellWidth: 35, minCellHeight: 40 },    // Address
+      4: { halign: 'center', cellWidth: 25, minCellHeight: 40 },  // Batch
+      5: { halign: 'center', cellWidth: 100, minCellHeight: 40 }, // Fingerprint Images (even wider for clearer images)
+      6: { halign: 'center', cellWidth: 20, minCellHeight: 40 },  // Bio Status
+      7: { halign: 'center', cellWidth: 18, minCellHeight: 40 },  // Status
+      8: { halign: 'center', cellWidth: 25, minCellHeight: 40 },  // Created Date
     },
     didDrawCell: function(data) {
       // Only add fingerprint images to data rows (not header), column index 5 (Fingerprint Images column)
@@ -154,13 +154,13 @@ export const exportStudentsToPDF = async (students: Student[], filters?: {
         const cellWidth = data.cell.width;
         const cellHeight = data.cell.height;
         
-        // Calculate positions for 5 fingerprint images in a row (smaller to fit cell)
-        const imageWidth = 14;  // Reduced from 16
-        const imageHeight = 18; // Reduced from 20
-        const gap = 1.5;        // Reduced gap between images
+        // Calculate positions for 5 fingerprint images in a row (larger for better visibility)
+        const imageWidth = 16;  // Increased for better visibility
+        const imageHeight = 20; // Increased for better visibility
+        const gap = 2;          // Better spacing between images
         const totalImagesWidth = 5 * imageWidth + 4 * gap;
         const startX = cellX + (cellWidth - totalImagesWidth) / 2;
-        const imageY = cellY + 2; // Small padding from top of cell
+        const imageY = cellY + 3; // Better padding from top of cell
         
         // Draw fingerprint images
         for (let i = 0; i < imageFields.length; i++) {

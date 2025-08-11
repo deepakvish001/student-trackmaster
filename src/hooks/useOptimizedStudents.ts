@@ -18,7 +18,7 @@ export function useOptimizedStudents(options: UseOptimizedStudentsOptions = {}) 
     selectedBatch = 'all',
     sortBy = 'created_at',
     sortOrder = 'desc',
-    pageSize = 25,
+    pageSize = 1000,
     enabled = true
   } = options;
 
@@ -70,11 +70,8 @@ export function useOptimizedStudents(options: UseOptimizedStudentsOptions = {}) 
         query = query.eq('batch_id', selectedBatch);
       }
 
-      // Apply sorting and pagination
-      const startIndex = currentPage * pageSize;
-      query = query
-        .order(sortBy, { ascending: sortOrder === 'asc' })
-        .range(startIndex, startIndex + pageSize - 1);
+      // Apply sorting - no pagination to show all students
+      query = query.order(sortBy, { ascending: sortOrder === 'asc' });
 
       const { data, error, count } = await query;
       if (error) {

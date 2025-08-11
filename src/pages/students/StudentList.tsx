@@ -59,7 +59,7 @@ export default function StudentList() {
     selectedBatch,
     sortBy,
     sortOrder,
-    pageSize: 10
+    pageSize: 1000 // Show all students without pagination
   });
 
   // Real-time clock update
