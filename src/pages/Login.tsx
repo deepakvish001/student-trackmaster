@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Navigate } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { BiometricLogin } from '@/components/auth/BiometricLogin';
 import { Mail, Lock, Eye, EyeOff, Fingerprint, Shield, Wifi, WifiOff, AlertCircle, CheckCircle, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -17,6 +18,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showBiometricLogin, setShowBiometricLogin] = useState(false);
   
   const { login, user, isLoading: authLoading } = useEnhancedAuth();
   const { isOnline } = useOnlineStatus();
@@ -201,8 +203,32 @@ export default function Login() {
               <p className="text-gray-300 text-lg">Sign in to your secure account</p>
             </div>
 
-            {/* Login Form */}
-            <form onSubmit={handleSubmit} className="space-y-7">
+            {/* Biometric Login Option */}
+            {showBiometricLogin ? (
+              <BiometricLogin
+                onSuccess={() => {
+                  toast.success('Biometric authentication successful!');
+                  setShowBiometricLogin(false);
+                }}
+                onCancel={() => setShowBiometricLogin(false)}
+              />
+            ) : (
+              <>
+                {/* Biometric Login Toggle */}
+                <div className="text-center mb-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowBiometricLogin(true)}
+                    className="bg-orange-500/10 border-orange-500/30 text-orange-400 hover:bg-orange-500/20 hover:border-orange-500/40"
+                  >
+                    <Fingerprint className="w-4 h-4 mr-2" />
+                    Login with Fingerprint
+                  </Button>
+                </div>
+
+                {/* Login Form */}
+                <form onSubmit={handleSubmit} className="space-y-7">
               {/* Email Field */}
               <div className="space-y-3">
                 <label className="block text-sm font-semibold text-gray-300 uppercase tracking-wider">
@@ -277,6 +303,8 @@ export default function Login() {
                 </Button>
               </div>
             </form>
+            </>
+            )}
 
             {/* Security Footer */}
             <div className="mt-8 pt-6 border-t border-white/10">
