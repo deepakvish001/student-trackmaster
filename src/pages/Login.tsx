@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
