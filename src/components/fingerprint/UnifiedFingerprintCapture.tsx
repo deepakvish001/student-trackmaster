@@ -36,8 +36,7 @@ export function UnifiedFingerprintCapture({
       // Import from the correct module based on device type
       if (deviceType === 'mfs100') {
         const { captureFingerprint } = await import('@/utils/mfs100Native');
-        const { convertBitmapToUltraCanvas } = await import('@/utils/ultraFingerprintEnhancer');
-        const { ultraMaxQualityEnhanceFingerprint } = await import('@/utils/fingerprintImageEnhancer');
+        const { quickEnhanceFingerprint } = await import('@/utils/fingerprintImageEnhancer');
         
         const result = await captureFingerprint(60, 30);
 
@@ -45,26 +44,34 @@ export function UnifiedFingerprintCapture({
           const quality = result.data.Quality || 60;
           setQuality(quality);
           
-          // Convert bitmap to ultra-high quality image
+          // Use lightweight enhancement to prevent UI blocking
           let processedImage = '';
           if (result.data.BitmapData) {
             try {
-              // Convert bitmap to ultra-high quality canvas
-              processedImage = convertBitmapToUltraCanvas(result.data.BitmapData, 2048, 2048);
+              // Create lightweight image for immediate display
+              const baseImage = `data:image/bmp;base64,${result.data.BitmapData}`;
               
-              // Apply ultra-maximum quality enhancement
-              if (processedImage) {
-                processedImage = await ultraMaxQualityEnhanceFingerprint(processedImage);
-                console.log('✅ Ultra-high quality enhancement applied successfully');
-              }
+              // Apply quick enhancement without blocking the UI
+              setTimeout(async () => {
+                try {
+                  const enhanced = await quickEnhanceFingerprint(baseImage);
+                  // Update with enhanced image after processing completes
+                  onChange(enhanced, quality);
+                } catch (error) {
+                  console.warn('⚠️ Quick enhancement failed:', error);
+                }
+              }, 0);
+              
+              // Immediately return base image to keep UI responsive
+              processedImage = baseImage;
             } catch (error) {
-              console.warn('⚠️ Image enhancement failed, using raw bitmap:', error);
+              console.warn('⚠️ Image processing failed, using raw bitmap:', error);
               processedImage = `data:image/bmp;base64,${result.data.BitmapData}`;
             }
           }
           
           onChange(processedImage, quality);
-          toast.success(`${fingerName} captured with ultra-high quality (${quality}%)`);
+          toast.success(`${fingerName} captured successfully (${quality}%)`);
         } else {
           throw new Error(result.data?.ErrorDescription || result.err || 'Capture failed');
         }
