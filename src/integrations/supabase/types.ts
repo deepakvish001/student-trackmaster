@@ -391,18 +391,6 @@ export type Database = {
       }
     }
     Views: {
-      mv_dashboard_stats: {
-        Row: {
-          complete_biometrics: number | null
-          last_updated: string | null
-          partial_biometrics: number | null
-          total_batches: number | null
-          total_capacity: number | null
-          total_students: number | null
-          total_users: number | null
-        }
-        Relationships: []
-      }
       vw_batches_optimized: {
         Row: {
           admin_name: string | null
@@ -419,6 +407,13 @@ export type Database = {
           user_id: string | null
           username: string | null
           utilization_rate: number | null
+        }
+        Relationships: []
+      }
+      vw_dashboard_stats: {
+        Row: {
+          stat_type: string | null
+          stats: Json | null
         }
         Relationships: []
       }
@@ -469,6 +464,10 @@ export type Database = {
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      get_dashboard_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       get_student_count_by_batch: {
         Args: { batch_ids: string[] }
