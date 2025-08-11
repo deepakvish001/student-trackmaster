@@ -218,7 +218,10 @@ export default function EnhancedAddStudent() {
       // Insert into database
       const { data, error } = await supabase.from('students').insert({
         student_name: validation.sanitizedData!.student_name,
+        mobile_number: sanitizedData.mobile,
+        address: sanitizedData.address,
         batch_id: validation.sanitizedData!.batch_id,
+        user_id: user.id,
         ...encryptedFingerprints,
       }).select();
 
