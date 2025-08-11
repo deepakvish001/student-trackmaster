@@ -5,6 +5,7 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { PWAFeatureCenter } from "@/components/PWAFeatureCenter";
 import { CollaborationIndicator } from "@/components/CollaborationIndicator";
+import { MobileOptimizedLayout } from "@/components/MobileOptimizedLayout";
 import { QueryClient as TanstackQueryClient, QueryClientProvider as TanstackQueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
@@ -40,12 +41,13 @@ function AppWithQueryClient() {
         <SafePerformanceWrapper>
           <PerformanceInitializer />
           <TooltipProvider>
-            <OfflineBanner />
-            <div className="fixed top-4 right-4 z-50 space-y-2">
-              <CollaborationIndicator />
-            </div>
-            <PWAInstallPrompt />
-            <Toaster />
+            <MobileOptimizedLayout>
+              <OfflineBanner />
+              <div className="fixed top-4 right-4 z-50 space-y-2 safe-area-inset-top safe-area-inset-right">
+                <CollaborationIndicator />
+              </div>
+              <PWAInstallPrompt />
+              <Toaster />
           <Routes>
             {/* Public route - Login only */}
             <Route path="/login" element={<Login />} />
@@ -190,6 +192,7 @@ function AppWithQueryClient() {
               } 
             />
             </Routes>
+            </MobileOptimizedLayout>
           </TooltipProvider>
         </SafePerformanceWrapper>
       </EnhancedAuthProvider>

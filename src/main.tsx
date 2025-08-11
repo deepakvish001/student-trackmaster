@@ -1,6 +1,12 @@
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
+import { initAllPolyfills, initSafeAreaHandling, initPerformanceOptimizations } from './utils/browserPolyfills'
+
+// Initialize browser compatibility features
+initAllPolyfills();
+initSafeAreaHandling();
+initPerformanceOptimizations();
 
 // Register service worker for PWA
 if ('serviceWorker' in navigator) {
