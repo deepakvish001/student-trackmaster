@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { offlineDb } from '@/lib/offlineDatabase';
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 import { useOnlineStatus } from './useOnlineStatus';
+import { useNotificationThrottle } from './useThrottle';
 import { toast } from 'sonner';
 
 interface ConflictResolutionState {
@@ -21,6 +22,7 @@ export function useAdvancedSync() {
   const queryClient = useQueryClient();
   const { user } = useEnhancedAuth();
   const { isOnline } = useOnlineStatus();
+  const { shouldShowNotification } = useNotificationThrottle();
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0 });
   const [conflictState, setConflictState] = useState<ConflictResolutionState>({
@@ -75,7 +77,10 @@ export function useAdvancedSync() {
       const userOperations = pendingOperations.filter(op => op.user_id === user.id);
       
       if (userOperations.length === 0) {
-        toast.success('All data is synchronized');
+        // Only show "All data is synchronized" notification with throttling
+        if (shouldShowNotification('sync-complete-all')) {
+          toast.success('All data is synchronized');
+        }
         return;
       }
 
