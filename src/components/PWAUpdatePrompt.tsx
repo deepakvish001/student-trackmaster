@@ -121,67 +121,60 @@ export function PWAUpdatePrompt({ registration }: PWAUpdatePromptProps) {
         description: 'Please wait while we update the app'
       });
       
-      // Simulate progress for better UX
+      // Start progress animation
+      let currentProgress = 0;
       const progressInterval = setInterval(() => {
-        setUpdateProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 200);
+        currentProgress += 15;
+        if (currentProgress <= 100) {
+          setUpdateProgress(currentProgress);
+        }
+        if (currentProgress >= 100) {
+          clearInterval(progressInterval);
+        }
+      }, 300);
       
-      // Set up timeout for update process (increased to 10 seconds)
-      const updateTimeout = setTimeout(() => {
-        clearInterval(progressInterval);
-        console.warn('Update timeout reached');
-        handleUpdateError('Update is taking longer than expected. Refreshing page...');
-        window.location.reload();
-      }, 10000);
-      
-      // Listen for the controlling change event
+      // Set up success handler for controllerchange
       const handleControllerChange = () => {
-        console.log('Service worker controller changed');
-        clearTimeout(updateTimeout);
+        console.log('Service worker controller changed - update successful');
         clearInterval(progressInterval);
         setUpdateProgress(100);
         navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
         
-        // Complete the update
+        // Show success and reload
         setTimeout(() => {
           handleUpdateComplete();
           setTimeout(() => {
             window.location.reload();
           }, 1000);
-        }, 500);
+        }, 300);
       };
       
+      // Listen for controller change
       navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
       
       // Tell the waiting service worker to skip waiting and become active
       console.log('Posting SKIP_WAITING message to service worker');
       newWorker.postMessage({ type: 'SKIP_WAITING' });
       
-      // Alternative approach: Check if update completed without controllerchange event
+      // Simplified timeout - if no response in 3 seconds, force reload
       setTimeout(() => {
-        if (updateState === 'updating') {
-          clearTimeout(updateTimeout);
-          clearInterval(progressInterval);
-          console.log('Update completed via fallback mechanism');
-          setUpdateProgress(100);
-          handleUpdateComplete();
-          setTimeout(() => {
-            window.location.reload();
-          }, 1000);
-        }
+        console.log('Force completing update after 3 seconds');
+        clearInterval(progressInterval);
+        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+        
+        setUpdateProgress(100);
+        handleUpdateComplete();
+        
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       }, 3000);
       
     } catch (error) {
       console.error('Update failed:', error);
       handleUpdateError('Update failed. Please try refreshing the page.');
     }
-  }, [newWorker, updateState, handleUpdateComplete, handleUpdateError]);
+  }, [newWorker, handleUpdateComplete, handleUpdateError]);
 
   // Don't show if hidden or no update available
   if (updateState === 'hidden') return null;
