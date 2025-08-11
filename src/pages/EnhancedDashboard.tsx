@@ -32,6 +32,7 @@ import { SyncButton } from '@/components/SyncButton';
 import { UltraPerformancePanel } from '@/components/UltraPerformancePanel';
 import { useRealTimePWA } from '@/hooks/useRealTimePWA';
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
+import { PerformanceInitializer } from '@/components/PerformanceInitializer';
 export default function EnhancedDashboard() {
   const { profile: userProfile, hasRole } = useUserProfile();
   const { isConnected, performanceStats } = useRealTimePWA();
@@ -85,7 +86,9 @@ export default function EnhancedDashboard() {
         return <Clock className="h-4 w-4" />;
     }
   };
-  return <DashboardLayout>
+  return (
+    <DashboardLayout>
+      <PerformanceInitializer />
       <div className="min-h-screen bg-black text-white">
         <div className="max-w-7xl mx-auto space-y-10 p-8">
           {/* Enhanced Premium Header */}
@@ -443,4 +446,5 @@ export default function EnhancedDashboard() {
         </div>
       </div>
     </DashboardLayout>
+  );
 }
