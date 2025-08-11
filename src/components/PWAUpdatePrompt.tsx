@@ -56,16 +56,39 @@ export function PWAUpdatePrompt({ registration }: PWAUpdatePromptProps) {
     setIsUpdating(true);
     
     try {
+      // Show immediate feedback
+      toast.info('📦 Installing update...');
+      
       // Tell the waiting service worker to skip waiting and become active
       newWorker.postMessage({ type: 'SKIP_WAITING' });
       
+      // Set up timeout for update process
+      const updateTimeout = setTimeout(() => {
+        toast.error('Update is taking longer than expected. Refreshing page...');
+        window.location.reload();
+      }, 5000);
+      
       // Listen for the controlling change event
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        toast.success('✅ App updated successfully!');
+      const handleControllerChange = () => {
+        clearTimeout(updateTimeout);
+        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+        
+        toast.success('✅ Update complete! Refreshing...');
         setTimeout(() => {
           window.location.reload();
-        }, 1000);
-      });
+        }, 500);
+      };
+      
+      navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+      
+      // Alternative approach if controllerchange doesn't fire
+      setTimeout(() => {
+        if (isUpdating) {
+          toast.success('✅ Update applied! Refreshing...');
+          window.location.reload();
+        }
+      }, 2000);
+      
     } catch (error) {
       console.error('Update failed:', error);
       toast.error('Update failed. Please try refreshing the page.');
