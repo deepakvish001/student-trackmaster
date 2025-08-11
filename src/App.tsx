@@ -20,6 +20,7 @@ import SystemSettings from "./pages/admin/SystemSettings";
 import PWASettings from "./pages/PWASettings";
 import { EnhancedAuthProvider } from "./contexts/EnhancedAuthContext";
 import { SafePerformanceWrapper } from "@/components/SafePerformanceWrapper";
+import { PerformanceInitializer } from "@/components/PerformanceInitializer";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SecurityWrapper from "./components/SecurityWrapper";
 import { SuperAdminRoute, UserRoute } from "./components/RoleBasedRoute";
@@ -33,20 +34,11 @@ function App() {
 }
 
 function AppWithQueryClient() {
-  // Initialize hooks after component mounts to ensure context is available
-  React.useEffect(() => {
-    // Small delay to ensure all contexts are ready
-    const timer = setTimeout(() => {
-      console.log('🚀 Initializing performance optimizations...');
-    }, 100);
-    
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
     <BrowserRouter>
       <EnhancedAuthProvider>
         <SafePerformanceWrapper>
+          <PerformanceInitializer />
           <TooltipProvider>
             <OfflineBanner />
             <div className="fixed top-4 right-4 z-50 space-y-2">
