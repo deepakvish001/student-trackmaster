@@ -17,7 +17,6 @@ import {
   auditBiometricAccess 
 } from '@/utils/biometricSecurity';
 import { offlineDb } from '@/lib/offlineDatabase';
-import { useSecurityMonitoring } from '@/hooks/useSecurityMonitoring';
 
 interface EnhancedAuthContextType {
   user: User | null;
@@ -38,6 +37,7 @@ interface EnhancedAuthContextType {
 const EnhancedAuthContext = createContext<EnhancedAuthContextType | undefined>(undefined);
 
 export function EnhancedAuthProvider({ children }: { children: React.ReactNode }) {
+  console.log('EnhancedAuthProvider mounting');
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
@@ -50,7 +50,23 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
   });
   
   const navigate = useNavigate();
-  const { logLoginAttempt } = useSecurityMonitoring();
+
+  // Simple security logging without circular dependency
+  const logAuthEvent = async (type: string, data?: any) => {
+    try {
+      console.log('Auth Event:', type, data);
+      // Store in local storage for now to avoid circular dependency
+      const event = {
+        type,
+        data,
+        timestamp: new Date().toISOString(),
+        user_id: user?.id
+      };
+      localStorage.setItem(`auth_event_${Date.now()}`, JSON.stringify(event));
+    } catch (error) {
+      console.error('Failed to log auth event:', error);
+    }
+  };
 
   // Initialize offline data after authentication
   const initializeEncryptionKey = async (userId: string) => {
@@ -247,7 +263,7 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
         });
         
         // Enhanced security logging
-        logLoginAttempt(false, email, error.message);
+        logAuthEvent('LOGIN_FAILED', { success: false, email, error: error.message });
         
         auditBiometricAccess('LOGIN_FAILED', {
           email: email.substring(0, 3) + '***',
