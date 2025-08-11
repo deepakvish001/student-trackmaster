@@ -22,6 +22,7 @@ import { EnhancedAuthProvider } from "./contexts/EnhancedAuthContext";
 import { useGlobalPerformanceOptimization } from "./hooks/useGlobalPerformanceOptimization";
 import { useUltraFastRealTime } from "./hooks/useUltraFastRealTime";
 import { useRealTimeValidator } from "./hooks/useRealTimeValidator";
+import { useUltraPerformanceOptimizer } from "./hooks/useUltraPerformanceOptimizer";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SecurityWrapper from "./components/SecurityWrapper";
 import { SuperAdminRoute, UserRoute } from "./components/RoleBasedRoute";
@@ -43,6 +44,9 @@ function AppWithQueryClient() {
   
   // Initialize real-time system validation
   useRealTimeValidator();
+  
+  // Initialize ultra-performance optimizer
+  useUltraPerformanceOptimizer();
 
   return (
     <BrowserRouter>

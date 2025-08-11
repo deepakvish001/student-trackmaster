@@ -29,6 +29,7 @@ import { PWAFeatureCenter } from '@/components/PWAFeatureCenter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConflictResolutionDialog } from '@/components/ConflictResolutionDialog';
 import { SyncButton } from '@/components/SyncButton';
+import { UltraPerformancePanel } from '@/components/UltraPerformancePanel';
 import { useRealTimePWA } from '@/hooks/useRealTimePWA';
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 export default function EnhancedDashboard() {
@@ -404,7 +405,10 @@ export default function EnhancedDashboard() {
 
             <TabsContent value="overview" className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <UltraPerformancePanel />
                 <PWAManagementPanel />
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <SecurityDashboard />
               </div>
             </TabsContent>
