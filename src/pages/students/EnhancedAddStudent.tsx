@@ -88,9 +88,9 @@ export default function EnhancedAddStudent() {
   const handleFingerprintCaptured = async (index: number, template: string, imageData: string, quality: number) => {
     console.log(`Fingerprint ${index} captured:`, { template: template?.length, imageData: imageData?.length, quality });
     
-    // Update fingerprints array
+    // Update fingerprints array with actual template data (not placeholder)
     const newFingerprints = [...form.getValues().fingerprints];
-    newFingerprints[index] = template || imageData || 'captured';
+    newFingerprints[index] = template || ''; // Use actual template data
     form.setValue("fingerprints", newFingerprints);
     
     // Update images array  
