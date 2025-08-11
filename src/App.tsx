@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import { PWAFeatureCenter } from "@/components/PWAFeatureCenter";
 import { CollaborationIndicator } from "@/components/CollaborationIndicator";
 import { QueryClient as TanstackQueryClient, QueryClientProvider as TanstackQueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -16,6 +17,7 @@ import StudentList from "./pages/students/StudentList";
 import UserManagementPage from "./pages/admin/UserManagement";
 import AuditLogs from "./pages/admin/AuditLogs";
 import SystemSettings from "./pages/admin/SystemSettings";
+import PWASettings from "./pages/PWASettings";
 import { EnhancedAuthProvider } from "./contexts/EnhancedAuthContext";
 import { useGlobalPerformanceOptimization } from "./hooks/useGlobalPerformanceOptimization";
 import { useUltraFastRealTime } from "./hooks/useUltraFastRealTime";
@@ -43,7 +45,7 @@ function AppWithQueryClient() {
       <EnhancedAuthProvider>
         <TooltipProvider>
           <OfflineBanner />
-          <div className="fixed top-4 right-4 z-50">
+          <div className="fixed top-4 right-4 z-50 space-y-2">
             <CollaborationIndicator />
           </div>
           <PWAInstallPrompt />
@@ -120,6 +122,20 @@ function AppWithQueryClient() {
                   <SecurityWrapper>
                     <UserRoute>
                       <Batches />
+                    </UserRoute>
+                  </SecurityWrapper>
+                </ProtectedRoute>
+              }
+            />
+            
+            {/* PWA Settings route */}
+            <Route
+              path="/pwa"
+              element={
+                <ProtectedRoute>
+                  <SecurityWrapper>
+                    <UserRoute>
+                      <PWASettings />
                     </UserRoute>
                   </SecurityWrapper>
                 </ProtectedRoute>
