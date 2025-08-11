@@ -70,74 +70,48 @@ export const exportStudentsToPDF = async (students: Student[], filters?: {
     return count;
   };
 
-  // Create main table with all student information
+  // Create main table with simplified columns: only Name/Mobile and Fingerprint Images
   const tableBodyData = students.map((student, index) => {
-    const imageFields = [
-      student.finger_1_image,
-      student.finger_2_image, 
-      student.finger_3_image,
-      student.finger_4_image,
-      student.finger_5_image
-    ];
-
-    let fingerprintCount = 0;
-    imageFields.forEach(imageData => {
-      if (getFingerprintImageData(imageData)) fingerprintCount++;
-    });
+    const nameAndMobile = `${student.student_name || 'N/A'}${student.mobile_number ? '\n' + student.mobile_number : ''}`;
     
-    const biometricStatus = fingerprintCount === 5 ? 'Complete' : 
-                          fingerprintCount > 0 ? 'Partial' : 'None';
-
     return [
-      index + 1,                                    // #
-      student.student_name || 'N/A',               // Name
-      student.mobile_number || 'N/A',              // Mobile
-      student.address || 'N/A',                    // Address  
-      student.batches?.batch_name || 'N/A',        // Batch
-      '',                                          // Fingerprint Images (filled manually)
-      biometricStatus,                             // Bio Status
-      student.is_enabled ? 'Active' : 'Inactive',  // Status
-      new Date(student.created_at).toLocaleDateString() // Created Date
+      index + 1,                // #
+      nameAndMobile,           // Name & Mobile (combined)
+      '',                      // Fingerprint Images (will be filled with actual images)
     ];
   });
 
-  // Create the main table with separate columns for each field
+  // Create the simplified table with only Name/Mobile and Fingerprint Images
   autoTable(doc, {
-    head: [['#', 'Student Name', 'Mobile Number', 'Address', 'Batch', 'Fingerprint Images', 'Bio Status', 'Status', 'Created Date']],
+    head: [['#', 'Student Name & Mobile', 'Fingerprint Images']],
     body: tableBodyData,
     startY: yPosition,
     styles: {
-      fontSize: 7, // Smaller font to fit more columns
-      cellPadding: 2,
+      fontSize: 9,
+      cellPadding: 3,
       valign: 'middle',
       lineColor: [220, 220, 220],
       lineWidth: 0.5,
-      minCellHeight: 35, // Increased minimum cell height for fingerprint images
+      minCellHeight: 45, // Increased for larger fingerprint images
     },
     headStyles: {
-      fillColor: [59, 130, 246], // Blue header like website
+      fillColor: [59, 130, 246], // Blue header
       textColor: 255,
       fontStyle: 'bold',
-      fontSize: 8,
-      minCellHeight: 12,
+      fontSize: 10,
+      minCellHeight: 15,
     },
     alternateRowStyles: {
-      fillColor: [248, 250, 252], // Light gray alternating rows
+      fillColor: [248, 250, 252],
     },
     columnStyles: {
-      0: { halign: 'center', cellWidth: 8, minCellHeight: 35 },   // #
-      1: { halign: 'left', cellWidth: 35, minCellHeight: 35 },    // Student Name  
-      2: { halign: 'center', cellWidth: 25, minCellHeight: 35 },  // Mobile Number
-      3: { halign: 'left', cellWidth: 30, minCellHeight: 35 },    // Address
-      4: { halign: 'center', cellWidth: 20, minCellHeight: 35 },  // Batch
-      5: { halign: 'center', cellWidth: 90, minCellHeight: 35 },  // Fingerprint Images (wide for 5 images)
-      6: { halign: 'center', cellWidth: 18, minCellHeight: 35 },  // Bio Status
-      7: { halign: 'center', cellWidth: 15, minCellHeight: 35 },  // Status
-      8: { halign: 'center', cellWidth: 20, minCellHeight: 35 },  // Created Date
+      0: { halign: 'center', cellWidth: 15, minCellHeight: 45 },   // #
+      1: { halign: 'left', cellWidth: 60, minCellHeight: 45 },     // Name & Mobile  
+      2: { halign: 'center', cellWidth: 200, minCellHeight: 45 },  // Fingerprint Images (very wide for full images)
     },
     didDrawCell: function(data) {
-      // Only add fingerprint images to data rows (not header), column index 5 (Fingerprint Images column)
-      if (data.column.index === 5 && data.row.index >= 0 && data.section === 'body') {
+      // Only add fingerprint images to data rows (not header), column index 2 (Fingerprint Images column)
+      if (data.column.index === 2 && data.row.index >= 0 && data.section === 'body') {
         const student = students[data.row.index];
         if (!student) return;
         
@@ -149,79 +123,91 @@ export const exportStudentsToPDF = async (students: Student[], filters?: {
           student.finger_5_image
         ];
         
+        const fingerNames = [
+          'Right Thumb',
+          'Right Index', 
+          'Right Middle',
+          'Left Index',
+          'Left Thumb'
+        ];
+        
         const cellX = data.cell.x;
         const cellY = data.cell.y;
         const cellWidth = data.cell.width;
         const cellHeight = data.cell.height;
         
-        // Calculate positions for 5 fingerprint images in a row (smaller to fit cell)
-        const imageWidth = 14;  // Reduced from 16
-        const imageHeight = 18; // Reduced from 20
-        const gap = 1.5;        // Reduced gap between images
+        // Calculate positions for 5 large fingerprint images in a row
+        const imageWidth = 35;    // Much larger images
+        const imageHeight = 40;   // Much larger images
+        const gap = 3;            // Gap between images
         const totalImagesWidth = 5 * imageWidth + 4 * gap;
         const startX = cellX + (cellWidth - totalImagesWidth) / 2;
-        const imageY = cellY + 2; // Small padding from top of cell
+        const imageY = cellY + 2;
         
-        // Draw fingerprint images
+        // Draw large fingerprint images with labels
         for (let i = 0; i < imageFields.length; i++) {
           const imageData = getFingerprintImageData(imageFields[i]);
           const currentX = startX + i * (imageWidth + gap);
           
           if (imageData) {
             try {
-              // Add actual fingerprint image
+              // Add actual fingerprint image (large size)
               doc.addImage(imageData, 'PNG', currentX, imageY, imageWidth, imageHeight);
               
-              // Add green checkmark below
-              doc.setFontSize(6);
-              doc.setTextColor('#00AA00');
-              doc.text('✓', currentX + imageWidth/2 - 1, imageY + imageHeight + 3);
+              // Add finger name label above image
+              doc.setFontSize(7);
+              doc.setTextColor('#333333');
+              const labelText = fingerNames[i];
+              const textWidth = doc.getTextWidth(labelText);
+              doc.text(labelText, currentX + (imageWidth - textWidth) / 2, imageY - 2);
               
-              // Add finger number
-              doc.setFontSize(6);
-              doc.setTextColor('#666666');
-              doc.text((i + 1).toString(), currentX + imageWidth/2 - 1, imageY - 2);
+              // Add green checkmark below
+              doc.setFontSize(8);
+              doc.setTextColor('#00AA00');
+              doc.text('✓ Captured', currentX + imageWidth/2 - 7, imageY + imageHeight + 5);
+              
             } catch (error) {
               console.warn(`Failed to add fingerprint image ${i + 1}:`, error);
-              // Fallback: gray rectangle
+              // Fallback: gray rectangle with error message
               doc.setDrawColor('#CCCCCC');
               doc.setFillColor('#F5F5F5');
               doc.rect(currentX, imageY, imageWidth, imageHeight, 'FD');
               
-              doc.setFontSize(5);
+              doc.setFontSize(6);
               doc.setTextColor('#999999');
-              doc.text('No Img', currentX + 4, imageY + imageHeight/2 + 1);
+              doc.text('Image Error', currentX + 8, imageY + imageHeight/2);
+              
+              // Add finger name label above
+              doc.setFontSize(7);
+              doc.setTextColor('#333333');
+              const labelText = fingerNames[i];
+              const textWidth = doc.getTextWidth(labelText);
+              doc.text(labelText, currentX + (imageWidth - textWidth) / 2, imageY - 2);
             }
           } else {
-            // Empty slot - dashed border like website
+            // Empty slot - show placeholder
             doc.setDrawColor('#DDDDDD');
             doc.setFillColor('#FAFAFA');
             doc.rect(currentX, imageY, imageWidth, imageHeight, 'FD');
             
-            // Add fingerprint icon placeholder
-            doc.setFontSize(5);
+            // Add finger name label above
+            doc.setFontSize(7);
+            doc.setTextColor('#333333');
+            const labelText = fingerNames[i];
+            const textWidth = doc.getTextWidth(labelText);
+            doc.text(labelText, currentX + (imageWidth - textWidth) / 2, imageY - 2);
+            
+            // Add "Not Captured" text
+            doc.setFontSize(6);
             doc.setTextColor('#CCCCCC');
-            doc.text('👆', currentX + imageWidth/2 - 2, imageY + imageHeight/2 + 1);
+            doc.text('Not Captured', currentX + 6, imageY + imageHeight/2);
             
-            // Add red X
-            doc.setFontSize(6);
+            // Add red X below
+            doc.setFontSize(8);
             doc.setTextColor('#CC0000');
-            doc.text('✗', currentX + imageWidth/2 - 1, imageY + imageHeight + 3);
-            
-            // Add finger number
-            doc.setFontSize(6);
-            doc.setTextColor('#666666');
-            doc.text((i + 1).toString(), currentX + imageWidth/2 - 1, imageY - 2);
+            doc.text('✗ Missing', currentX + imageWidth/2 - 6, imageY + imageHeight + 5);
           }
         }
-        
-        // Add completion badge below fingerprints
-        const fingerprintCount = imageFields.filter(img => getFingerprintImageData(img)).length;
-        doc.setFontSize(6);
-        doc.setTextColor('#0066CC');
-        const badgeText = `${fingerprintCount}/5 fingerprints captured`;
-        const textWidth = doc.getTextWidth(badgeText);
-        doc.text(badgeText, cellX + (cellWidth - textWidth) / 2, imageY + imageHeight + 8);
       }
     },
     didDrawPage: function (data) {
