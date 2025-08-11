@@ -159,17 +159,34 @@ export default function EnhancedAddStudent() {
     }
 
     // Check if all fingerprints are captured before submission
-    const validFingerprints = values.fingerprints.filter(fp => fp && fp.length > 100);
+    const validFingerprints = values.fingerprints.filter(fp => fp && fp.length > 50);
+    console.log('🔍 Pre-submission fingerprint check:', {
+      totalFingerprints: values.fingerprints.length,
+      validFingerprints: validFingerprints.length,
+      fingerprintLengths: values.fingerprints.map(fp => fp ? fp.length : 0),
+      fingerprintTypes: values.fingerprints.map(fp => {
+        if (!fp) return 'empty';
+        if (fp.startsWith('Qk0')) return 'bitmap';
+        if (fp.includes('_quality_')) return 'enhanced';
+        return 'other';
+      })
+    });
+    
     if (validFingerprints.length < 5) {
-      toast.error("Please capture all 5 fingerprints before submitting");
+      toast.error(`Please capture all 5 fingerprints before submitting. Valid: ${validFingerprints.length}/5`);
+      console.log('❌ Submission blocked - insufficient fingerprints');
       return;
     }
+    
+    console.log('✅ All fingerprints validated, proceeding with submission...');
 
     setIsSubmitting(true);
     console.log('Starting form submission...', {
       name: values.name,
       fingerprintCount: values.fingerprints.filter(fp => fp).length,
-      imagesCount: capturedImages.filter(img => img).length
+      imagesCount: capturedImages.filter(img => img).length,
+      fingerprintLengths: values.fingerprints.map(fp => fp ? fp.length : 0),
+      fingerprintPreviews: values.fingerprints.map(fp => fp ? fp.substring(0, 50) + '...' : 'empty')
     });
 
     try {

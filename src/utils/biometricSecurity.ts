@@ -232,20 +232,33 @@ export const validateFingerprintTemplate = (template: string): {
       errors.push('Template data too short');
     }
     
-    // Detect template format
+    // Detect template format and validate
     if (template.startsWith('iVBOR') || template.startsWith('data:image/png')) {
       format = 'PNG Image';
       quality = 50; // Default quality for images
     } else if (template.startsWith('/9j/') || template.startsWith('data:image/jpeg')) {
       format = 'JPEG Image';
       quality = 50;
+    } else if (template.startsWith('Qk0') || template.includes('BitmapData')) {
+      // This is bitmap data from MFS100 scanner
+      format = 'MFS100 Bitmap';
+      quality = 60; // Good quality for scanner bitmap
+    } else if (template.length >= 100 && template.includes('_quality_')) {
+      // This is our enhanced capture format with quality info
+      format = 'Enhanced MFS100 Template';
+      const qualityMatch = template.match(/_quality_(\d+)_/);
+      quality = qualityMatch ? parseInt(qualityMatch[1]) : 60;
     } else if (template.length > 500 && !template.includes('data:')) {
       format = 'ISO Template';
       // Estimate quality based on template characteristics
       quality = Math.min(90, Math.max(30, Math.floor(template.length / 20)));
+    } else if (template.length >= 100) {
+      // Accept any template with sufficient length
+      format = 'Base64 Template Data';
+      quality = 50;
     } else {
-      format = 'Base64 Data';
-      quality = 40;
+      format = 'Unknown';
+      quality = 10;
     }
     
     // Check for suspicious patterns
@@ -272,6 +285,16 @@ export const validateFingerprintTemplate = (template: string): {
     if (template.length > 100000) { // 100KB limit
       errors.push('Template data exceeds size limit');
     }
+    
+    
+    console.log('🔍 Fingerprint Template Validation:', {
+      templateLength: template.length,
+      format,
+      quality,
+      errors: errors.length > 0 ? errors : 'none',
+      templatePreview: template.substring(0, 100) + '...',
+      isValid: errors.length === 0
+    });
     
     logSecurityEvent('BIOMETRIC_TEMPLATE_VALIDATED', {
       format,
