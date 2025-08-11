@@ -146,6 +146,14 @@ serve(async (req) => {
       }
 
       case 'delete_user': {
+        // Prevent self-deletion
+        if (user_id === user.id) {
+          return new Response(
+            JSON.stringify({ error: 'Cannot delete your own account' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
         // Use optimized database function for profile deletion
         const { data: deleteResult, error: dbError } = await supabaseClient
           .rpc('delete_user_account', { target_user_id: user_id })
