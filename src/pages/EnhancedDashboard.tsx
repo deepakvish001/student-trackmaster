@@ -37,6 +37,7 @@ import { PerformanceInitializer } from '@/components/PerformanceInitializer';
 import { PerformanceTestPanel } from '@/components/PerformanceTestPanel';
 import { MobileOptimizationPanel } from '@/components/MobileOptimizationPanel';
 import { OfflineTestSuite } from '@/components/OfflineTestSuite';
+import { PWAUpdatePrompt } from '@/components/PWAUpdatePrompt';
 
 export default function EnhancedDashboard() {
   const { profile: userProfile, hasRole } = useUserProfile();
@@ -94,6 +95,7 @@ export default function EnhancedDashboard() {
   return (
     <DashboardLayout>
       <PerformanceInitializer />
+      <PWAUpdatePrompt />
       <div className="min-h-screen bg-black text-white">
         <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 lg:space-y-10 p-4 sm:p-6 lg:p-8">
           {/* Enhanced Premium Header - Mobile Responsive */}
