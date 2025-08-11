@@ -86,11 +86,18 @@ export default function EnhancedAddStudent() {
 
   // Handle individual fingerprint captures
   const handleFingerprintCaptured = async (index: number, template: string, imageData: string, quality: number) => {
-    console.log(`Fingerprint ${index} captured:`, { template: template?.length, imageData: imageData?.length, quality });
+    console.log(`Fingerprint ${index} captured:`, { 
+      template: template?.length, 
+      imageData: imageData?.length, 
+      quality,
+      templatePreview: template?.substring(0, 50) + '...' 
+    });
     
     // Update fingerprints array with actual template data (not placeholder)
     const newFingerprints = [...form.getValues().fingerprints];
-    newFingerprints[index] = template || ''; // Use actual template data
+    // Use template data if available and valid, otherwise use imageData as fallback
+    const fingerprintDataValue = template && template.length > 100 ? template : imageData;
+    newFingerprints[index] = fingerprintDataValue || '';
     form.setValue("fingerprints", newFingerprints);
     
     // Update images array  
@@ -101,7 +108,7 @@ export default function EnhancedAddStudent() {
     // Update fingerprint data
     const newFingerprintData = [...fingerprintData];
     newFingerprintData[index] = {
-      pidData: template || 'enhanced_capture',
+      pidData: fingerprintDataValue || 'enhanced_capture',
       imageData: imageData,
       quality: quality || 0
     };
