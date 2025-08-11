@@ -167,128 +167,123 @@ export default function StudentList() {
     }
   };
 
-  // Download PDF function - fetch ALL students or filtered students in real-time
+  // Print current page as PDF - exactly as it appears like Ctrl+P
   const handleDownloadPDF = async () => {
-    // Set loading state
     setIsGeneratingPDF(true);
     
     try {
-      console.log('🔄 PDF download initiated - fetching real-time student data');
+      toast.loading('🖨️ Preparing page for printing...', { id: 'pdf-generation' });
       
-      // Show initial processing message
-      toast.loading('🔄 Starting PDF generation...', { id: 'pdf-generation' });
-      
-      // Check if any filters are applied
-      const hasSearchFilter = searchTerm.trim().length > 0;
-      const hasBatchFilter = selectedBatch !== 'all';
-      const hasFilters = hasSearchFilter || hasBatchFilter;
-      
-      console.log('📊 Filter status:', {
-        hasSearchFilter,
-        hasBatchFilter,
-        searchTerm: searchTerm.trim(),
-        selectedBatch,
-        hasFilters
-      });
-
-      // Build query for ALL students or filtered students
-      let query = supabase
-        .from('students')
-        .select(`
-          id,
-          student_name,
-          mobile_number,
-          address,
-          created_at,
-          updated_at,
-          batch_id,
-          is_enabled,
-          user_id,
-          finger_1,
-          finger_2,
-          finger_3,
-          finger_4,
-          finger_5,
-          finger_1_image,
-          finger_2_image,
-          finger_3_image,
-          finger_4_image,
-          finger_5_image,
-          batches:batch_id!inner (
-            batch_name
-          )
-        `)
-        .eq('is_enabled', true);
-
-      // Apply filters only if they exist
-      if (hasSearchFilter) {
-        console.log('🔍 Applying search filter:', searchTerm.trim());
-        query = query.or(`student_name.ilike.%${searchTerm.trim()}%,mobile_number.ilike.%${searchTerm.trim()}%`);
-      }
-
-      if (hasBatchFilter) {
-        console.log('🏷️ Applying batch filter:', selectedBatch);
-        query = query.eq('batch_id', selectedBatch);
-      }
-
-      // Apply same sorting as current view
-      query = query.order(sortBy, { ascending: sortOrder === 'asc' });
-
-      // Update progress message
-      toast.loading('📊 Fetching student data from database...', { id: 'pdf-generation' });
-
-      // Fetch real-time data
-      const { data: allStudents, error } = await query;
-
-      if (error) {
-        console.error('❌ Error fetching students for PDF:', error);
-        toast.error('Failed to fetch student data for PDF', { id: 'pdf-generation' });
-        return;
-      }
-
-      const studentCount = allStudents?.length || 0;
-      console.log(`✅ Fetched ${studentCount} students for PDF`);
-      
-      // Update progress message
-      toast.loading(`🖼️ Processing ${studentCount} students with fingerprint images...`, { id: 'pdf-generation' });
-      
-      // Prepare filter information for PDF
-      const selectedBatchData = batches.find(batch => batch.id === selectedBatch);
-      const filters = {
-        searchTerm: hasSearchFilter ? searchTerm.trim() : undefined,
-        selectedBatch: hasBatchFilter ? selectedBatch : undefined,
-        batchName: selectedBatchData?.batch_name
-      };
-      
-      // Determine PDF type message
-      let pdfType = '';
-      if (hasFilters) {
-        if (hasSearchFilter && hasBatchFilter) {
-          pdfType = `filtered by search "${searchTerm.trim()}" and batch "${selectedBatchData?.batch_name}"`;
-        } else if (hasSearchFilter) {
-          pdfType = `filtered by search "${searchTerm.trim()}"`;
-        } else if (hasBatchFilter) {
-          pdfType = `filtered by batch "${selectedBatchData?.batch_name}"`;
+      // Add print-specific styles
+      const printStyles = document.createElement('style');
+      printStyles.id = 'print-styles';
+      printStyles.innerHTML = `
+        @media print {
+          /* Hide navigation and non-essential elements */
+          .sidebar, .header-nav, .print-hide {
+            display: none !important;
+          }
+          
+          /* Optimize page layout for printing */
+          body {
+            margin: 0;
+            padding: 0;
+            background: white !important;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
+          }
+          
+          /* Ensure content uses full page width */
+          .max-w-7xl {
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0.5in !important;
+          }
+          
+          /* Optimize cards for printing */
+          .premium-card {
+            border: 1px solid #ccc !important;
+            box-shadow: none !important;
+            margin-bottom: 1rem !important;
+            break-inside: avoid;
+          }
+          
+          /* Optimize table for printing */
+          .table-container {
+            overflow: visible !important;
+          }
+          
+          table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+          }
+          
+          th, td {
+            border: 1px solid #ccc !important;
+            padding: 8px !important;
+            font-size: 12px !important;
+            break-inside: avoid;
+          }
+          
+          /* Ensure fingerprint images print correctly */
+          img {
+            max-width: 40px !important;
+            max-height: 40px !important;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
+          }
+          
+          /* Add page breaks appropriately */
+          .page-break {
+            page-break-before: always;
+          }
+          
+          /* Hide buttons and interactive elements */
+          button, .button, .btn {
+            display: none !important;
+          }
+          
+          /* Show only essential content */
+          .print-only {
+            display: block !important;
+          }
         }
-      } else {
-        pdfType = 'complete database (all students)';
-      }
+      `;
+      document.head.appendChild(printStyles);
       
-      console.log('📄 Generating PDF for:', pdfType);
+      // Add print title
+      const printTitle = document.createElement('div');
+      printTitle.className = 'print-only';
+      printTitle.style.display = 'none';
+      printTitle.innerHTML = `
+        <div style="text-align: center; margin-bottom: 2rem; padding: 1rem; border-bottom: 2px solid #333;">
+          <h1 style="margin: 0; font-size: 24px; color: #333;">Student Management Report</h1>
+          <p style="margin: 0.5rem 0; color: #666;">Generated on ${new Date().toLocaleString()}</p>
+          <p style="margin: 0; color: #666;">Total Students: ${stats.totalStudents}</p>
+        </div>
+      `;
+      document.body.insertBefore(printTitle, document.body.firstChild);
       
-      // Final progress message
-      toast.loading('📄 Generating PDF document...', { id: 'pdf-generation' });
+      // Show success message
+      toast.success('🖨️ Opening print dialog...', { id: 'pdf-generation' });
       
-      await exportStudentsToPDF(allStudents || [], filters);
-      
-      // Success message
-      toast.success(`📋 PDF generated successfully with ${studentCount} students (${pdfType})`, { id: 'pdf-generation' });
+      // Small delay to ensure styles are applied
+      setTimeout(() => {
+        // Trigger print dialog
+        window.print();
+        
+        // Cleanup after print
+        setTimeout(() => {
+          document.head.removeChild(printStyles);
+          document.body.removeChild(printTitle);
+          setIsGeneratingPDF(false);
+          toast.success('✅ Print dialog opened successfully!', { id: 'pdf-generation' });
+        }, 100);
+      }, 500);
       
     } catch (error) {
-      console.error('❌ PDF generation error:', error);
-      toast.error('Failed to generate PDF report', { id: 'pdf-generation' });
-    } finally {
-      // Always reset loading state
+      console.error('❌ Print preparation error:', error);
+      toast.error('Failed to prepare page for printing', { id: 'pdf-generation' });
       setIsGeneratingPDF(false);
     }
   };
