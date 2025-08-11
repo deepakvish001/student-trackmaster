@@ -59,7 +59,7 @@ export default function StudentList() {
     selectedBatch,
     sortBy,
     sortOrder,
-    pageSize: 100 // Show more students per page
+    pageSize: 10
   });
 
   // Real-time clock update
@@ -420,7 +420,7 @@ export default function StudentList() {
                 </div>
                 <div>
                   <CardTitle className="text-xl font-bold text-foreground">Student Database</CardTitle>
-                  <p className="text-sm text-muted-foreground">{stats.totalStudents} total students ({students.length} displayed)</p>
+                  <p className="text-sm text-muted-foreground">{students.length} active student records</p>
                 </div>
               </div>
             </CardHeader>

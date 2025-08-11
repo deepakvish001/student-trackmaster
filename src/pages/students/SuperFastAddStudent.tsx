@@ -109,17 +109,16 @@ export default function SuperFastAddStudent() {
         .insert({
           student_name: studentData.name.trim(),
           batch_id: studentData.batch,
-          // Only save non-empty fingerprints and images
-          finger_1: (fingerprints[0] && fingerprints[0].trim() !== '') ? fingerprints[0] : null,
-          finger_2: (fingerprints[1] && fingerprints[1].trim() !== '') ? fingerprints[1] : null,
-          finger_3: (fingerprints[2] && fingerprints[2].trim() !== '') ? fingerprints[2] : null,
-          finger_4: (fingerprints[3] && fingerprints[3].trim() !== '') ? fingerprints[3] : null,
-          finger_5: (fingerprints[4] && fingerprints[4].trim() !== '') ? fingerprints[4] : null,
-          finger_1_image: (images[0] && images[0].trim() !== '') ? images[0] : null,
-          finger_2_image: (images[1] && images[1].trim() !== '') ? images[1] : null,
-          finger_3_image: (images[2] && images[2].trim() !== '') ? images[2] : null,
-          finger_4_image: (images[3] && images[3].trim() !== '') ? images[3] : null,
-          finger_5_image: (images[4] && images[4].trim() !== '') ? images[4] : null,
+          finger_1: fingerprints[0] || null,
+          finger_2: fingerprints[1] || null,
+          finger_3: fingerprints[2] || null,
+          finger_4: fingerprints[3] || null,
+          finger_5: fingerprints[4] || null,
+          finger_1_image: images[0] || null,
+          finger_2_image: images[1] || null,
+          finger_3_image: images[2] || null,
+          finger_4_image: images[3] || null,
+          finger_5_image: images[4] || null,
           user_id: user?.id
         })
         .select();

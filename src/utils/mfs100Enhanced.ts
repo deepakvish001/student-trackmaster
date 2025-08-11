@@ -2,7 +2,6 @@
 // Enhanced MFS100 utilities for real-time fingerprint capture
 import { toast } from "sonner";
 import { maxQualityEnhanceFingerprint, quickEnhanceFingerprint } from "./fingerprintImageEnhancer";
-import { enhanceFullClarityFingerprint } from "./advancedFingerprintEnhancer";
 
 // Enhanced type definitions
 export interface MFS100DeviceStatus {
@@ -81,21 +80,14 @@ export const processHighQualityFingerprint = async (
       const baseImage = `data:image/bmp;base64,${bitmapData}`;
       
       if (enableAIEnhancement) {
-        console.log('🚀 Applying advanced full-clarity enhancement to BMP image...');
+        console.log('🚀 Applying AI enhancement to BMP image...');
         try {
-          const enhanced = await enhanceFullClarityFingerprint(baseImage);
-          console.log('✅ Advanced enhancement completed successfully');
+          const enhanced = await maxQualityEnhanceFingerprint(baseImage);
+          console.log('✅ AI enhancement completed successfully');
           return enhanced;
         } catch (error) {
-          console.warn('⚠️ Advanced enhancement failed, trying standard enhancement:', error);
-          try {
-            const fallback = await maxQualityEnhanceFingerprint(baseImage);
-            console.log('✅ Fallback enhancement completed');
-            return fallback;
-          } catch (fallbackError) {
-            console.warn('⚠️ All enhancements failed, using original:', fallbackError);
-            return baseImage;
-          }
+          console.warn('⚠️ AI enhancement failed, using original:', error);
+          return baseImage;
         }
       }
       
@@ -163,23 +155,16 @@ export const processHighQualityFingerprint = async (
     const result = canvas.toDataURL('image/png', 1.0);
     console.log(`Fingerprint image processed successfully, result length: ${result.length}`);
     
-    // Apply advanced enhancement if enabled
+    // Apply AI enhancement if enabled
     if (enableAIEnhancement && result.length > 0) {
-      console.log('🚀 Applying advanced full-clarity enhancement to processed image...');
+      console.log('🚀 Applying AI enhancement to processed image...');
       try {
-        const enhanced = await enhanceFullClarityFingerprint(result);
-        console.log('✅ Advanced enhancement completed successfully');
+        const enhanced = await maxQualityEnhanceFingerprint(result);
+        console.log('✅ AI enhancement completed successfully');
         return enhanced;
       } catch (error) {
-        console.warn('⚠️ Advanced enhancement failed, trying standard enhancement:', error);
-        try {
-          const fallback = await maxQualityEnhanceFingerprint(result);
-          console.log('✅ Fallback enhancement completed');
-          return fallback;
-        } catch (fallbackError) {
-          console.warn('⚠️ All enhancements failed, using standard processing:', fallbackError);
-          return result;
-        }
+        console.warn('⚠️ AI enhancement failed, using standard processing:', error);
+        return result;
       }
     }
     

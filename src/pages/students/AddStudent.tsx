@@ -122,18 +122,15 @@ export default function AddStudent() {
 
       const studentId = uuidv4();
       
-      // Prepare fingerprint data for validation and storage - only save captured fingerprints
+      // Prepare fingerprint data for validation and storage in students table
       const fingerprintData: Record<string, string> = {};
       const fingerprintImages: Record<string, string> = {};
       
       Object.entries(capturedFingerprints).forEach(([index, fingerprint]) => {
         const fingerNum = parseInt(index) + 1;
-        // Only save if fingerprint was actually captured (has valid pidData)
-        if (fingerprint.pidData && fingerprint.pidData.trim() !== '') {
-          fingerprintData[`finger_${fingerNum}`] = fingerprint.pidData;
-          if (fingerprint.imageData && fingerprint.imageData.trim() !== '') {
-            fingerprintImages[`finger_${fingerNum}_image`] = fingerprint.imageData;
-          }
+        fingerprintData[`finger_${fingerNum}`] = fingerprint.pidData;
+        if (fingerprint.imageData) {
+          fingerprintImages[`finger_${fingerNum}_image`] = fingerprint.imageData;
         }
       });
 
@@ -209,7 +206,8 @@ export default function AddStudent() {
       setActiveTab("details");
 
       // Success feedback
-      toast.success(`Student added successfully with ${fingerprintInserts.length} fingerprint(s)! Ready for next student.`);
+      toast.success(`Student added successfully with ${fingerprintInserts.length} fingerprint(s)!`);
+      navigate('/students');
 
     } catch (error) {
       console.error('Error submitting student:', error);
