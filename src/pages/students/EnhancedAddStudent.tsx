@@ -333,11 +333,17 @@ export default function EnhancedAddStudent() {
         success: true
       });
       
-      // Invalidate student queries to trigger immediate refresh on all pages
+      // Invalidate ALL student queries and FORCE immediate refetch for real-time updates
       queryClient.invalidateQueries({ queryKey: ['students-optimized'] });
       queryClient.invalidateQueries({ queryKey: ['students-count'] });
       queryClient.invalidateQueries({ queryKey: ['students-list'] });
       queryClient.invalidateQueries({ queryKey: ['ultra-fast-students'] });
+      queryClient.invalidateQueries({ queryKey: ['restricted-students'] });
+      queryClient.invalidateQueries({ queryKey: ['batches-optimized'] });
+      
+      // Force immediate refetch to show new data instantly on View Students page
+      queryClient.refetchQueries({ queryKey: ['students-optimized'] });
+      queryClient.refetchQueries({ queryKey: ['ultra-fast-students'] });
       
       toast.success(`Student "${validation.sanitizedData!.student_name}" registered successfully! Ready for next student.`, {
         duration: 4000,
