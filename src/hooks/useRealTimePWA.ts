@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOnlineStatus } from './useOnlineStatus';
 import { useOfflineQueue } from './useOfflineQueue';
 import { usePWANotifications } from './usePWANotifications';
+import { useNotificationThrottle } from './useThrottle';
 
 interface RealTimePWAState {
   isConnected: boolean;
@@ -54,6 +55,7 @@ export function useRealTimePWA() {
   const isOnline = useOnlineStatus();
   const { addToQueue, processQueue, getQueueStats } = useOfflineQueue();
   const { showSyncNotification, showBiometricNotification } = usePWANotifications();
+  const { shouldShowNotification } = useNotificationThrottle();
   const channelsRef = useRef<any[]>([]);
   const performanceRef = useRef<number[]>([]);
   const hasShownConnectedToast = useRef(false);
@@ -180,8 +182,8 @@ export function useRealTimePWA() {
         lastSync: new Date()
       }));
 
-      // Only show toast once per session
-      if (!hasShownConnectedToast.current) {
+      // Only show toast once per session and with throttling
+      if (!hasShownConnectedToast.current && shouldShowNotification('sync-connected')) {
         showSyncNotification('Real-time synchronization activated', true);
         hasShownConnectedToast.current = true;
       }
@@ -215,8 +217,8 @@ export function useRealTimePWA() {
       lastSync: new Date()
     }));
 
-    // Show notification for critical biometric updates
-    if (eventType === 'INSERT' && newRecord) {
+    // Show notification for critical biometric updates with throttling
+    if (eventType === 'INSERT' && newRecord && shouldShowNotification(`biometric-${newRecord.student_id}`)) {
       showBiometricNotification(
         `Student ${newRecord.student_id}`, 
         `Fingerprint #${newRecord.finger_index} captured`

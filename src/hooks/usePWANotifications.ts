@@ -28,6 +28,8 @@ export function usePWANotifications() {
   });
 
   const notificationRefs = useRef<{ [key: string]: boolean }>({});
+  const notificationThrottle = useRef<{ [key: string]: number }>({});
+  const THROTTLE_DURATION = 30000; // 30 seconds throttle
 
   const requestPermission = useCallback(async () => {
     if (!state.isSupported) {
@@ -66,8 +68,25 @@ export function usePWANotifications() {
     }
   ) => {
     if (!state.isSupported || state.permission !== 'granted') {
-      // Fallback to toast if notifications not available
-      toast.info(`${title}: ${options?.body || ''}`);
+      // Fallback to toast if notifications not available - but throttle it too
+      const toastKey = `toast-${title}`;
+      const now = Date.now();
+      const lastShown = notificationThrottle.current[toastKey] || 0;
+      
+      if (now - lastShown > THROTTLE_DURATION) {
+        notificationThrottle.current[toastKey] = now;
+        toast.info(`${title}: ${options?.body || ''}`);
+      }
+      return;
+    }
+
+    // Create throttle key based on title and body content
+    const throttleKey = options?.tag || `${title}-${options?.body || ''}`;
+    const now = Date.now();
+    const lastShown = notificationThrottle.current[throttleKey] || 0;
+    
+    // Throttle notifications (prevent showing same notification within throttle duration)
+    if (now - lastShown < THROTTLE_DURATION) {
       return;
     }
 
@@ -86,6 +105,9 @@ export function usePWANotifications() {
         data: options?.data
       });
 
+      // Update throttle tracking
+      notificationThrottle.current[throttleKey] = now;
+
       // Track notification to prevent duplicates
       if (options?.tag) {
         notificationRefs.current[options.tag] = true;
@@ -93,7 +115,16 @@ export function usePWANotifications() {
         // Clear tracking after notification is closed
         notification.onclose = () => {
           delete notificationRefs.current[options.tag];
+          // Also clear throttle after some time
+          setTimeout(() => {
+            delete notificationThrottle.current[throttleKey];
+          }, THROTTLE_DURATION);
         };
+      } else {
+        // For non-tagged notifications, clear throttle after timeout
+        setTimeout(() => {
+          delete notificationThrottle.current[throttleKey];
+        }, THROTTLE_DURATION);
       }
 
       // Store notification in state
