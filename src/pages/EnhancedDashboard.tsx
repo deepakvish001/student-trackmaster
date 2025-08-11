@@ -6,13 +6,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { Users, GraduationCap, Shield, Activity, AlertTriangle, CheckCircle, Clock, Database, Wifi, RefreshCw, TrendingUp, LayoutDashboard } from 'lucide-react';
+import { QuickStatus } from '@/components/QuickStatus';
+import { Users, GraduationCap, Shield, Activity, AlertTriangle, CheckCircle, Clock, Database, Wifi, RefreshCw, TrendingUp, LayoutDashboard, WifiOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useSystemHealthMonitoring } from '@/hooks/useSystemHealthMonitoring';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useInstantStudentUpdates } from '@/hooks/useInstantStudentUpdates';
 import { useUltraFastDashboard } from '@/hooks/useUltraFastDashboard';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { useOfflineSync } from '@/hooks/useOfflineSync';
 export default function EnhancedDashboard() {
   const {
     profile,
@@ -26,6 +29,10 @@ export default function EnhancedDashboard() {
   const {
     logEvent
   } = useAuditLog();
+
+  // Offline capabilities
+  const { isOnline } = useOnlineStatus();
+  const { pendingCount, lastSyncTime } = useOfflineSync();
 
   // Enable instant real-time updates (same as View Students page)
   const { forceRefresh } = useInstantStudentUpdates();
@@ -68,22 +75,29 @@ export default function EnhancedDashboard() {
         <div className="max-w-7xl mx-auto space-y-10 p-8">
           {/* Enhanced Premium Header */}
           <div className="space-y-6">
-            <div className="flex items-center space-x-6">
-              <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-3xl flex items-center justify-center shadow-2xl shadow-orange-500/30">
-                <LayoutDashboard className="w-8 h-8 text-white" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-6">
+                <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-3xl flex items-center justify-center shadow-2xl shadow-orange-500/30">
+                  <LayoutDashboard className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-5xl font-extrabold bg-gradient-to-r from-white via-orange-200 to-orange-400 bg-clip-text text-transparent mb-2">
+                    BiometricHub Dashboard
+                  </h1>
+                  <p className="text-xl text-gray-300 font-medium">
+                    Advanced biometric management & analytics platform
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-5xl font-extrabold bg-gradient-to-r from-white via-orange-200 to-orange-400 bg-clip-text text-transparent mb-2">
-                  BiometricHub Dashboard
-                </h1>
-                <p className="text-xl text-gray-300 font-medium">
-                  Advanced biometric management & analytics platform
-                </p>
+
+              {/* Connection Status */}
+              <div className="flex items-center gap-4">
+                <QuickStatus compact={true} showSync={true} />
               </div>
             </div>
             
               {/* Enhanced Stats Summary Bar with Real-time Indicator */}
-              <div className="bg-black/80 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 shadow-2xl">
+              <div className={`bg-black/80 backdrop-blur-xl border rounded-2xl p-6 shadow-2xl ${!isOnline ? 'border-amber-500/30' : 'border-gray-700/50'}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-8">
                     <div className="text-center">
@@ -101,10 +115,33 @@ export default function EnhancedDashboard() {
                       <div className="text-sm text-gray-400 uppercase tracking-wider">Users</div>
                     </div>
                     <div className="w-px h-12 bg-gray-700"></div>
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-purple-400">{stats?.completionRate || 0}%</div>
-                      <div className="text-sm text-gray-400 uppercase tracking-wider">Complete</div>
-                    </div>
+                     <div className="text-center">
+                       <div className="text-3xl font-bold text-purple-400">{stats?.completionRate || 0}%</div>
+                       <div className="text-sm text-gray-400 uppercase tracking-wider">Complete</div>
+                     </div>
+
+                    {/* Offline Status Indicator */}
+                    {!isOnline && (
+                      <>
+                        <div className="w-px h-12 bg-gray-700"></div>
+                        <div className="text-center">
+                          <div className="flex items-center justify-center text-amber-400 mb-1">
+                            <WifiOff className="w-6 h-6" />
+                          </div>
+                          <div className="text-sm text-amber-400 uppercase tracking-wider">Offline Mode</div>
+                        </div>
+                      </>
+                    )}
+
+                    {pendingCount > 0 && (
+                      <>
+                        <div className="w-px h-12 bg-gray-700"></div>
+                        <div className="text-center">
+                          <div className="text-3xl font-bold text-amber-400">{pendingCount}</div>
+                          <div className="text-sm text-amber-400 uppercase tracking-wider">Pending Sync</div>
+                        </div>
+                      </>
+                    )}
                   </div>
                   <div className="flex items-center space-x-4">
                     {/* Real-time indicator */}
