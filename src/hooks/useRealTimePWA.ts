@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOnlineStatus } from './useOnlineStatus';
 import { useOfflineQueue } from './useOfflineQueue';
 import { usePWANotifications } from './usePWANotifications';
+import { useStableEffect } from './useStableEffect';
 
 interface RealTimePWAState {
   isConnected: boolean;
@@ -61,20 +62,25 @@ export function useRealTimePWA() {
 
   // Real-time presence tracking
   const presenceChannel = useRef<any>(null);
+  const isCleaningUp = useRef(false);
 
-  useEffect(() => {
-    if (isOnline && !isInitializing.current) {
+  // Use stable effect to prevent infinite loops
+  useStableEffect(() => {
+    console.log('[RealTimePWA] Connection effect triggered, online:', isOnline, 'connected:', state.isConnected);
+    
+    if (isOnline && !isInitializing.current && !state.isConnected && !isCleaningUp.current) {
       initializeRealTimeConnections();
-    } else if (!isOnline) {
+    } else if (!isOnline && state.isConnected) {
       cleanupConnections();
-      hasShownConnectedToast.current = false;
     }
 
-    return () => cleanupConnections();
-  }, [isOnline]);
+    return () => {
+      cleanupConnections();
+    };
+  }, [isOnline, state.isConnected], 500); // 500ms debounce
 
   const initializeRealTimeConnections = useCallback(async () => {
-    if (isInitializing.current || state.isConnected) return;
+    if (isInitializing.current || state.isConnected || isCleaningUp.current) return;
     
     isInitializing.current = true;
     console.log('[RealTimePWA] Initializing real-time connections...');
@@ -273,7 +279,10 @@ export function useRealTimePWA() {
   }, []);
 
   const cleanupConnections = useCallback(() => {
+    if (isCleaningUp.current) return;
+    
     console.log('[RealTimePWA] Cleaning up connections...');
+    isCleaningUp.current = true;
     
     channelsRef.current.forEach(channel => {
       if (channel) {
@@ -289,15 +298,20 @@ export function useRealTimePWA() {
     channelsRef.current = [];
     isInitializing.current = false;
     
-    setState(prev => ({ 
-      ...prev, 
-      isConnected: false,
-      activeUsers: 0
-    }));
+    // Use setTimeout to avoid triggering re-render during cleanup
+    setTimeout(() => {
+      setState(prev => ({ 
+        ...prev, 
+        isConnected: false,
+        activeUsers: 0
+      }));
+      isCleaningUp.current = false;
+      hasShownConnectedToast.current = false;
+    }, 100);
   }, []);
 
   const forceSync = useCallback(async () => {
-    if (state.syncInProgress) return;
+    if (state.syncInProgress || isCleaningUp.current) return;
     
     setState(prev => ({ ...prev, syncInProgress: true }));
     
