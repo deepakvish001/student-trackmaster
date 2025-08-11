@@ -32,12 +32,9 @@ import { SyncButton } from '@/components/SyncButton';
 import { useRealTimePWA } from '@/hooks/useRealTimePWA';
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 export default function EnhancedDashboard() {
-  const { profile: userProfile } = useUserProfile();
+  const { profile: userProfile, hasRole } = useUserProfile();
   const { isConnected, performanceStats } = useRealTimePWA();
   
-  const {
-    hasRole
-  } = useUserProfile();
   const {
     metrics,
     isChecking,
