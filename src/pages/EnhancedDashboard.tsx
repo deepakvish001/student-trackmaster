@@ -105,10 +105,10 @@ export default function EnhancedDashboard() {
                 </div>
                 <div>
                   <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-extrabold bg-gradient-to-r from-white via-orange-200 to-orange-400 bg-clip-text text-transparent mb-1 sm:mb-2">
-                    SecureAuth Dashboard
+                    Enhanced Dashboard
                   </h1>
                   <p className="text-sm sm:text-lg lg:text-xl text-gray-300 font-medium">
-                    Advanced biometric management platform
+                    Real-time biometric system monitoring
                   </p>
                 </div>
               </div>
