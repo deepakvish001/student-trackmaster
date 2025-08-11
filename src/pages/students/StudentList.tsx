@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import html2pdf from 'html2pdf.js';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -167,48 +168,50 @@ export default function StudentList() {
     }
   };
 
-  // Generate and download PDF directly with current page data
+  // Capture current page visually and save as PDF (like Ctrl+P)
   const handleDownloadPDF = async () => {
     setIsGeneratingPDF(true);
     
     try {
-      console.log('📄 Generating PDF with current page data...');
-      toast.loading('📄 Generating PDF from current view...', { id: 'pdf-generation' });
+      console.log('📸 Capturing current page visually like Ctrl+P...');
+      toast.loading('📸 Capturing page as it appears on screen...', { id: 'pdf-capture' });
       
-      // Use the currently displayed students data (already filtered and sorted)
-      const currentStudents = students.map(student => {
-        const batchData = batches.find(batch => batch.id === student.batch_id);
-        return {
-          ...student,
-          batches: batchData ? 
-            { batch_name: batchData.batch_name, is_enabled: batchData.is_enabled } : 
-            { batch_name: "Unknown Batch", is_enabled: false }
-        };
-      });
-
-      console.log(`📊 Using ${currentStudents.length} students from current view`);
+      // Get the main content area to capture
+      const element = document.body;
       
-      // Prepare filter information for PDF header
-      const selectedBatchData = batches.find(batch => batch.id === selectedBatch);
-      const hasSearchFilter = searchTerm.trim().length > 0;
-      const hasBatchFilter = selectedBatch !== 'all';
-      
-      const filters = {
-        searchTerm: hasSearchFilter ? searchTerm.trim() : undefined,
-        selectedBatch: hasBatchFilter ? selectedBatch : undefined,
-        batchName: selectedBatchData?.batch_name
+      // Configure html2pdf options to capture page like browser print
+      const options = {
+        margin: [10, 10, 10, 10],
+        filename: `Students_List_${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { 
+          scale: 1,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          scrollX: 0,
+          scrollY: 0,
+          width: window.innerWidth,
+          height: window.innerHeight
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait',
+          compress: true
+        }
       };
       
-      toast.loading('📋 Creating PDF document...', { id: 'pdf-generation' });
+      toast.loading('🖼️ Converting page to PDF format...', { id: 'pdf-capture' });
       
-      // Generate PDF with current page data
-      await exportStudentsToPDF(currentStudents, filters);
+      // Capture and download the page as PDF (exactly like Ctrl+P)
+      await html2pdf().from(element).set(options).save();
       
-      toast.success(`✅ PDF downloaded with ${currentStudents.length} students!`, { id: 'pdf-generation' });
+      toast.success('✅ Page saved as PDF! (Visual copy of current screen)', { id: 'pdf-capture' });
       
     } catch (error) {
-      console.error('❌ PDF generation error:', error);
-      toast.error('Failed to generate PDF', { id: 'pdf-generation' });
+      console.error('❌ Page capture error:', error);
+      toast.error('Failed to capture page as PDF', { id: 'pdf-capture' });
     } finally {
       setIsGeneratingPDF(false);
     }
@@ -251,12 +254,12 @@ export default function StudentList() {
                 {isGeneratingPDF ? (
                   <>
                     <div className="animate-spin h-5 w-5 mr-3 border-2 border-emerald-green border-t-transparent rounded-full"></div>
-                    Generating...
+                    Capturing...
                   </>
                 ) : (
                   <>
                     <Download className="h-5 w-5 mr-3" />
-                    Download PDF
+                    Save Page as PDF
                   </>
                 )}
               </Button>
