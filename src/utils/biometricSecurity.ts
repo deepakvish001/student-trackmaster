@@ -228,7 +228,8 @@ export const validateFingerprintTemplate = (template: string): {
     }
     
     // Check minimum length (ISO templates should be substantial)
-    if (template.length < 100) {
+    // Temporarily relaxed for MFS100 compatibility - accept any template with data
+    if (template.length < 50) {
       errors.push('Template data too short');
     }
     
