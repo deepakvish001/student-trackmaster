@@ -21,6 +21,7 @@ import PWASettings from "./pages/PWASettings";
 import { EnhancedAuthProvider } from "./contexts/EnhancedAuthContext";
 import { useGlobalPerformanceOptimization } from "./hooks/useGlobalPerformanceOptimization";
 import { useUltraFastRealTime } from "./hooks/useUltraFastRealTime";
+import { useRealTimeValidator } from "./hooks/useRealTimeValidator";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SecurityWrapper from "./components/SecurityWrapper";
 import { SuperAdminRoute, UserRoute } from "./components/RoleBasedRoute";
@@ -39,6 +40,9 @@ function AppWithQueryClient() {
   
   // Initialize ultra-fast real-time synchronization for immediate data updates
   useUltraFastRealTime();
+  
+  // Initialize real-time system validation
+  useRealTimeValidator();
 
   return (
     <BrowserRouter>
