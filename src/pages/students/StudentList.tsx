@@ -15,6 +15,7 @@ import { Student } from '@/types';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useOptimizedStudents } from '@/hooks/useOptimizedStudents';
 import { useRealTimeBatchAccess } from '@/hooks/useRealTimeBatchAccess';
+import { useInstantStudentUpdates } from '@/hooks/useInstantStudentUpdates';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { StudentListSkeleton } from '@/components/students/StudentListSkeleton';
 import { Users, Search, Filter, Download, RefreshCw, Shield, Activity, Clock, Database, Fingerprint, Plus, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -35,9 +36,10 @@ export default function StudentList() {
   } = useUserProfile();
 
   // Enable real-time batch access updates
-  const {
-    isSubscribed
-  } = useRealTimeBatchAccess();
+  const { isSubscribed } = useRealTimeBatchAccess();
+
+  // Enable instant student updates for real-time CRUD operations
+  const { forceRefresh } = useInstantStudentUpdates();
 
   // Use optimized data fetching hook with debounced search
   const {
@@ -351,9 +353,13 @@ export default function StudentList() {
                 <Plus className="h-5 w-5 mr-3" />
                 Add New Student
               </Button>
-              <Button onClick={() => refetch()} variant="outline" className="h-12 px-6 border-2 border-electric-blue/30 text-electric-blue hover:bg-electric-blue/5 rounded-2xl font-semibold transition-all duration-300 hover:scale-105">
+              <Button 
+                onClick={forceRefresh} 
+                variant="outline" 
+                className="h-12 px-6 border-2 border-electric-blue/30 text-electric-blue hover:bg-electric-blue/5 rounded-2xl font-semibold transition-all duration-300 hover:scale-105"
+              >
                 <RefreshCw className="h-5 w-5 mr-3" />
-                Refresh Data
+                Force Refresh
               </Button>
             </div>
           </div>
