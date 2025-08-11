@@ -1,5 +1,6 @@
 import React from 'react';
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { QuickStatus } from "@/components/QuickStatus";
 import { Fingerprint } from "lucide-react";
 
 interface FixedHeaderProps {
@@ -35,9 +36,9 @@ export default function FixedHeader({
           </div>
         </div>
 
-        {/* Right Section - Empty for now, logout handled in sidebar */}
+        {/* Right Section - Quick Status */}
         <div className="flex items-center">
-          {/* Logout functionality moved to sidebar footer */}
+          <QuickStatus compact={true} showSync={true} />
         </div>
       </div>
     </header>

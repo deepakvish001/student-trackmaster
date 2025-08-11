@@ -2,6 +2,7 @@ import React from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { QueryClient as TanstackQueryClient, QueryClientProvider as TanstackQueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
@@ -41,6 +42,7 @@ function AppWithQueryClient() {
       <EnhancedAuthProvider>
         <TooltipProvider>
           <OfflineBanner />
+          <PWAInstallPrompt />
           <Toaster />
           <Routes>
             {/* Public route - Login only */}

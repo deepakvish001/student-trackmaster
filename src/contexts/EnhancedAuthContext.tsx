@@ -16,6 +16,7 @@ import {
   importEncryptionKey,
   auditBiometricAccess 
 } from '@/utils/biometricSecurity';
+import { offlineDb } from '@/lib/offlineDatabase';
 
 interface EnhancedAuthContextType {
   user: User | null;
@@ -372,6 +373,15 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
           timestamp: new Date().toISOString()
         });
         throw error;
+      }
+      
+      // Clear offline data when logging out
+      try {
+        await offlineDb.clearAllData();
+        console.log('✅ Offline data cleared on logout');
+      } catch (offlineError) {
+        console.error('Failed to clear offline data:', offlineError);
+        // Don't throw error - logout should still succeed
       }
       
       // Clean up will be handled by onAuthStateChange
