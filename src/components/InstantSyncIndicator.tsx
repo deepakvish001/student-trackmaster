@@ -50,7 +50,7 @@ export function InstantSyncIndicator() {
   // Compact collapsed view
   if (!isExpanded) {
     return (
-      <div className="fixed bottom-4 left-4 z-[9998] flex flex-col items-start gap-1">{/* Bottom-left corner */}
+      <div className="fixed bottom-4 right-20 z-[9998] flex flex-col items-end gap-1">{/* Bottom-right, offset from edge */}
         {/* Main sync indicator */}
         <div 
           className={`
@@ -90,7 +90,7 @@ export function InstantSyncIndicator() {
 
   // Expanded view with controls
   return (
-    <div className="fixed bottom-4 left-4 z-[9998] flex flex-col items-start gap-2">{/* Bottom-left positioning */}
+    <div className="fixed bottom-4 right-20 z-[9998] flex flex-col items-end gap-2">{/* Bottom-right, offset positioning */}
       {/* Expanded panel */}
       <div className="bg-background/95 backdrop-blur-sm rounded-lg shadow-xl border p-4 min-w-[300px] mb-2">
         <div className="flex items-center justify-between mb-3">{/* Added mb-2 for spacing from bottom */}
