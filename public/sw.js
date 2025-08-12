@@ -1,6 +1,9 @@
 // Ultra-High Performance Service Worker for BiometricHub PWA
 // Optimized for maximum speed, responsiveness, and real-time performance
 
+// Workbox manifest injection point - DO NOT REMOVE
+const manifest = self.__WB_MANIFEST;
+
 const CACHE_VERSION = 'v2.3.0';
 const STATIC_CACHE = `biometric-hub-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `biometric-hub-dynamic-${CACHE_VERSION}`;
