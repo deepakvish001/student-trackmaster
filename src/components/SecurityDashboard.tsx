@@ -209,7 +209,7 @@ export function SecurityDashboard() {
                       </span>
                       <span className="flex items-center gap-1">
                         <Users className="h-3 w-3" />
-                        {event.user_id.substring(0, 8)}...
+                        {event.user_id?.substring(0, 8) || 'Unknown'}...
                       </span>
                       {event.ip_address && event.ip_address !== 'unknown' && (
                         <span>IP: {event.ip_address}</span>
