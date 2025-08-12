@@ -75,126 +75,101 @@ export default defineConfig(({ mode }) => ({
     mode === 'development' && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        maximumFileSizeToCacheInBytes: 10000000, // 10MB for better caching
-        cleanupOutdatedCaches: true,
-        skipWaiting: true,
-        clientsClaim: true,
-        navigateFallback: 'index.html',
-        navigateFallbackDenylist: [/^\/_/, /\/[^/?]+\.[^/]+$/],
-        runtimeCaching: [
-          // Static JS/CSS assets - Long-term caching to fix SEO cache issue
-          {
-            urlPattern: /\/assets\/.*\.(js|css)$/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'static-assets-v3',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year cache for hashed assets
+        workbox: {
+          // Enable offline navigation fallback
+          navigateFallback: '/index.html',
+          navigateFallbackAllowlist: [/^(?!\/__).*/],
+          
+          // Precache all app shell assets
+          globPatterns: [
+            '**/*.{js,css,html,ico,png,jpg,jpeg,svg,gif,webp,woff,woff2,ttf,eot}',
+            'manifest.webmanifest'
+          ],
+          
+          maximumFileSizeToCacheInBytes: 10000000, // 10MB for better caching
+          cleanupOutdatedCaches: true,
+          
+          // Skip waiting for immediate activation
+          skipWaiting: true,
+          clientsClaim: true,
+          
+          // Enhanced runtime caching for offline support
+          runtimeCaching: [
+            // App shell - Cache first for instant loading
+            {
+              urlPattern: /\.(?:js|css|html)$/,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'app-shell',
+                expiration: {
+                  maxEntries: 200,
+                  maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+                },
               },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          },
-          // Vendor chunks - Long-term caching
-          {
-            urlPattern: /\/assets\/.*vendor.*\.(js|css)$/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'vendor-assets-v3',
-              expiration: {
-                maxEntries: 30,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year cache
+            },
+            // Images - Cache first with long expiration
+            {
+              urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'images',
+                expiration: {
+                  maxEntries: 200,
+                  maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+                },
               },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          },
-          // App scripts like mfs100 and registerSW
-          {
-            urlPattern: /\/(mfs100-.*\.js|registerSW\.js)$/,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'app-scripts-v3',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 7 // 1 week cache
+            },
+            // Fonts - Cache first with very long expiration
+            {
+              urlPattern: /\.(?:woff|woff2|ttf|eot)$/,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'fonts',
+                expiration: {
+                  maxEntries: 50,
+                  maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
+                },
               },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          },
-          // Supabase API - Ultra-fast network first
-          {
-            urlPattern: /^https:\/\/zwtjjzryscwhqsgvvqzf\.supabase\.co\/rest\/v1\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-api-ultra-cache',
-              networkTimeoutSeconds: 2, // Faster timeout
-              cacheableResponse: {
-                statuses: [0, 200]
+            },
+            // API Routes - Network first with offline fallback
+            {
+              urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/,
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'api-cache',
+                expiration: {
+                  maxEntries: 100,
+                  maxAgeSeconds: 24 * 60 * 60, // 24 hours
+                },
+                networkTimeoutSeconds: 3,
               },
-              expiration: {
-                maxEntries: 200, // More cache entries
-                maxAgeSeconds: 60 * 60 * 2 // 2 hours for faster updates
+            },
+            // Auth requests - Network first with short cache
+            {
+              urlPattern: /^https:\/\/.*\.supabase\.co\/auth\/v1\/.*/,
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'auth-cache',
+                expiration: {
+                  maxEntries: 20,
+                  maxAgeSeconds: 5 * 60, // 5 minutes
+                },
+                networkTimeoutSeconds: 5,
               },
-              plugins: [{
-                cacheKeyWillBeUsed: async ({ request }) => {
-                  // Add timestamp to force fresh data for critical operations
-                  const url = new URL(request.url);
-                  if (url.pathname.includes('dashboard') || url.pathname.includes('students')) {
-                    url.searchParams.set('_t', Math.floor(Date.now() / 60000).toString()); // 1 minute cache
-                  }
-                  return url.toString();
-                }
-              }]
-            }
-          },
-          // Images - Optimized caching
-          {
-            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'images-optimized-v3',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+            },
+            // Navigation requests - Network first with offline fallback
+            {
+              urlPattern: ({ request }) => request.mode === 'navigate',
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'navigation-cache',
+                expiration: {
+                  maxEntries: 50,
+                  maxAgeSeconds: 24 * 60 * 60, // 24 hours
+                },
+                networkTimeoutSeconds: 3,
               },
-              plugins: [{
-                cacheWillUpdate: async ({ response }) => {
-                  return response.status === 200 ? response : null;
-                }
-              }]
-            }
-          },
-          // Fonts - Long-term caching
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-stylesheets-v3',
-              expiration: {
-                maxEntries: 20,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
-              }
-            }
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-webfonts-v3',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
-              }
-            }
-          }
+            },
         ]
       },
       manifest: {
