@@ -86,8 +86,10 @@ class ModernMFS100Client {
         return;
       }
 
+      // Only load jQuery when fingerprint capture is actually needed
       const script = document.createElement('script');
-      script.src = 'https://code.jquery.com/jquery-1.12.4.min.js';
+      script.src = 'https://code.jquery.com/jquery-3.6.0.min.js';
+      script.async = true;
       script.onload = () => resolve();
       script.onerror = () => reject(new Error('Failed to load jQuery'));
       document.head.appendChild(script);

@@ -32,16 +32,15 @@
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Geist:wght@300;400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Geist:wght@300;400;500;600;700;800&display=swap"></noscript>
     
-    <!-- Preload jQuery and MFS100 SDK but defer execution -->
-    <link rel="preload" href="https://code.jquery.com/jquery-3.6.0.min.js" as="script">
+    <!-- Preload MFS100 SDK but defer jQuery loading until needed -->
     <link rel="preload" href="/mfs100-9.0.2.6.js" as="script">
   </head>
   <body>
     <div id="root"></div>
     
-    <!-- Load jQuery and MFS100 SDK asynchronously after critical content -->
+    <!-- Load MFS100 SDK asynchronously - jQuery will be loaded on-demand -->
     <script>
-      // Load jQuery asynchronously
+      // Load script utility
       function loadScript(src, callback) {
         const script = document.createElement('script');
         script.src = src;
@@ -50,11 +49,8 @@
         document.head.appendChild(script);
       }
       
-      // Load jQuery first, then MFS100 SDK
-      loadScript('https://code.jquery.com/jquery-3.6.0.min.js', function() {
-        // jQuery loaded, now load MFS100 SDK
-        loadScript('/mfs100-9.0.2.6.js');
-      });
+      // Load MFS100 SDK only - jQuery will be loaded when fingerprint capture is needed
+      loadScript('/mfs100-9.0.2.6.js');
     </script>
     
     <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>

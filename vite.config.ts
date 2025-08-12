@@ -22,12 +22,14 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks: {
-          // Separate vendor chunks for better caching
+          // Separate vendor chunks for better caching and tree shaking
           'react-vendor': ['react', 'react-dom'],
-          'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tooltip'],
+          'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tooltip', '@radix-ui/react-select'],
           'form-vendor': ['react-hook-form', '@hookform/resolvers'],
           'query-vendor': ['@tanstack/react-query'],
-          'router-vendor': ['react-router-dom']
+          'router-vendor': ['react-router-dom'],
+          'chart-vendor': ['recharts'],
+          'table-vendor': ['@tanstack/react-table']
         },
         // Modern ES module format
         format: 'es',
