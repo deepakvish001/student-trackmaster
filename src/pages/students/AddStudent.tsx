@@ -159,26 +159,32 @@ export default function AddStudent() {
         throw new Error('User not authenticated');
       }
 
-      // Insert student record with correct field names
+      // Insert student record with correct field names that match the database schema
+      const studentInsertData = {
+        id: studentId,
+        student_name: data.name, // Correct field name for database
+        mobile_number: data.mobile || null, // Correct field name for database
+        address: data.address || null,
+        batch_id: data.batchId,
+        is_enabled: true,
+        user_id: user.id, // Required for RLS policies
+        // Store fingerprint data in students table
+        ...fingerprintData,
+        ...fingerprintImages
+      };
+
+      console.log('Inserting student with data:', studentInsertData);
+
       const { data: student, error: studentError } = await supabase
         .from('students')
-        .insert({
-          id: studentId,
-          student_name: data.name,
-          mobile: data.mobile || null,
-          email: data.email || null,
-          address: data.address || null,
-          batch_id: data.batchId,
-          is_enabled: true,
-          user_id: user.id,
-          // Store fingerprint data in students table
-          ...fingerprintData,
-          ...fingerprintImages
-        })
+        .insert(studentInsertData)
         .select()
         .single();
 
-      if (studentError) throw studentError;
+      if (studentError) {
+        console.error('Database insert error:', studentError);
+        throw new Error(`Database error: ${studentError.message}`);
+      }
 
       // Insert individual fingerprint records in student_fingerprints table
       const fingerprintInserts = Object.entries(capturedFingerprints).map(([index, fingerprint]) => ({

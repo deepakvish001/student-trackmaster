@@ -300,22 +300,42 @@ export default function EnhancedAddStudent() {
         }
       }
 
-      // Insert into database
-      const { data, error } = await supabase.from('students').insert({
+      // Insert into database with correct field mappings
+      const studentInsertData = {
         student_name: validation.sanitizedData!.student_name,
-        mobile_number: sanitizedData.mobile,
+        mobile_number: sanitizedData.mobile, // Correct field name
         address: sanitizedData.address,
         batch_id: validation.sanitizedData!.batch_id,
-        user_id: user.id,
+        user_id: user.id, // Required for RLS policies
         ...encryptedFingerprints,
-      }).select();
+      };
+
+      console.log('Inserting enhanced student with data:', studentInsertData);
+
+      const { data, error } = await supabase
+        .from('students')
+        .insert(studentInsertData)
+        .select();
 
       if (error) {
-        console.error('Database insert error:', error);
+        console.error('Database insert error details:', error);
         await logEvent('DATABASE_ERROR', 'students', undefined, undefined, {
-          error: error.message
+          error: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
         });
-        throw error;
+        
+        // Provide more specific error messages
+        if (error.code === '23505') {
+          throw new Error('A student with this information already exists');
+        } else if (error.code === '23503') {
+          throw new Error('Selected batch is invalid or no longer available');
+        } else if (error.message.includes('row-level security')) {
+          throw new Error('Access denied: You do not have permission to add students to this batch');
+        } else {
+          throw new Error(`Database error: ${error.message}`);
+        }
       }
 
       console.log('Student created successfully:', data);
