@@ -48,6 +48,7 @@ export function PWAUpdatePrompt({ registration }: PWAUpdatePromptProps) {
   useEffect(() => {
     const updateInProgress = sessionStorage.getItem('pwa_update_in_progress');
     const updateTimestamp = sessionStorage.getItem('pwa_update_timestamp');
+    const lastVersion = localStorage.getItem('pwa_last_version');
     
     if (updateInProgress === 'true' && updateTimestamp) {
       const timeSinceUpdate = Date.now() - parseInt(updateTimestamp);
@@ -60,6 +61,21 @@ export function PWAUpdatePrompt({ registration }: PWAUpdatePromptProps) {
         sessionStorage.removeItem('pwa_update_in_progress');
         sessionStorage.removeItem('pwa_update_timestamp');
         
+        // Store current version to prevent duplicate notifications
+        if (registration) {
+          navigator.serviceWorker.getRegistration().then(reg => {
+            if (reg && reg.active) {
+              const messageChannel = new MessageChannel();
+              messageChannel.port1.onmessage = (event) => {
+                const currentVersion = event.data.version;
+                localStorage.setItem('pwa_last_version', currentVersion);
+                console.log('Updated to version:', currentVersion);
+              };
+              reg.active.postMessage({ type: 'GET_VERSION' }, [messageChannel.port2]);
+            }
+          });
+        }
+        
         // Show success message
         setTimeout(() => {
           handleUpdateComplete();
@@ -70,7 +86,7 @@ export function PWAUpdatePrompt({ registration }: PWAUpdatePromptProps) {
         sessionStorage.removeItem('pwa_update_timestamp');
       }
     }
-  }, [handleUpdateComplete]);
+  }, [handleUpdateComplete, registration]);
 
   const handleUpdate = useCallback(async () => {
     if (!newWorker) {
@@ -182,6 +198,35 @@ export function PWAUpdatePrompt({ registration }: PWAUpdatePromptProps) {
   useEffect(() => {
     if (!registration) return;
 
+    // Check if we've already seen this version
+    const checkVersionAndUpdate = () => {
+      if (registration.waiting) {
+        const messageChannel = new MessageChannel();
+        messageChannel.port1.onmessage = (event) => {
+          const { version } = event.data;
+          const lastVersion = localStorage.getItem('pwa_last_version');
+          
+          if (version && version !== lastVersion) {
+            console.log('New version detected:', version, 'Previous:', lastVersion);
+            setNewWorker(registration.waiting);
+            setUpdateState('available');
+            
+            toast.info('🚀 New app version available!', {
+              duration: 0,
+              action: {
+                label: 'Update Now',
+                onClick: handleUpdate
+              }
+            });
+          } else {
+            console.log('Same version detected, not showing update prompt');
+          }
+        };
+        
+        registration.waiting.postMessage({ type: 'GET_VERSION' }, [messageChannel.port2]);
+      }
+    };
+
     const handleUpdateFound = () => {
       console.log('Service worker update found');
       const installingWorker = registration.installing;
@@ -193,18 +238,40 @@ export function PWAUpdatePrompt({ registration }: PWAUpdatePromptProps) {
           
           if (installingWorker.state === 'installed') {
             if (navigator.serviceWorker.controller) {
-              // There's an existing service worker, so this is an update
-              setUpdateState('available');
-              toast.info('🚀 New app version available!', {
-                duration: 0,
-                action: {
-                  label: 'Update Now',
-                  onClick: handleUpdate
+              // Check version before showing update prompt
+              const messageChannel = new MessageChannel();
+              messageChannel.port1.onmessage = (event) => {
+                const { version } = event.data;
+                const lastVersion = localStorage.getItem('pwa_last_version');
+                
+                if (version && version !== lastVersion) {
+                  console.log('New version ready:', version);
+                  setUpdateState('available');
+                  
+                  toast.info('🚀 New app version available!', {
+                    duration: 0,
+                    action: {
+                      label: 'Update Now',
+                      onClick: handleUpdate
+                    }
+                  });
+                } else {
+                  console.log('Same version, not showing update prompt');
                 }
-              });
+              };
+              
+              installingWorker.postMessage({ type: 'GET_VERSION' }, [messageChannel.port2]);
             } else {
               // This is the first install
               console.log('Service worker installed for the first time');
+              const messageChannel = new MessageChannel();
+              messageChannel.port1.onmessage = (event) => {
+                const { version } = event.data;
+                localStorage.setItem('pwa_last_version', version);
+                console.log('First install, saved version:', version);
+              };
+              
+              installingWorker.postMessage({ type: 'GET_VERSION' }, [messageChannel.port2]);
             }
           }
         };
@@ -218,15 +285,17 @@ export function PWAUpdatePrompt({ registration }: PWAUpdatePromptProps) {
     registration.addEventListener('updatefound', handleUpdateFound);
 
     // Check immediately if there's already an update waiting
-    if (registration.waiting) {
-      console.log('Service worker already waiting');
-      setNewWorker(registration.waiting);
-      setUpdateState('available');
-    }
+    checkVersionAndUpdate();
 
     // Handle messages from service worker
     const handleMessage = (event: MessageEvent) => {
       if (event.data && event.data.type === 'UPDATE_COMPLETE') {
+        // Update completed, store new version
+        const { version } = event.data;
+        if (version) {
+          localStorage.setItem('pwa_last_version', version);
+          console.log('Update complete, new version stored:', version);
+        }
         handleUpdateComplete();
       }
     };
