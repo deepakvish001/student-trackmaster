@@ -1,4 +1,3 @@
-
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -84,6 +83,51 @@ export default defineConfig(({ mode }) => ({
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/_/, /\/[^/?]+\.[^/]+$/],
         runtimeCaching: [
+          // Static JS/CSS assets - Long-term caching to fix SEO cache issue
+          {
+            urlPattern: /\/assets\/.*\.(js|css)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'static-assets-v3',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year cache for hashed assets
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // Vendor chunks - Long-term caching
+          {
+            urlPattern: /\/assets\/.*vendor.*\.(js|css)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'vendor-assets-v3',
+              expiration: {
+                maxEntries: 30,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year cache
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // App scripts like mfs100 and registerSW
+          {
+            urlPattern: /\/(mfs100-.*\.js|registerSW\.js)$/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'app-scripts-v3',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 1 week cache
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
           // Supabase API - Ultra-fast network first
           {
             urlPattern: /^https:\/\/zwtjjzryscwhqsgvvqzf\.supabase\.co\/rest\/v1\/.*/i,
@@ -110,24 +154,12 @@ export default defineConfig(({ mode }) => ({
               }]
             }
           },
-          // Static assets - Ultra-fast cache first
-          {
-            urlPattern: /\.(?:js|css|html)$/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'static-resources-v2',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 7 // 1 week
-              }
-            }
-          },
           // Images - Optimized caching
           {
             urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'images-optimized-v2',
+              cacheName: 'images-optimized-v3',
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
@@ -144,7 +176,7 @@ export default defineConfig(({ mode }) => ({
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'google-fonts-stylesheets-v2',
+              cacheName: 'google-fonts-stylesheets-v3',
               expiration: {
                 maxEntries: 20,
                 maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
@@ -155,7 +187,7 @@ export default defineConfig(({ mode }) => ({
             urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'google-fonts-webfonts-v2',
+              cacheName: 'google-fonts-webfonts-v3',
               expiration: {
                 maxEntries: 50,
                 maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
