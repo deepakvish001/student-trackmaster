@@ -75,81 +75,87 @@ export default defineConfig(({ mode }) => ({
     mode === 'development' && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
+      devOptions: {
+        enabled: true, // Enable PWA in development
+        type: 'module'
+      },
       workbox: {
-        // Critical: Ensure offline navigation works
+        // Critical: Ensure offline navigation works perfectly
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/_/, /\/[^/?]+\.[^/]+$/],
+        navigateFallbackDenylist: [
+          // Exclude API calls, assets with extensions, and internal paths
+          /^\/api\//, 
+          /^\/_/,
+          /\/[^/?]+\.[^/]+$/,
+          /^\/.*\.(js|css|png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|eot)$/
+        ],
         
         // Precache all essential app files for offline access
         globPatterns: [
           '**/*.{js,css,html,ico,png,jpg,jpeg,svg,gif,webp,woff,woff2,ttf,eot}',
-          'manifest.json'
+          'manifest.json',
+          'mfs100-*.js' // Include MFS100 SDK
         ],
         
-        // Include specific files that must be cached
+        // Include critical routes and manifest
         additionalManifestEntries: [
           { url: '/', revision: Date.now().toString() },
           { url: '/index.html', revision: Date.now().toString() },
-          { url: '/manifest.json', revision: Date.now().toString() }
+          { url: '/manifest.json', revision: Date.now().toString() },
+          { url: '/dashboard', revision: Date.now().toString() },
+          { url: '/students', revision: Date.now().toString() },
+          { url: '/batches', revision: Date.now().toString() },
+          { url: '/login', revision: Date.now().toString() }
         ],
         
-        maximumFileSizeToCacheInBytes: 10000000,
+        // Increased cache size for comprehensive offline support
+        maximumFileSizeToCacheInBytes: 15000000, // 15MB
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
-          
-          // Enhanced runtime caching for complete offline support
-          runtimeCaching: [
-            // Document requests - Critical for offline navigation
-            {
-              urlPattern: ({ request }) => request.destination === 'document',
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'pages',
-                expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 24 * 60 * 60,
-                },
-                networkTimeoutSeconds: 3,
+        
+        // Enhanced runtime caching for complete offline functionality
+        runtimeCaching: [
+          // Document/Navigation requests - Network first with fast fallback
+          {
+            urlPattern: ({ request }) => request.destination === 'document',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'pages-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 24 * 60 * 60, // 24 hours
               },
+              networkTimeoutSeconds: 2, // Quick fallback to cache
             },
+          },
             // App shell assets - Cache first for instant loading
             {
               urlPattern: /\.(?:js|css|html)$/,
               handler: 'CacheFirst',
               options: {
-                cacheName: 'app-shell',
+                cacheName: 'app-shell-cache',
                 expiration: {
-                  maxEntries: 200,
-                  maxAgeSeconds: 30 * 24 * 60 * 60,
-                },
-              },
-            },
-            // Images - Cache first with long expiration
-            {
-              urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'images',
-                expiration: {
-                  maxEntries: 200,
+                  maxEntries: 300,
                   maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
                 },
               },
             },
-            // Fonts - Cache first with very long expiration
+            
+            // Static assets - Cache first with long expiration
             {
-              urlPattern: /\.(?:woff|woff2|ttf|eot)$/,
+              urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|eot)$/,
               handler: 'CacheFirst',
               options: {
-                cacheName: 'fonts',
+                cacheName: 'static-assets-cache',
                 expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
+                  maxEntries: 500,
+                  maxAgeSeconds: 60 * 24 * 60 * 60, // 60 days
                 },
               },
             },
-            // API Routes - Network first with offline fallback
+            
+            // API calls - Network first with offline fallback
             {
               urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/,
               handler: 'NetworkFirst',
@@ -157,35 +163,47 @@ export default defineConfig(({ mode }) => ({
                 cacheName: 'api-cache',
                 expiration: {
                   maxEntries: 100,
-                  maxAgeSeconds: 24 * 60 * 60, // 24 hours
-                },
-                networkTimeoutSeconds: 3,
-              },
-            },
-            // Auth requests - Network first with short cache
-            {
-              urlPattern: /^https:\/\/.*\.supabase\.co\/auth\/v1\/.*/,
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'auth-cache',
-                expiration: {
-                  maxEntries: 20,
                   maxAgeSeconds: 5 * 60, // 5 minutes
                 },
-                networkTimeoutSeconds: 5,
+                networkTimeoutSeconds: 3,
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
               },
             },
-            // Navigation requests - Network first with offline fallback
+            
+            // Auth calls - Network only (don't cache sensitive data)
             {
-              urlPattern: ({ request }) => request.mode === 'navigate',
-              handler: 'NetworkFirst',
+              urlPattern: /^https:\/\/.*\.supabase\.co\/auth\/v1\/.*/,
+              handler: 'NetworkOnly',
+            },
+            
+            // External resources - Stale while revalidate
+            {
+              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/,
+              handler: 'StaleWhileRevalidate',
               options: {
-                cacheName: 'navigation-cache',
+                cacheName: 'google-fonts-stylesheets',
                 expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 24 * 60 * 60, // 24 hours
+                  maxEntries: 20,
+                  maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
                 },
-                networkTimeoutSeconds: 3,
+              },
+            },
+            
+            // Font files - Cache first
+            {
+              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'google-fonts-webfonts',
+                expiration: {
+                  maxEntries: 30,
+                  maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
               },
             },
         ]
@@ -229,10 +247,6 @@ export default defineConfig(({ mode }) => ({
           }
         ]
       },
-      devOptions: {
-        enabled: true,
-        type: 'module'
-      }
     })
   ].filter(Boolean),
   resolve: {
