@@ -93,7 +93,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     <SidebarProvider>
       <FixedHeader />
       <div className="pt-16 sm:pt-20 min-h-screen flex w-full bg-background">
-        <Sidebar className="bg-card border-r border-border hidden lg:flex lg:w-64 data-[state=collapsed]:lg:w-20"
+        <Sidebar className="bg-card border-r border-border hidden lg:flex lg:w-64 data-[state=collapsed]:lg:w-16"
                  collapsible="icon"
                  variant="sidebar">
           <SidebarHeader className="p-4 border-b border-border group-data-[collapsible=icon]:py-4 group-data-[collapsible=icon]:px-0">
