@@ -23,6 +23,8 @@ import PWASettings from "./pages/PWASettings";
 import { EnhancedAuthProvider } from "./contexts/EnhancedAuthContext";
 import { SafePerformanceWrapper } from "@/components/SafePerformanceWrapper";
 import { PerformanceInitializer } from "@/components/PerformanceInitializer";
+import { GlobalRealTimeProvider } from "@/components/GlobalRealTimeProvider";
+import { InstantSyncIndicator } from "@/components/InstantSyncIndicator";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SecurityWrapper from "./components/SecurityWrapper";
 import { SuperAdminRoute, UserRoute } from "./components/RoleBasedRoute";
@@ -57,9 +59,10 @@ function AppWithQueryClient() {
   return (
     <BrowserRouter>
       <EnhancedAuthProvider>
-        <SafePerformanceWrapper>
-          <PerformanceInitializer />
-          <TooltipProvider>
+        <GlobalRealTimeProvider>
+          <SafePerformanceWrapper>
+            <PerformanceInitializer />
+            <TooltipProvider>
             <MobileOptimizedLayout>
               <OfflineBanner />
               <div className="fixed top-4 right-4 z-50 space-y-2 safe-area-inset-top safe-area-inset-right">
@@ -67,6 +70,7 @@ function AppWithQueryClient() {
               </div>
               <PWAInstallPrompt />
               <PWAUpdatePrompt registration={swRegistration} />
+              <InstantSyncIndicator />
               <Toaster />
           <Routes>
             {/* Public route - Login only */}
@@ -215,6 +219,7 @@ function AppWithQueryClient() {
             </MobileOptimizedLayout>
           </TooltipProvider>
         </SafePerformanceWrapper>
+      </GlobalRealTimeProvider>
       </EnhancedAuthProvider>
     </BrowserRouter>
   );
