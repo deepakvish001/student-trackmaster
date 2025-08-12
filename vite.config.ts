@@ -75,27 +75,45 @@ export default defineConfig(({ mode }) => ({
     mode === 'development' && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
-        workbox: {
-          // Enable offline navigation fallback
-          navigateFallback: '/index.html',
-          navigateFallbackAllowlist: [/^(?!\/__).*/],
+      workbox: {
+        // Critical: Ensure offline navigation works
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/_/, /\/[^/?]+\.[^/]+$/],
+        
+        // Precache all essential app files for offline access
+        globPatterns: [
+          '**/*.{js,css,html,ico,png,jpg,jpeg,svg,gif,webp,woff,woff2,ttf,eot}',
+          'manifest.json'
+        ],
+        
+        // Include specific files that must be cached
+        additionalManifestEntries: [
+          { url: '/', revision: Date.now().toString() },
+          { url: '/index.html', revision: Date.now().toString() },
+          { url: '/manifest.json', revision: Date.now().toString() }
+        ],
+        
+        maximumFileSizeToCacheInBytes: 10000000,
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
           
-          // Precache all app shell assets
-          globPatterns: [
-            '**/*.{js,css,html,ico,png,jpg,jpeg,svg,gif,webp,woff,woff2,ttf,eot}',
-            'manifest.webmanifest'
-          ],
-          
-          maximumFileSizeToCacheInBytes: 10000000, // 10MB for better caching
-          cleanupOutdatedCaches: true,
-          
-          // Skip waiting for immediate activation
-          skipWaiting: true,
-          clientsClaim: true,
-          
-          // Enhanced runtime caching for offline support
+          // Enhanced runtime caching for complete offline support
           runtimeCaching: [
-            // App shell - Cache first for instant loading
+            // Document requests - Critical for offline navigation
+            {
+              urlPattern: ({ request }) => request.destination === 'document',
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'pages',
+                expiration: {
+                  maxEntries: 50,
+                  maxAgeSeconds: 24 * 60 * 60,
+                },
+                networkTimeoutSeconds: 3,
+              },
+            },
+            // App shell assets - Cache first for instant loading
             {
               urlPattern: /\.(?:js|css|html)$/,
               handler: 'CacheFirst',
@@ -103,7 +121,7 @@ export default defineConfig(({ mode }) => ({
                 cacheName: 'app-shell',
                 expiration: {
                   maxEntries: 200,
-                  maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+                  maxAgeSeconds: 30 * 24 * 60 * 60,
                 },
               },
             },
