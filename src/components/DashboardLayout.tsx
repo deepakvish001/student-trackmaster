@@ -13,6 +13,7 @@ import {
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   LayoutDashboard,
   Users,
@@ -92,7 +93,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     <SidebarProvider>
       <FixedHeader />
       <div className="pt-16 sm:pt-20 min-h-screen flex w-full bg-background">
-        <Sidebar className="bg-card border-r border-border hidden lg:flex lg:w-64 data-[state=collapsed]:lg:w-16"
+        <Sidebar className="bg-card border-r border-border hidden lg:flex lg:w-64 data-[state=collapsed]:lg:w-20"
                  collapsible="icon"
                  variant="sidebar">
           <SidebarHeader className="p-4 border-b border-border">
@@ -107,27 +108,36 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="px-2 py-6 group-data-[collapsible=icon]:px-2">
+          <SidebarContent className="px-2 py-6 group-data-[collapsible=icon]:px-1">
             {/* Main Menu */}
             <SidebarGroup>
               <SidebarGroupContent>
-                <SidebarMenu className="space-y-1">
+                <SidebarMenu className="space-y-2">
                   {menuItems.map((item) => (
                     <SidebarMenuItem key={item.path}>
-                      <SidebarMenuButton asChild>
-                        <Link
-                          to={item.path}
-                          className={`flex items-center px-3 py-3 rounded-lg transition-colors group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2 ${
-                            (location.pathname === item.path || 
-                             (item.path === '/dashboard' && (location.pathname === '/' || location.pathname === '/dashboard')))
-                              ? 'bg-primary text-primary-foreground font-medium' 
-                              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                          }`}
-                        >
-                          <item.icon className="w-5 h-5 group-data-[collapsible=icon]:mr-0 mr-3 flex-shrink-0" />
-                          <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <SidebarMenuButton asChild>
+                              <Link
+                                to={item.path}
+                                className={`flex items-center px-3 py-3 rounded-lg transition-all duration-200 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-12 group-data-[collapsible=icon]:h-12 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:mx-auto ${
+                                  (location.pathname === item.path || 
+                                   (item.path === '/dashboard' && (location.pathname === '/' || location.pathname === '/dashboard')))
+                                    ? 'bg-primary text-primary-foreground font-medium shadow-sm' 
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted hover:shadow-sm'
+                                }`}
+                              >
+                                <item.icon className="w-5 h-5 group-data-[collapsible=icon]:mr-0 mr-3 flex-shrink-0" />
+                                <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="group-data-[collapsible=icon]:block hidden">
+                            {item.title}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
@@ -141,22 +151,31 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   <div className="px-3 py-2 text-sm font-medium text-muted-foreground uppercase tracking-wider group-data-[collapsible=icon]:hidden">
                     Administration
                   </div>
-                  <SidebarMenu className="space-y-1 mt-3">
+                  <SidebarMenu className="space-y-2 mt-3">
                     {adminMenuItems.map((item) => (
                       <SidebarMenuItem key={item.path}>
-                        <SidebarMenuButton asChild>
-                          <Link
-                            to={item.path}
-                            className={`flex items-center px-3 py-3 rounded-lg transition-colors group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2 ${
-                              location.pathname === item.path
-                                ? 'bg-primary text-primary-foreground font-medium' 
-                                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                            }`}
-                          >
-                            <item.icon className="w-5 h-5 group-data-[collapsible=icon]:mr-0 mr-3 flex-shrink-0" />
-                            <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <SidebarMenuButton asChild>
+                                <Link
+                                  to={item.path}
+                                  className={`flex items-center px-3 py-3 rounded-lg transition-all duration-200 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-12 group-data-[collapsible=icon]:h-12 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:mx-auto ${
+                                    location.pathname === item.path
+                                      ? 'bg-primary text-primary-foreground font-medium shadow-sm' 
+                                      : 'text-muted-foreground hover:text-foreground hover:bg-muted hover:shadow-sm'
+                                  }`}
+                                >
+                                  <item.icon className="w-5 h-5 group-data-[collapsible=icon]:mr-0 mr-3 flex-shrink-0" />
+                                  <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
+                                </Link>
+                              </SidebarMenuButton>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="group-data-[collapsible=icon]:block hidden">
+                              {item.title}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </SidebarMenuItem>
                     ))}
                   </SidebarMenu>
@@ -166,14 +185,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </SidebarContent>
 
           <SidebarFooter className="p-4 border-t border-border">
-            <Button
-              onClick={handleLogout}
-              variant="ghost"
-              className="w-full justify-start group-data-[collapsible=icon]:justify-center text-destructive hover:text-destructive hover:bg-destructive/10"
-            >
-              <LogOut className="w-5 h-5 group-data-[collapsible=icon]:mr-0 mr-3 flex-shrink-0" />
-              <span className="group-data-[collapsible=icon]:hidden">Logout</span>
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={handleLogout}
+                    variant="ghost"
+                    className="w-full justify-start group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-12 group-data-[collapsible=icon]:h-12 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:mx-auto text-destructive hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
+                  >
+                    <LogOut className="w-5 h-5 group-data-[collapsible=icon]:mr-0 mr-3 flex-shrink-0" />
+                    <span className="group-data-[collapsible=icon]:hidden">Logout</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="group-data-[collapsible=icon]:block hidden">
+                  Logout
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </SidebarFooter>
         </Sidebar>
 
