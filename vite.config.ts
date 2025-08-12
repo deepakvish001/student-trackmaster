@@ -215,13 +215,13 @@ export default defineConfig(({ mode }) => ({
             type: 'image/x-icon'
           },
           {
-            src: '/public/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png',
+            src: '/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any maskable'
           },
           {
-            src: '/public/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png',
+            src: '/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
@@ -229,7 +229,7 @@ export default defineConfig(({ mode }) => ({
         ],
         screenshots: [
           {
-            src: '/public/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png',
+            src: '/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png',
             sizes: '1280x720',
             type: 'image/png',
             form_factor: 'wide'
