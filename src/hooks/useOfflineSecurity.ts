@@ -6,8 +6,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { offlineDb } from '@/lib/offlineDatabase';
-import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
 import { useOnlineStatus } from './useOnlineStatus';
+import { User, Session } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 
 interface OfflineSecurityEvent {
@@ -37,8 +37,7 @@ interface ThreatDetection {
   dataVolumeAnomaly: boolean;
 }
 
-export function useOfflineSecurity() {
-  const { user, session } = useEnhancedAuth();
+export function useOfflineSecurity(user?: User | null, session?: Session | null) {
   const { isOnline } = useOnlineStatus();
   const [securityEvents, setSecurityEvents] = useState<OfflineSecurityEvent[]>([]);
   const [securityPolicy, setSecurityPolicy] = useState<SecurityPolicy>({

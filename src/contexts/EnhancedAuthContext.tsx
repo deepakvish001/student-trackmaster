@@ -62,7 +62,7 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
 
   // Initialize offline authentication capabilities
   const offlineAuth = useOfflineAuth();
-  const offlineSecurity = useOfflineSecurity();
+  const offlineSecurity = useOfflineSecurity(user, session);
 
   // Stable callbacks
   const logAuthEvent = useCallback(async (type: string, data?: any) => {
