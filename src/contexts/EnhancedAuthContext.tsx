@@ -11,6 +11,8 @@ import {
   auditBiometricAccess 
 } from '@/utils/biometricSecurity';
 import { offlineDb } from '@/lib/offlineDatabase';
+import { useOfflineAuth } from '@/hooks/useOfflineAuth';
+import { useOfflineSecurity } from '@/hooks/useOfflineSecurity';
 
 interface EnhancedAuthContextType {
   user: User | null;
@@ -26,6 +28,11 @@ interface EnhancedAuthContextType {
     lastActivity: Date | null;
     activityCount: number;
   };
+  // Offline capabilities
+  canWorkOffline: boolean;
+  offlineCapable: boolean;
+  validateOfflineSession: () => Promise<boolean>;
+  tokenExpiresAt: Date | null;
 }
 
 const EnhancedAuthContext = createContext<EnhancedAuthContextType | undefined>(undefined);
@@ -52,6 +59,10 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
   });
   
   const navigate = useNavigate();
+
+  // Initialize offline authentication capabilities
+  const offlineAuth = useOfflineAuth();
+  const offlineSecurity = useOfflineSecurity();
 
   // Stable callbacks
   const logAuthEvent = useCallback(async (type: string, data?: any) => {
@@ -121,6 +132,14 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
       });
 
       if (error) {
+        // Log failed login for offline security monitoring
+        await offlineSecurity.logSecurityEvent(
+          'authentication',
+          'medium',
+          'Login attempt failed',
+          { success: false, email: email.substring(0, 3) + '***', error: error.message }
+        );
+        
         logSecurityEvent('LOGIN_FAILED', { 
           email: email.substring(0, 3) + '***',
           error: error.message,
@@ -139,7 +158,18 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
         throw error;
       }
 
-      if (data.user) {
+      if (data.user && data.session) {
+        // Cache session for offline use
+        await offlineAuth.cacheSession(data.session, data.user.id);
+        
+        // Log security event for offline monitoring
+        await offlineSecurity.logSecurityEvent(
+          'authentication',
+          'low',
+          'User login successful',
+          { success: true, email: email.substring(0, 3) + '***' }
+        );
+
         const { data: profile, error: profileError } = await supabase
           .from('user_profiles')
           .select('is_active, full_name')
@@ -147,6 +177,13 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
           .single();
 
         if (profileError) {
+          await offlineSecurity.logSecurityEvent(
+            'authentication',
+            'high',
+            'Profile check failed during login',
+            { userId: data.user.id, error: profileError.message }
+          );
+          
           logSecurityEvent('PROFILE_CHECK_FAILED', {
             userId: data.user.id,
             error: profileError.message
@@ -156,6 +193,13 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
         }
 
         if (!profile.is_active) {
+          await offlineSecurity.logSecurityEvent(
+            'authentication',
+            'critical',
+            'Disabled user attempted login',
+            { userId: data.user.id, email: email.substring(0, 3) + '***' }
+          );
+          
           logSecurityEvent('DISABLED_USER_LOGIN_ATTEMPT', {
             userId: data.user.id,
             email: email.substring(0, 3) + '***',
@@ -248,8 +292,23 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
 
   const logout = useCallback(async () => {
     try {
+      // Log logout event for offline security monitoring
+      await offlineSecurity.logSecurityEvent(
+        'authentication',
+        'low',
+        'User logout initiated',
+        { userId: user?.id }
+      );
+
       const { error } = await supabase.auth.signOut();
       if (error) {
+        await offlineSecurity.logSecurityEvent(
+          'authentication',
+          'medium',
+          'Logout failed',
+          { error: error.message }
+        );
+        
         logSecurityEvent('LOGOUT_FAILED', { 
           error: error.message,
           timestamp: new Date().toISOString()
@@ -270,7 +329,7 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
     } catch (error: any) {
       toast.error(error.message || 'Error logging out');
     }
-  }, [navigate]);
+  }, [navigate, user?.id, offlineSecurity]);
 
   // Initialize session - only once
   useEffect(() => {
@@ -405,6 +464,12 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
     };
   }, [user?.id, sessionMetrics.lastActivity, updateActivity]);
 
+  // Validate offline session capability
+  const validateOfflineSession = useCallback(async (): Promise<boolean> => {
+    if (!user) return false;
+    return await offlineSecurity.validateOfflineSession();
+  }, [user, offlineSecurity]);
+
   // Memoize context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
     user,
@@ -415,7 +480,12 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
     logout,
     isLoading,
     securityLevel,
-    sessionMetrics
+    sessionMetrics,
+    // Offline capabilities
+    canWorkOffline: offlineAuth.canWorkOffline(),
+    offlineCapable: offlineAuth.offlineState.isOfflineCapable,
+    validateOfflineSession,
+    tokenExpiresAt: offlineAuth.offlineState.tokenExpiresAt
   }), [
     user,
     session, 
@@ -425,7 +495,11 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
     logout,
     isLoading,
     securityLevel,
-    sessionMetrics
+    sessionMetrics,
+    offlineAuth.canWorkOffline,
+    offlineAuth.offlineState.isOfflineCapable,
+    offlineAuth.offlineState.tokenExpiresAt,
+    validateOfflineSession
   ]);
 
   return (
