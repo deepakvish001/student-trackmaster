@@ -232,7 +232,7 @@ export function useBiometricAnalytics(timeRange: 'day' | 'week' | 'month' = 'wee
       .slice(0, 3);
   }, [data.captureTiming]);
 
-  const getQualityTrend = useCallback() => {
+  const getQualityTrend = useCallback(() => {
     const { qualityTrends } = data;
     if (qualityTrends.length < 2) return { direction: 'stable', change: 0 };
     
