@@ -74,19 +74,128 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === 'development' && componentTagger(),
     VitePWA({
-      strategies: 'injectManifest',
-      srcDir: 'public',
-      filename: 'sw.js',
       registerType: 'autoUpdate',
-      injectManifest: {
-        swSrc: 'public/sw.js',
-        swDest: 'sw.js',
+      workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        maximumFileSizeToCacheInBytes: 10000000,
-      },
-      devOptions: {
-        enabled: true,
-        type: 'module'
+        maximumFileSizeToCacheInBytes: 10000000, // 10MB for better caching
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/_/, /\/[^/?]+\.[^/]+$/],
+        runtimeCaching: [
+          // Static JS/CSS assets - Long-term caching to fix SEO cache issue
+          {
+            urlPattern: /\/assets\/.*\.(js|css)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'static-assets-v3',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year cache for hashed assets
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // Vendor chunks - Long-term caching
+          {
+            urlPattern: /\/assets\/.*vendor.*\.(js|css)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'vendor-assets-v3',
+              expiration: {
+                maxEntries: 30,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year cache
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // App scripts like mfs100 and registerSW
+          {
+            urlPattern: /\/(mfs100-.*\.js|registerSW\.js)$/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'app-scripts-v3',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 1 week cache
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // Supabase API - Ultra-fast network first
+          {
+            urlPattern: /^https:\/\/zwtjjzryscwhqsgvvqzf\.supabase\.co\/rest\/v1\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'supabase-api-ultra-cache',
+              networkTimeoutSeconds: 2, // Faster timeout
+              cacheableResponse: {
+                statuses: [0, 200]
+              },
+              expiration: {
+                maxEntries: 200, // More cache entries
+                maxAgeSeconds: 60 * 60 * 2 // 2 hours for faster updates
+              },
+              plugins: [{
+                cacheKeyWillBeUsed: async ({ request }) => {
+                  // Add timestamp to force fresh data for critical operations
+                  const url = new URL(request.url);
+                  if (url.pathname.includes('dashboard') || url.pathname.includes('students')) {
+                    url.searchParams.set('_t', Math.floor(Date.now() / 60000).toString()); // 1 minute cache
+                  }
+                  return url.toString();
+                }
+              }]
+            }
+          },
+          // Images - Optimized caching
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'images-optimized-v3',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              },
+              plugins: [{
+                cacheWillUpdate: async ({ response }) => {
+                  return response.status === 200 ? response : null;
+                }
+              }]
+            }
+          },
+          // Fonts - Long-term caching
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-stylesheets-v3',
+              expiration: {
+                maxEntries: 20,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-webfonts-v3',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+              }
+            }
+          }
+        ]
       },
       manifest: {
         name: 'BiometricHub - Student Management',
@@ -126,6 +235,10 @@ export default defineConfig(({ mode }) => ({
             form_factor: 'wide'
           }
         ]
+      },
+      devOptions: {
+        enabled: true,
+        type: 'module'
       }
     })
   ].filter(Boolean),
