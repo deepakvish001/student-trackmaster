@@ -481,7 +481,7 @@ export type Database = {
         Returns: Json
       }
       get_user_accessible_batches: {
-        Args: { target_user_id?: string }
+        Args: Record<PropertyKey, never> | { target_user_id?: string }
         Returns: string[]
       }
       get_user_profile: {
