@@ -49,78 +49,80 @@ export function InstantSyncIndicator() {
 
   if (!isOnline) {
     return (
-      <Card className="fixed bottom-4 right-4 p-3 z-50 border-destructive">
+      <Card className="fixed top-4 left-4 p-3 z-[9999] border-destructive bg-destructive/10 backdrop-blur-sm shadow-lg">
         <div className="flex items-center gap-2">
           <WifiOff className="h-4 w-4 text-destructive" />
-          <span className="text-sm text-destructive">Offline Mode</span>
+          <span className="text-sm text-destructive font-medium">Offline Mode</span>
         </div>
       </Card>
     );
   }
 
   return (
-    <Card className="fixed bottom-4 right-4 p-3 z-50 bg-background/95 backdrop-blur-sm">
+    <Card className="fixed top-4 left-4 p-3 z-[9999] bg-background/95 backdrop-blur-sm shadow-lg border-primary/20">
       <div className="flex items-center gap-3">
         {/* Connection Status */}
         <div className="flex items-center gap-2">
           {isActive && isCollaborationActive ? (
             <>
               <div className="relative">
-                <Zap className="h-4 w-4 text-green-500 animate-pulse" />
-                <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                <Zap className="h-5 w-5 text-green-500 animate-pulse" />
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-ping"></div>
               </div>
-              <span className="text-sm font-medium text-green-600">Live Sync</span>
+              <span className="text-sm font-semibold text-green-600">Live Sync Active</span>
             </>
           ) : (
             <>
-              <Wifi className="h-4 w-4 text-yellow-500" />
-              <span className="text-sm text-yellow-600">Connecting...</span>
+              <Wifi className="h-5 w-5 text-amber-500 animate-pulse" />
+              <span className="text-sm font-medium text-amber-600">Connecting...</span>
             </>
           )}
         </div>
 
         {/* Active Users */}
         {activeUsers.length > 0 && (
-          <div className="flex items-center gap-1">
-            <Users className="h-3 w-3 text-blue-500" />
-            <Badge variant="secondary" className="text-xs">
-              {activeUsers.length}
+          <div className="flex items-center gap-2 px-2 py-1 bg-blue-50 rounded-full">
+            <Users className="h-4 w-4 text-blue-500" />
+            <Badge variant="secondary" className="text-xs font-semibold">
+              {activeUsers.length} online
             </Badge>
           </div>
         )}
 
         {/* Sync Stats */}
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Database className="h-3 w-3" />
-          <span>{syncCount}</span>
-        </div>
-
-        {/* Manual Controls */}
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleForceRefresh}
-            className="h-7 w-7 p-0"
-            title="Force Global Refresh"
-          >
-            <RefreshCw className="h-3 w-3" />
-          </Button>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleEmergencySync}
-            className="h-7 w-7 p-0 text-orange-500 hover:text-orange-600"
-            title="Emergency Sync"
-          >
-            <AlertTriangle className="h-3 w-3" />
-          </Button>
+        <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 rounded-full">
+          <Database className="h-4 w-4 text-gray-600" />
+          <span className="text-xs font-medium text-gray-700">{syncCount} syncs</span>
         </div>
 
         {/* Last Sync Time */}
-        <div className="text-xs text-muted-foreground">
+        <div className="text-xs text-muted-foreground font-medium">
           {lastSyncTime.toLocaleTimeString()}
+        </div>
+
+        {/* Manual Controls */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleForceRefresh}
+            className="h-8 px-3 text-xs font-medium"
+            title="Force Global Refresh"
+          >
+            <RefreshCw className="h-3 w-3 mr-1" />
+            Refresh
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleEmergencySync}
+            className="h-8 px-3 text-xs font-medium text-orange-600 border-orange-200 hover:bg-orange-50"
+            title="Emergency Sync"
+          >
+            <AlertTriangle className="h-3 w-3 mr-1" />
+            Emergency
+          </Button>
         </div>
       </div>
     </Card>
