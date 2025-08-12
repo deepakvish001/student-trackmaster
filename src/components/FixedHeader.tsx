@@ -26,10 +26,10 @@ export default function FixedHeader({
             <MobileNav />
           </div>
           
-          {/* Desktop Sidebar Trigger - Only show on large screens */}
+          {/* Desktop Sidebar Trigger - Always visible on desktop */}
           {showSidebarTrigger && (
-            <div className="hidden lg:block">
-              <SidebarTrigger className="p-2 hover:bg-muted rounded-lg transition-colors" />
+            <div className="hidden lg:flex">
+              <SidebarTrigger className="p-2 hover:bg-muted rounded-lg transition-colors border border-border/40 hover:border-border" />
             </div>
           )}
           
