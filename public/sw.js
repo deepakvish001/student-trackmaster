@@ -2,7 +2,7 @@
 // Optimized for maximum speed, responsiveness, and real-time performance
 
 // Workbox manifest injection point - DO NOT REMOVE
-const manifest = self.__WB_MANIFEST;
+self.__WB_MANIFEST;
 
 const CACHE_VERSION = 'v2.3.0';
 const STATIC_CACHE = `biometric-hub-static-${CACHE_VERSION}`;
