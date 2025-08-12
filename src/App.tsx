@@ -24,7 +24,7 @@ import { EnhancedAuthProvider } from "./contexts/EnhancedAuthContext";
 import { SafePerformanceWrapper } from "@/components/SafePerformanceWrapper";
 import { PerformanceInitializer } from "@/components/PerformanceInitializer";
 import { GlobalRealTimeProvider } from "@/components/GlobalRealTimeProvider";
-import { InstantSyncIndicator } from "@/components/InstantSyncIndicator";
+import { UnifiedSyncControl } from "@/components/UnifiedSyncControl";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SecurityWrapper from "./components/SecurityWrapper";
 import { SuperAdminRoute, UserRoute } from "./components/RoleBasedRoute";
@@ -70,7 +70,7 @@ function AppWithQueryClient() {
               </div>
               <PWAInstallPrompt />
               <PWAUpdatePrompt registration={swRegistration} />
-              <InstantSyncIndicator />
+              <UnifiedSyncControl variant="floating" />
               <Toaster />
           <Routes>
             {/* Public route - Login only */}

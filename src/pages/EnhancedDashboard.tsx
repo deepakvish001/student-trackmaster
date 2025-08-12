@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { QuickStatus } from '@/components/QuickStatus';
+import { UnifiedSyncControl } from '@/components/UnifiedSyncControl';
 import { Users, GraduationCap, Shield, Activity, AlertTriangle, CheckCircle, Clock, Database, Wifi, RefreshCw, TrendingUp, LayoutDashboard, WifiOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -18,7 +18,7 @@ import { useUltraFastDashboard } from '@/hooks/useUltraFastDashboard';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { CollaborationIndicator } from '@/components/CollaborationIndicator';
-import { AdvancedSyncStatus } from '@/components/AdvancedSyncStatus';
+
 import { PWAManagementPanel } from '@/components/PWAManagementPanel';
 import { SecurityDashboard } from '@/components/SecurityDashboard';
 import { PWAControlCenter } from '@/components/PWAControlCenter';
@@ -29,7 +29,7 @@ import { RealTimePWADashboard } from '@/components/RealTimePWADashboard';
 import { PWAFeatureCenter } from '@/components/PWAFeatureCenter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConflictResolutionDialog } from '@/components/ConflictResolutionDialog';
-import { SyncButton } from '@/components/SyncButton';
+
 import { UltraPerformancePanel } from '@/components/UltraPerformancePanel';
 import { useRealTimePWA } from '@/hooks/useRealTimePWA';
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
@@ -115,7 +115,7 @@ export default function EnhancedDashboard() {
 
               {/* Connection Status */}
               <div className="flex items-center gap-4">
-                <QuickStatus compact={true} showSync={true} />
+                <UnifiedSyncControl variant="compact" />
               </div>
             </div>
             
@@ -172,15 +172,6 @@ export default function EnhancedDashboard() {
                       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                       <span className="text-emerald-400 font-medium">Live Updates</span>
                     </div>
-                    <Button 
-                      onClick={forceRefresh} 
-                      variant="outline" 
-                      size="sm"
-                      className="border-gray-600 text-gray-400 hover:text-white hover:border-gray-500"
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Refresh
-                    </Button>
                   </div>
                 </div>
               </div>

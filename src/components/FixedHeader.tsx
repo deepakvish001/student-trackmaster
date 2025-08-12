@@ -1,6 +1,6 @@
 import React from 'react';
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { QuickStatus } from "@/components/QuickStatus";
+import { UnifiedSyncControl } from "@/components/UnifiedSyncControl";
 import { Fingerprint } from "lucide-react";
 import { MobileNav } from './MobileNav';
 
@@ -45,9 +45,9 @@ export default function FixedHeader({
           </div>
         </div>
 
-        {/* Right Section - Quick Status */}
+        {/* Right Section - Unified Sync Status */}
         <div className="flex items-center">
-          <QuickStatus compact={true} showSync={true} />
+          <UnifiedSyncControl variant="compact" />
         </div>
       </div>
     </header>
