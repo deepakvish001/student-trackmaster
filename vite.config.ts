@@ -28,8 +28,7 @@ export default defineConfig(({ mode }) => ({
           'form-vendor': ['react-hook-form', '@hookform/resolvers'],
           'query-vendor': ['@tanstack/react-query'],
           'router-vendor': ['react-router-dom'],
-          'chart-vendor': ['recharts'],
-          'table-vendor': ['@tanstack/react-table']
+          'chart-vendor': ['recharts']
         },
         // Modern ES module format
         format: 'es',
