@@ -420,8 +420,16 @@ export function useRealTimePWA() {
     return queueId;
   }, [addToQueue]);
 
-  // VitePWA handles service worker registration automatically
-  // No manual registration needed to avoid conflicts
+  // Background sync registration
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then(registration => {
+        console.log('[RealTimePWA] Service worker registered successfully');
+      }).catch(error => {
+        console.error('[RealTimePWA] Service worker registration failed:', error);
+      });
+    }
+  }, []);
 
   return {
     ...state,

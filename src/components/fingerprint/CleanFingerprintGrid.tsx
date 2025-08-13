@@ -11,17 +11,13 @@ import {
   RotateCcw, 
   Activity,
   Zap,
+  Save,
+  Loader2,
   Hand,
-  TrendingUp
+  TrendingUp,
+  Eye
 } from "lucide-react";
-
-interface FingerprintState {
-  index: number;
-  status: 'pending' | 'capturing' | 'captured' | 'failed' | 'retrying';
-  imageData: string;
-  template: string;
-  quality: number;
-}
+import { useMultiFingerprintCapture } from "@/hooks/useMultiFingerprintCapture";
 
 interface CleanFingerprintGridProps {
   onFingerprintCaptured?: (index: number, template: string, imageData: string, quality: number) => void;
@@ -37,15 +33,55 @@ export function CleanFingerprintGrid({
   targetQuality = 70
 }: CleanFingerprintGridProps) {
   
-  const [fingerprints, setFingerprints] = useState<FingerprintState[]>([
-    { index: 0, status: 'pending', imageData: '', template: '', quality: 0 },
-    { index: 1, status: 'pending', imageData: '', template: '', quality: 0 },
-    { index: 2, status: 'pending', imageData: '', template: '', quality: 0 },
-    { index: 3, status: 'pending', imageData: '', template: '', quality: 0 },
-    { index: 4, status: 'pending', imageData: '', template: '', quality: 0 }
-  ]);
+  const {
+    fingerprints,
+    completedCount,
+    averageQuality,
+    allCaptured,
+    isCapturing,
+    captureFingerprint,
+    retryCapture,
+    resetAll,
+    cancelCapture,
+    getAllCapturedData
+  } = useMultiFingerprintCapture();
 
-  const [isCapturing, setIsCapturing] = useState(false);
+  const [savingToSupabase, setSavingToSupabase] = useState(false);
+  const [previousCaptureCount, setPreviousCaptureCount] = useState(0);
+  
+  // Add ref to component for external reset
+  React.useEffect(() => {
+    const element = document.querySelector('[data-fingerprint-grid]');
+    if (element) {
+      (element as any).reset = () => {
+        console.log('🔄 Fingerprint grid reset triggered externally');
+        resetAll();
+        setPreviousCaptureCount(0);
+        setSavingToSupabase(false);
+      };
+    }
+  }, [resetAll]);
+
+  // Auto-notify parent when individual fingerprints are captured
+  React.useEffect(() => {
+    if (completedCount > previousCaptureCount && onFingerprintCaptured) {
+      // A new fingerprint was captured, find which one and notify parent
+      const newFingerprints = fingerprints.filter((fp, index) => 
+        fp.status === 'captured' && index >= previousCaptureCount
+      );
+      
+      newFingerprints.forEach((fp) => {
+        console.log(`🔄 Auto-notifying parent of captured fingerprint ${fp.index}:`, {
+          template: fp.template?.length,
+          imageData: fp.imageData?.length,
+          quality: fp.quality
+        });
+        
+        onFingerprintCaptured(fp.index, fp.template || '', fp.imageData || '', fp.quality || 0);
+      });
+    }
+    setPreviousCaptureCount(completedCount);
+  }, [completedCount, fingerprints, onFingerprintCaptured, previousCaptureCount]);
 
   const fingerNames = [
     "Right Thumb",
@@ -55,23 +91,6 @@ export function CleanFingerprintGrid({
     "Left Thumb"
   ];
 
-  const completedCount = fingerprints.filter(fp => fp.status === 'captured').length;
-  const allCaptured = completedCount === 5;
-  const averageQuality = fingerprints
-    .filter(fp => fp.status === 'captured')
-    .reduce((sum, fp) => sum + fp.quality, 0) / Math.max(completedCount, 1);
-
-  // Add ref to component for external reset
-  React.useEffect(() => {
-    const element = document.querySelector('[data-fingerprint-grid]');
-    if (element) {
-      (element as any).reset = () => {
-        console.log('🔄 Fingerprint grid reset triggered externally');
-        resetAll();
-      };
-    }
-  }, []);
-
   const handleCapture = useCallback(async (index: number) => {
     if (isCapturing) {
       toast.warning("Another capture is in progress");
@@ -79,121 +98,109 @@ export function CleanFingerprintGrid({
     }
 
     try {
-      setIsCapturing(true);
-      setFingerprints(prev => prev.map(fp => 
-        fp.index === index ? { ...fp, status: 'capturing' } : fp
-      ));
-
       toast.info(`Place ${fingerNames[index]} on scanner`, { 
         duration: 3000,
         description: "Hold steady for best quality" 
       });
-
-      // Check if MFS100 SDK is available
-      if (!window.CaptureFinger) {
-        throw new Error('MFS100 SDK not available. Please ensure the device is connected.');
-      }
-
-      const result = window.CaptureFinger(targetQuality, 20);
       
-      if (result.httpStaus && result.data?.ErrorCode === "0") {
-        const quality = result.data.Quality || 0;
-        let imageData = "";
-        
-        // Process bitmap data if available
-        if (result.data.BitmapData) {
-          // Create a simple image from bitmap data
-          const canvas = document.createElement('canvas');
-          canvas.width = 256;
-          canvas.height = 256;
-          const ctx = canvas.getContext('2d');
+      const success = await captureFingerprint(index, targetQuality, 20);
+      
+      if (success) {
+        const fingerprint = fingerprints.find(fp => fp.index === index);
+        if (fingerprint) {
+          toast.success(`${fingerNames[index]} captured!`, {
+            description: `Quality: ${fingerprint.quality}%`
+          });
           
-          if (ctx) {
-            const binaryData = atob(result.data.BitmapData);
-            const imgData = ctx.createImageData(256, 256);
-            const data = imgData.data;
-            
-            for (let i = 0; i < Math.min(binaryData.length, 256 * 256); i++) {
-              const pixelValue = 255 - binaryData.charCodeAt(i);
-              const pixelIndex = i * 4;
-              data[pixelIndex] = pixelValue;
-              data[pixelIndex + 1] = pixelValue;
-              data[pixelIndex + 2] = pixelValue;
-              data[pixelIndex + 3] = 255;
-            }
-            
-            ctx.putImageData(imgData, 0, 0);
-            imageData = canvas.toDataURL('image/png');
+          // Notify parent component immediately when each fingerprint is captured
+          if (onFingerprintCaptured) {
+            onFingerprintCaptured(index, fingerprint.template, fingerprint.imageData, fingerprint.quality);
           }
-        }
-
-        setFingerprints(prev => prev.map(fp => 
-          fp.index === index ? { 
-            ...fp, 
-            status: 'captured', 
-            imageData, 
-            template: result.data.IsoTemplate || '', 
-            quality 
-          } : fp
-        ));
-
-        toast.success(`${fingerNames[index]} captured!`, {
-          description: `Quality: ${quality}%`
-        });
-
-        // Notify parent component
-        if (onFingerprintCaptured) {
-          onFingerprintCaptured(index, result.data.IsoTemplate || '', imageData, quality);
-        }
-
-        // Check if all fingerprints are captured
-        const newCompletedCount = fingerprints.filter(fp => fp.status === 'captured').length + 1;
-        if (newCompletedCount === 5 && onAllCaptured) {
-          setTimeout(() => {
+          
+          // Check if all fingerprints are captured and auto-trigger completion
+          const allCapturedNow = fingerprints.filter(fp => fp.status === 'captured').length === 5;
+          if (allCapturedNow && onAllCaptured) {
             const allData = fingerprints.map(fp => ({
               index: fp.index,
               template: fp.template,
               imageData: fp.imageData,
               quality: fp.quality,
-              timestamp: new Date()
+              timestamp: fp.timestamp
             }));
-            onAllCaptured(allData);
-          }, 500);
+            setTimeout(() => onAllCaptured(allData), 500); // Small delay to ensure state is updated
+          }
         }
-
-      } else {
-        throw new Error(result.data?.ErrorDescription || 'Capture failed');
       }
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Capture failed';
-      
-      setFingerprints(prev => prev.map(fp => 
-        fp.index === index ? { ...fp, status: 'failed' } : fp
-      ));
-
       toast.error(`${fingerNames[index]} capture failed`, {
         description: errorMessage
       });
-    } finally {
-      setIsCapturing(false);
     }
-  }, [isCapturing, targetQuality, fingerNames, onFingerprintCaptured, onAllCaptured, fingerprints]);
+  }, [isCapturing, captureFingerprint, targetQuality, fingerNames, fingerprints]);
 
   const handleRetry = useCallback(async (index: number) => {
-    await handleCapture(index);
-  }, [handleCapture]);
+    try {
+      toast.info(`Retrying ${fingerNames[index]}...`);
+      const success = await retryCapture(index);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Retry failed';
+      toast.error(`Retry failed for ${fingerNames[index]}`, {
+        description: errorMessage
+      });
+    }
+  }, [retryCapture, fingerNames]);
 
-  const resetAll = useCallback(() => {
-    setFingerprints([
-      { index: 0, status: 'pending', imageData: '', template: '', quality: 0 },
-      { index: 1, status: 'pending', imageData: '', template: '', quality: 0 },
-      { index: 2, status: 'pending', imageData: '', template: '', quality: 0 },
-      { index: 3, status: 'pending', imageData: '', template: '', quality: 0 },
-      { index: 4, status: 'pending', imageData: '', template: '', quality: 0 }
-    ]);
-    setIsCapturing(false);
-  }, []);
+  // Handle manual save (optional - for compatibility)
+  const handleSaveAll = useCallback(async () => {
+    if (!allCaptured) {
+      toast.error("Please capture all 5 fingerprints first");
+      return;
+    }
+
+    setSavingToSupabase(true);
+    try {
+      const capturedData = getAllCapturedData();
+      
+      // Convert to format expected by parent component
+      const fingerprintData = capturedData.fingerprints.map(fp => ({
+        index: fp.index,
+        imageData: fp.imageData,
+        template: fp.template,
+        quality: fp.quality,
+        timestamp: fp.timestamp
+      }));
+      
+      if (onAllCaptured) {
+        await onAllCaptured(fingerprintData);
+      }
+      
+      toast.success("All fingerprints processed successfully!");
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Save failed';
+      toast.error("Failed to process fingerprints", {
+        description: errorMessage
+      });
+    } finally {
+      setSavingToSupabase(false);
+    }
+  }, [allCaptured, getAllCapturedData, onAllCaptured]);
+
+  // Handle Reset Device
+  const handleResetDevice = useCallback(() => {
+    toast.info("Resetting MFS100 device state...");
+    // Force device reset through service
+    resetAll();
+  }, [resetAll]);
+
+  // Handle Cancel
+  const handleCancel = useCallback(() => {
+    if (isCapturing) {
+      cancelCapture();
+      toast.info("Capture cancelled");
+    }
+  }, [isCapturing, cancelCapture]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -235,13 +242,23 @@ export function CleanFingerprintGrid({
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => toast.info("Device reset not implemented")}
+                onClick={handleResetDevice}
                 disabled={disabled}
                 className="hover:bg-amber-600 border-amber-500 text-amber-400 hover:text-white transition-all duration-300"
               >
                 <Zap className="h-4 w-4 mr-1" />
                 Reset Device
               </Button>
+              {isCapturing && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleCancel}
+                  className="hover:bg-red-600 border-red-500 text-red-400 hover:text-white transition-all duration-300"
+                >
+                  Cancel
+                </Button>
+              )}
             </div>
           </CardTitle>
         </CardHeader>
@@ -268,7 +285,7 @@ export function CleanFingerprintGrid({
                 <TrendingUp className="h-4 w-4 text-orange-400" />
                 <div>
                   <div className="text-gray-300">Avg Quality</div>
-                  <div className="text-white font-bold">{Math.round(averageQuality)}%</div>
+                  <div className="text-white font-bold">{averageQuality}%</div>
                 </div>
               </div>
               
@@ -276,7 +293,7 @@ export function CleanFingerprintGrid({
                 <Zap className="h-4 w-4 text-green-400" />
                 <div>
                   <div className="text-gray-300">Enhancement</div>
-                  <div className="text-white font-bold">Standard</div>
+                  <div className="text-white font-bold">2x Scale</div>
                 </div>
               </div>
               
@@ -388,7 +405,7 @@ export function CleanFingerprintGrid({
                   All Fingerprints Captured Successfully!
                 </h3>
                 <p className="text-sm text-gray-300">
-                  Average Quality: {Math.round(averageQuality)}% • Standard Processing • Ready to Submit Form
+                  Average Quality: {averageQuality}% • Enhanced 2x Scale • Ready to Submit Form
                 </p>
               </div>
             </div>

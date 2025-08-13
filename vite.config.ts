@@ -75,137 +75,126 @@ export default defineConfig(({ mode }) => ({
     mode === 'development' && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
-      devOptions: {
-        enabled: true, // Enable PWA in development
-        type: 'module'
-      },
       workbox: {
-        // Critical: Ensure offline navigation works perfectly
-        navigateFallback: '/index.html',
-        navigateFallbackDenylist: [
-          // Exclude API calls, assets with extensions, and internal paths
-          /^\/api\//, 
-          /^\/_/,
-          /\/[^/?]+\.[^/]+$/,
-          /^\/.*\.(js|css|png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|eot)$/
-        ],
-        
-        // Precache all essential app files for offline access
-        globPatterns: [
-          '**/*.{js,css,html,ico,png,jpg,jpeg,svg,gif,webp,woff,woff2,ttf,eot}',
-          'manifest.json',
-          'mfs100-*.js' // Include MFS100 SDK
-        ],
-        
-        // Include critical routes and manifest
-        additionalManifestEntries: [
-          { url: '/', revision: Date.now().toString() },
-          { url: '/index.html', revision: Date.now().toString() },
-          { url: '/manifest.json', revision: Date.now().toString() },
-          { url: '/dashboard', revision: Date.now().toString() },
-          { url: '/students', revision: Date.now().toString() },
-          { url: '/batches', revision: Date.now().toString() },
-          { url: '/login', revision: Date.now().toString() }
-        ],
-        
-        // Increased cache size for comprehensive offline support
-        maximumFileSizeToCacheInBytes: 15000000, // 15MB
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        maximumFileSizeToCacheInBytes: 10000000, // 10MB for better caching
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
-        
-        // Enhanced runtime caching for complete offline functionality
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/_/, /\/[^/?]+\.[^/]+$/],
         runtimeCaching: [
-          // Document/Navigation requests - Network first with fast fallback
+          // Static JS/CSS assets - Long-term caching to fix SEO cache issue
           {
-            urlPattern: ({ request }) => request.destination === 'document',
+            urlPattern: /\/assets\/.*\.(js|css)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'static-assets-v3',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year cache for hashed assets
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // Vendor chunks - Long-term caching
+          {
+            urlPattern: /\/assets\/.*vendor.*\.(js|css)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'vendor-assets-v3',
+              expiration: {
+                maxEntries: 30,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year cache
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // App scripts like mfs100 and registerSW
+          {
+            urlPattern: /\/(mfs100-.*\.js|registerSW\.js)$/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'app-scripts-v3',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 1 week cache
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // Supabase API - Ultra-fast network first
+          {
+            urlPattern: /^https:\/\/zwtjjzryscwhqsgvvqzf\.supabase\.co\/rest\/v1\/.*/i,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'pages-cache',
+              cacheName: 'supabase-api-ultra-cache',
+              networkTimeoutSeconds: 2, // Faster timeout
+              cacheableResponse: {
+                statuses: [0, 200]
+              },
+              expiration: {
+                maxEntries: 200, // More cache entries
+                maxAgeSeconds: 60 * 60 * 2 // 2 hours for faster updates
+              },
+              plugins: [{
+                cacheKeyWillBeUsed: async ({ request }) => {
+                  // Add timestamp to force fresh data for critical operations
+                  const url = new URL(request.url);
+                  if (url.pathname.includes('dashboard') || url.pathname.includes('students')) {
+                    url.searchParams.set('_t', Math.floor(Date.now() / 60000).toString()); // 1 minute cache
+                  }
+                  return url.toString();
+                }
+              }]
+            }
+          },
+          // Images - Optimized caching
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'images-optimized-v3',
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 24 * 60 * 60, // 24 hours
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
               },
-              networkTimeoutSeconds: 2, // Quick fallback to cache
-            },
+              plugins: [{
+                cacheWillUpdate: async ({ response }) => {
+                  return response.status === 200 ? response : null;
+                }
+              }]
+            }
           },
-            // App shell assets - Cache first for instant loading
-            {
-              urlPattern: /\.(?:js|css|html)$/,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'app-shell-cache',
-                expiration: {
-                  maxEntries: 300,
-                  maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
-                },
-              },
-            },
-            
-            // Static assets - Cache first with long expiration
-            {
-              urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|eot)$/,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'static-assets-cache',
-                expiration: {
-                  maxEntries: 500,
-                  maxAgeSeconds: 60 * 24 * 60 * 60, // 60 days
-                },
-              },
-            },
-            
-            // API calls - Network first with offline fallback
-            {
-              urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/,
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'api-cache',
-                expiration: {
-                  maxEntries: 100,
-                  maxAgeSeconds: 5 * 60, // 5 minutes
-                },
-                networkTimeoutSeconds: 3,
-                cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
-            },
-            
-            // Auth calls - Network only (don't cache sensitive data)
-            {
-              urlPattern: /^https:\/\/.*\.supabase\.co\/auth\/v1\/.*/,
-              handler: 'NetworkOnly',
-            },
-            
-            // External resources - Stale while revalidate
-            {
-              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/,
-              handler: 'StaleWhileRevalidate',
-              options: {
-                cacheName: 'google-fonts-stylesheets',
-                expiration: {
-                  maxEntries: 20,
-                  maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
-                },
-              },
-            },
-            
-            // Font files - Cache first
-            {
-              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'google-fonts-webfonts',
-                expiration: {
-                  maxEntries: 30,
-                  maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
-                },
-                cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
-            },
+          // Fonts - Long-term caching
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-stylesheets-v3',
+              expiration: {
+                maxEntries: 20,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-webfonts-v3',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+              }
+            }
+          }
         ]
       },
       manifest: {
@@ -226,13 +215,13 @@ export default defineConfig(({ mode }) => ({
             type: 'image/x-icon'
           },
           {
-            src: '/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png',
+            src: '/public/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any maskable'
           },
           {
-            src: '/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png',
+            src: '/public/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
@@ -240,13 +229,17 @@ export default defineConfig(({ mode }) => ({
         ],
         screenshots: [
           {
-            src: '/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png',
+            src: '/public/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png',
             sizes: '1280x720',
             type: 'image/png',
             form_factor: 'wide'
           }
         ]
       },
+      devOptions: {
+        enabled: true,
+        type: 'module'
+      }
     })
   ].filter(Boolean),
   resolve: {

@@ -17,7 +17,6 @@ import { UnifiedSyncControl } from "@/components/UnifiedSyncControl";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SecurityWrapper from "./components/SecurityWrapper";
 import { SuperAdminRoute, UserRoute } from "./components/RoleBasedRoute";
-import OfflineRouteHandler from "./components/OfflineRouteHandler";
 
 // Lazy load page components for better code splitting
 const Login = lazy(() => import("./pages/Login"));
@@ -49,27 +48,6 @@ function App() {
 function AppWithQueryClient() {
   const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
-  // Enhanced offline handling
-  useEffect(() => {
-    const handleOffline = () => {
-      console.log('App went offline - using cached data');
-    };
-    
-    const handleOnline = () => {
-      console.log('App came online - syncing data');
-      // Trigger data sync when coming back online
-      window.dispatchEvent(new Event('refetch-queries'));
-    };
-    
-    window.addEventListener('offline', handleOffline);
-    window.addEventListener('online', handleOnline);
-    
-    return () => {
-      window.removeEventListener('offline', handleOffline);
-      window.removeEventListener('online', handleOnline);
-    };
-  }, []);
-
   useEffect(() => {
     // Get the service worker registration
     const checkRegistration = () => {
@@ -95,7 +73,6 @@ function AppWithQueryClient() {
             <TooltipProvider>
             <MobileOptimizedLayout>
               <OfflineBanner />
-              <OfflineRouteHandler />
               <div className="fixed top-4 right-4 z-50 space-y-2 safe-area-inset-top safe-area-inset-right">
                 <CollaborationIndicator />
               </div>
@@ -284,25 +261,16 @@ const QueryClient = ({ children }: { children: React.ReactNode }) => {
       new TanstackQueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 5 * 60 * 1000, // 5 minutes
-            gcTime: 10 * 60 * 1000, // 10 minutes
-            refetchOnWindowFocus: true,
-            refetchOnMount: true,
-            refetchOnReconnect: true,
-            retry: (failureCount, error) => {
-              // Don't retry if offline
-              if (!navigator.onLine) return false;
-              // Retry up to 2 times for network errors
-              return failureCount < 2;
-            },
-            retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+            staleTime: 5 * 60 * 1000, // 5 minutes instead of Infinity for security
+            gcTime: 10 * 60 * 1000, // 10 minutes instead of Infinity for security
+            refetchOnWindowFocus: true, // Re-enable for security validation
+            refetchOnMount: true, // Re-enable for fresh data
+            refetchOnReconnect: true, // Re-enable for network security
+            retry: 1, // Only retry once
           },
           mutations: {
-            retry: (failureCount, error) => {
-              if (!navigator.onLine) return false;
-              return failureCount < 1;
-            },
-            networkMode: 'offlineFirst', // Allow offline mutations
+            retry: 1, // Only retry mutations once
+            networkMode: 'online', // Only run when online
           },
         },
       }),
