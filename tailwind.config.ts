@@ -12,44 +12,10 @@ export default {
   theme: {
     container: {
       center: true,
-      padding: {
-        DEFAULT: "1rem",
-        sm: "1.5rem",
-        lg: "2rem",
-        xl: "2.5rem",
-        "2xl": "3rem",
-      },
+      padding: "2rem",
       screens: {
-        sm: "640px",
-        md: "768px", 
-        lg: "1024px",
-        xl: "1280px",
         "2xl": "1400px",
       },
-    },
-    screens: {
-      'xs': '475px',
-      'sm': '640px',
-      'md': '768px',
-      'lg': '1024px',
-      'xl': '1280px',
-      '2xl': '1536px',
-      '3xl': '1920px',
-      // Device-specific breakpoints
-      'mobile': {'max': '767px'},
-      'tablet': {'min': '768px', 'max': '1023px'},
-      'desktop': {'min': '1024px'},
-      // Orientation and device specific
-      'mobile-portrait': {'raw': '(max-width: 767px) and (orientation: portrait)'},
-      'mobile-landscape': {'raw': '(max-width: 767px) and (orientation: landscape)'},
-      'tablet-portrait': {'raw': '(min-width: 768px) and (max-width: 1023px) and (orientation: portrait)'},
-      'tablet-landscape': {'raw': '(min-width: 768px) and (max-width: 1023px) and (orientation: landscape)'},
-      // Browser and accessibility specific
-      'high-dpi': {'raw': '(-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi)'},
-      'reduced-motion': {'raw': '(prefers-reduced-motion: reduce)'},
-      'hover-capable': {'raw': '(hover: hover)'},
-      'pointer-fine': {'raw': '(pointer: fine)'},
-      'pointer-coarse': {'raw': '(pointer: coarse)'},
     },
     extend: {
       fontFamily: {

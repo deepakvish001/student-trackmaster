@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/components/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { SystemStatus } from '@/components/SystemStatus';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -371,9 +370,6 @@ export default function SystemSettings() {
               </div>
             </CardContent>
           </Card>
-
-          {/* PWA & Offline System Status */}
-          <SystemStatus />
 
           {/* System Information */}
           <Card className="premium-card">

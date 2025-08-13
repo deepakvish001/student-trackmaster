@@ -1,41 +1,24 @@
-import React, { useState, useEffect, Suspense, lazy } from "react";
+import React from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { OfflineBanner } from "@/components/OfflineBanner";
-import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
-import { PWAFeatureCenter } from "@/components/PWAFeatureCenter";
-import { CollaborationIndicator } from "@/components/CollaborationIndicator";
-import { MobileOptimizedLayout } from "@/components/MobileOptimizedLayout";
-import { PWAUpdatePrompt } from "@/components/PWAUpdatePrompt";
 import { QueryClient as TanstackQueryClient, QueryClientProvider as TanstackQueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Index from "./pages/Index";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import Batches from "./pages/Batches";
+import AddStudent from "./pages/students/AddStudent";
+import EnhancedAddStudent from "./pages/students/EnhancedAddStudent";
+import StudentList from "./pages/students/StudentList";
+import UserManagementPage from "./pages/admin/UserManagement";
+import AuditLogs from "./pages/admin/AuditLogs";
+import SystemSettings from "./pages/admin/SystemSettings";
 import { EnhancedAuthProvider } from "./contexts/EnhancedAuthContext";
-import { SafePerformanceWrapper } from "@/components/SafePerformanceWrapper";
-import { PerformanceInitializer } from "@/components/PerformanceInitializer";
-import { GlobalRealTimeProvider } from "@/components/GlobalRealTimeProvider";
-import { UnifiedSyncControl } from "@/components/UnifiedSyncControl";
+import { useGlobalPerformanceOptimization } from "./hooks/useGlobalPerformanceOptimization";
+import { useUltraFastRealTime } from "./hooks/useUltraFastRealTime";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SecurityWrapper from "./components/SecurityWrapper";
 import { SuperAdminRoute, UserRoute } from "./components/RoleBasedRoute";
-
-// Lazy load page components for better code splitting
-const Login = lazy(() => import("./pages/Login"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Batches = lazy(() => import("./pages/Batches"));
-const AddStudent = lazy(() => import("./pages/students/AddStudent"));
-const EnhancedAddStudent = lazy(() => import("./pages/students/EnhancedAddStudent"));
-const StudentList = lazy(() => import("./pages/students/StudentList"));
-const UserManagementPage = lazy(() => import("./pages/admin/UserManagement"));
-const AuditLogs = lazy(() => import("./pages/admin/AuditLogs"));
-const SystemSettings = lazy(() => import("./pages/admin/SystemSettings"));
-const PWASettings = lazy(() => import("./pages/PWASettings"));
-
-// Loading component for suspense
-const PageLoader = () => (
-  <div className="flex items-center justify-center min-h-screen">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-  </div>
-);
 
 function App() {
   return (
@@ -46,43 +29,20 @@ function App() {
 }
 
 function AppWithQueryClient() {
-  const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
-
-  useEffect(() => {
-    // Get the service worker registration
-    const checkRegistration = () => {
-      const registration = (window as any).swRegistration;
-      if (registration) {
-        setSwRegistration(registration);
-      }
-    };
-
-    // Check immediately and then periodically
-    checkRegistration();
-    const interval = setInterval(checkRegistration, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
+  // Initialize global performance optimization (now inside QueryClient provider)
+  useGlobalPerformanceOptimization();
+  
+  // Initialize ultra-fast real-time synchronization for immediate data updates
+  useUltraFastRealTime();
 
   return (
     <BrowserRouter>
       <EnhancedAuthProvider>
-        <GlobalRealTimeProvider>
-          <SafePerformanceWrapper>
-            <PerformanceInitializer />
-            <TooltipProvider>
-            <MobileOptimizedLayout>
-              <OfflineBanner />
-              <div className="fixed top-4 right-4 z-50 space-y-2 safe-area-inset-top safe-area-inset-right">
-                <CollaborationIndicator />
-              </div>
-              <PWAInstallPrompt />
-              <PWAUpdatePrompt registration={swRegistration} />
-              <UnifiedSyncControl variant="floating" />
-              <Toaster />
+        <TooltipProvider>
+          <Toaster />
           <Routes>
             {/* Public route - Login only */}
-            <Route path="/login" element={<Suspense fallback={<PageLoader />}><Login /></Suspense>} />
+            <Route path="/login" element={<Login />} />
             
             {/* All other routes require authentication and security validation */}
             <Route
@@ -91,9 +51,7 @@ function AppWithQueryClient() {
                 <ProtectedRoute>
                   <SecurityWrapper>
                     <UserRoute>
-                      <Suspense fallback={<PageLoader />}>
-                        <Dashboard />
-                      </Suspense>
+                      <Dashboard />
                     </UserRoute>
                   </SecurityWrapper>
                 </ProtectedRoute>
@@ -105,9 +63,7 @@ function AppWithQueryClient() {
                 <ProtectedRoute>
                   <SecurityWrapper>
                     <UserRoute>
-                      <Suspense fallback={<PageLoader />}>
-                        <Dashboard />
-                      </Suspense>
+                      <Dashboard />
                     </UserRoute>
                   </SecurityWrapper>
                 </ProtectedRoute>
@@ -119,9 +75,7 @@ function AppWithQueryClient() {
                 <ProtectedRoute>
                   <SecurityWrapper>
                     <UserRoute>
-                      <Suspense fallback={<PageLoader />}>
-                        <StudentList />
-                      </Suspense>
+                      <StudentList />
                     </UserRoute>
                   </SecurityWrapper>
                 </ProtectedRoute>
@@ -133,9 +87,7 @@ function AppWithQueryClient() {
                 <ProtectedRoute>
                   <SecurityWrapper>
                     <UserRoute>
-                      <Suspense fallback={<PageLoader />}>
-                        <AddStudent />
-                      </Suspense>
+                      <AddStudent />
                     </UserRoute>
                   </SecurityWrapper>
                 </ProtectedRoute>
@@ -147,9 +99,7 @@ function AppWithQueryClient() {
                 <ProtectedRoute>
                   <SecurityWrapper>
                     <UserRoute>
-                      <Suspense fallback={<PageLoader />}>
-                        <EnhancedAddStudent />
-                      </Suspense>
+                      <EnhancedAddStudent />
                     </UserRoute>
                   </SecurityWrapper>
                 </ProtectedRoute>
@@ -161,25 +111,7 @@ function AppWithQueryClient() {
                 <ProtectedRoute>
                   <SecurityWrapper>
                     <UserRoute>
-                      <Suspense fallback={<PageLoader />}>
-                        <Batches />
-                      </Suspense>
-                    </UserRoute>
-                  </SecurityWrapper>
-                </ProtectedRoute>
-              }
-            />
-            
-            {/* PWA Settings route */}
-            <Route
-              path="/pwa"
-              element={
-                <ProtectedRoute>
-                  <SecurityWrapper>
-                    <UserRoute>
-                      <Suspense fallback={<PageLoader />}>
-                        <PWASettings />
-                      </Suspense>
+                      <Batches />
                     </UserRoute>
                   </SecurityWrapper>
                 </ProtectedRoute>
@@ -193,9 +125,7 @@ function AppWithQueryClient() {
                 <ProtectedRoute>
                   <SecurityWrapper>
                     <SuperAdminRoute>
-                      <Suspense fallback={<PageLoader />}>
-                        <UserManagementPage />
-                      </Suspense>
+                      <UserManagementPage />
                     </SuperAdminRoute>
                   </SecurityWrapper>
                 </ProtectedRoute>
@@ -207,9 +137,7 @@ function AppWithQueryClient() {
                 <ProtectedRoute>
                   <SecurityWrapper>
                     <SuperAdminRoute>
-                      <Suspense fallback={<PageLoader />}>
-                        <AuditLogs />
-                      </Suspense>
+                      <AuditLogs />
                     </SuperAdminRoute>
                   </SecurityWrapper>
                 </ProtectedRoute>
@@ -221,9 +149,7 @@ function AppWithQueryClient() {
                 <ProtectedRoute>
                   <SecurityWrapper>
                     <SuperAdminRoute>
-                      <Suspense fallback={<PageLoader />}>
-                        <SystemSettings />
-                      </Suspense>
+                      <SystemSettings />
                     </SuperAdminRoute>
                   </SecurityWrapper>
                 </ProtectedRoute>
@@ -237,19 +163,14 @@ function AppWithQueryClient() {
                 <ProtectedRoute>
                   <SecurityWrapper>
                     <UserRoute>
-                      <Suspense fallback={<PageLoader />}>
-                        <Dashboard />
-                      </Suspense>
+                      <Dashboard />
                     </UserRoute>
                   </SecurityWrapper>
                 </ProtectedRoute>
               } 
             />
-            </Routes>
-            </MobileOptimizedLayout>
-          </TooltipProvider>
-        </SafePerformanceWrapper>
-      </GlobalRealTimeProvider>
+          </Routes>
+        </TooltipProvider>
       </EnhancedAuthProvider>
     </BrowserRouter>
   );

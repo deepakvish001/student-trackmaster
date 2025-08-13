@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/select";
 import type { Batch } from "@/types";
 import { useRealTimeBatchAccess } from "@/hooks/useRealTimeBatchAccess";
-import { useGlobalRealTime } from "@/components/GlobalRealTimeProvider";
 
 interface BatchSelectorProps {
   value: string;
@@ -21,7 +20,6 @@ interface BatchSelectorProps {
 export function BatchSelector({ value, onChange, disabled = false }: BatchSelectorProps) {
   // Enable real-time updates
   useRealTimeBatchAccess();
-  const { forceGlobalRefresh } = useGlobalRealTime();
   
   const { data: batches, isLoading } = useQuery({
     queryKey: ['restricted-batches-selector'],
@@ -36,9 +34,6 @@ export function BatchSelector({ value, onChange, disabled = false }: BatchSelect
       if (error) throw error;
       return data;
     },
-    staleTime: 30000, // 30 seconds for instant updates
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
   });
 
   return (

@@ -4,55 +4,15 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover, shrink-to-fit=no" />
-    
-    <!-- Enhanced Cross-browser Compatibility -->
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="format-detection" content="telephone=no" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-touch-fullscreen" content="yes" />
-    
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json" />
-    
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#f97316" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="BiometricHub" />
-    
-    <!-- PWA Icons for iOS -->
-    <link rel="apple-touch-icon" href="/public/lovable-uploads/cd42953e-5a05-42ad-adfe-bc56f8a8372d.png" />
-    
-    <title>BiometricHub - Enterprise Security Platform</title>
-    
-    <!-- Preload critical fonts to reduce render blocking -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Geist:wght@300;400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Geist:wght@300;400;500;600;700;800&display=swap"></noscript>
-    
-    <!-- Preload MFS100 SDK but defer jQuery loading until needed -->
-    <link rel="preload" href="/mfs100-9.0.2.6.js" as="script">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student Management System</title>
+    <!-- jQuery required by MFS100 SDK -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- MFS100 SDK for fingerprint device -->
+    <script src="/mfs100-9.0.2.6.js"></script>
   </head>
   <body>
     <div id="root"></div>
-    
-    <!-- Load MFS100 SDK asynchronously - jQuery will be loaded on-demand -->
-    <script>
-      // Load script utility
-      function loadScript(src, callback) {
-        const script = document.createElement('script');
-        script.src = src;
-        script.async = true;
-        if (callback) script.onload = callback;
-        document.head.appendChild(script);
-      }
-      
-      // Load MFS100 SDK only - jQuery will be loaded when fingerprint capture is needed
-      loadScript('/mfs100-9.0.2.6.js');
-    </script>
-    
     <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -10,19 +10,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EnhancedStudentTable } from '@/components/students/EnhancedStudentTable';
 import { EditStudentDialog } from '@/components/students/EditStudentDialog';
 import { StudentDataDebugger } from '@/components/students/StudentDataDebugger';
+import { supabase } from '@/integrations/supabase/client';
 import { Student } from '@/types';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { useOfflineStudents } from '@/hooks/useOfflineStudents';
-import { useOfflineMutations } from '@/hooks/useOfflineMutations';
-import { useCollaborativeStudents } from '@/hooks/useCollaborativeStudents';
-import { UnifiedSyncControl } from '@/components/UnifiedSyncControl';
-import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import { OfflineTooltip } from '@/components/OfflineTooltip';
+import { useOptimizedStudents } from '@/hooks/useOptimizedStudents';
+import { useRealTimeBatchAccess } from '@/hooks/useRealTimeBatchAccess';
+import { useInstantStudentUpdates } from '@/hooks/useInstantStudentUpdates';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { StudentListSkeleton } from '@/components/students/StudentListSkeleton';
-import { Users, Search, Filter, Download, RefreshCw, Shield, Activity, Clock, Database, Fingerprint, Plus, AlertTriangle, ChevronLeft, ChevronRight, WifiOff } from 'lucide-react';
+import { Users, Search, Filter, Download, RefreshCw, Shield, Activity, Clock, Database, Fingerprint, Plus, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
-
+import { exportStudentsToPDF } from '@/utils/pdfExport';
 export default function StudentList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBatch, setSelectedBatch] = useState('all');
@@ -32,39 +30,39 @@ export default function StudentList() {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-
-  // Initialize hooks
-  const { profile } = useUserProfile();
-  const { isOnline } = useOnlineStatus();
   const queryClient = useQueryClient();
-  const { students: offlineMutations } = useOfflineMutations();
+  const {
+    profile
+  } = useUserProfile();
 
-  // Use offline-capable students hook
+  // Enable real-time batch access updates
+  const { isSubscribed } = useRealTimeBatchAccess();
+
+  // Enable instant student updates for real-time CRUD operations (shared with Dashboard)
+  const { forceRefresh } = useInstantStudentUpdates();
+
+  // Use optimized data fetching hook with debounced search
   const {
     students,
     batches,
     stats,
-    totalCount,
     isLoading,
-    isLoadingStudents,
-    isLoadingBatches,
-    error,
     currentPage,
     totalPages,
     hasNextPage,
     hasPreviousPage,
-    goToPage,
     goToNextPage,
     goToPreviousPage,
-    resetPage,
-    refetch
-  } = useCollaborativeStudents({
+    goToPage,
+    refetch,
+    prefetchNextPage
+  } = useOptimizedStudents({
     searchTerm,
     selectedBatch,
     sortBy,
     sortOrder,
-    enabled: !!profile
-  });
+    pageSize: 1000 // Show all students without pagination
+   });
 
   // Debug students data
   useEffect(() => {
@@ -83,16 +81,34 @@ export default function StudentList() {
     return () => clearInterval(timer);
   }, []);
 
-  // Delete student mutation using offline capabilities
-  const deleteStudentMutation = useMutation({
+  // Prefetch next page on hover for better UX
+  const handlePrefetchNext = useCallback(() => {
+    if (hasNextPage) {
+      prefetchNextPage();
+    }
+  }, [hasNextPage, prefetchNextPage]);
+
+  // Delete mutation
+  const deleteMutation = useMutation({
     mutationFn: async (studentId: string) => {
-      await offlineMutations.delete.mutateAsync(studentId);
+      console.log('Deleting student with ID:', studentId);
+      const {
+        error
+      } = await supabase.from('students').update({
+        is_enabled: false
+      }).eq('id', studentId);
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
-      toast.success(isOnline ? 'Student deleted successfully!' : 'Student deleted offline - will sync when online');
-      refetch();
+      queryClient.invalidateQueries({
+        queryKey: ['students-list']
+      });
+      toast.success('Student deleted successfully');
     },
-    onError: (error) => {
+    onError: error => {
       console.error('Error deleting student:', error);
       toast.error('Failed to delete student');
     }
@@ -100,32 +116,47 @@ export default function StudentList() {
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: async ({ studentId, updates }: { studentId: string; updates: Partial<Student> }) => {
-      await offlineMutations.update.mutateAsync({ id: studentId, data: updates });
+    mutationFn: async ({
+      studentId,
+      updates
+    }: {
+      studentId: string;
+      updates: Partial<Student>;
+    }) => {
+      console.log('Updating student:', studentId, updates);
+      const {
+        error
+      } = await supabase.from('students').update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      }).eq('id', studentId);
+      if (error) {
+        console.error('Update error:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
-      toast.success(isOnline ? 'Student updated successfully' : 'Student updated offline - will sync when online');
+      queryClient.invalidateQueries({
+        queryKey: ['students-list']
+      });
+      toast.success('Student updated successfully');
       setShowEditDialog(false);
       setEditingStudent(null);
-      refetch();
     },
-    onError: (error) => {
+    onError: error => {
       console.error('Error updating student:', error);
       toast.error('Failed to update student');
     }
   });
-
   const handleEdit = (student: Student) => {
     console.log('Editing student:', student);
     setEditingStudent(student);
     setShowEditDialog(true);
   };
-
   const handleDelete = (studentId: string) => {
     console.log('Delete requested for student:', studentId);
-    deleteStudentMutation.mutate(studentId);
+    deleteMutation.mutate(studentId);
   };
-
   const handleUpdateStudent = (updates: Partial<Student>) => {
     console.log('Update student with:', updates);
     if (editingStudent) {
@@ -157,17 +188,12 @@ export default function StudentList() {
       }, 1000);
     }
   };
-
   if (isLoading) {
-    return (
-      <DashboardLayout>
+    return <DashboardLayout>
         <StudentListSkeleton />
-      </DashboardLayout>
-    );
+      </DashboardLayout>;
   }
-
-  return (
-    <DashboardLayout>
+  return <DashboardLayout>
       <div className="min-h-screen bg-background p-6">
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Premium Header */}
@@ -183,132 +209,59 @@ export default function StudentList() {
                 </div>
               </div>
               
-              {/* Online/Offline indicator */}
+              {/* Real-time indicator (synced with Dashboard) */}
               <div className="flex items-center space-x-2 text-sm">
-                {isOnline ? (
-                  <>
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-emerald-green font-medium">Online - Live Updates Active</span>
-                  </>
-                ) : (
-                  <>
-                    <WifiOff className="w-4 h-4 text-amber-500" />
-                    <span className="text-amber-500 font-medium">Offline Mode - Changes will sync when online</span>
-                  </>
-                )}
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-emerald-green font-medium">Live Updates Active (Synced)</span>
               </div>
             </div>
 
             <div className="flex items-center gap-4">
-              <UnifiedSyncControl variant="compact" />
-              
-              <OfflineTooltip requiresOnline={false}>
-                <Button 
-                  onClick={handleDownloadPDF} 
-                  disabled={isGeneratingPDF}
-                  variant="outline" 
-                  className="h-12 px-6 border-2 border-emerald-green/30 text-emerald-green hover:bg-emerald-green/5 disabled:opacity-50 disabled:cursor-not-allowed rounded-2xl font-semibold transition-all duration-300 hover:scale-105"
-                >
-                  {isGeneratingPDF ? (
-                    <>
-                      <div className="animate-spin h-5 w-5 mr-3 border-2 border-emerald-green border-t-transparent rounded-full"></div>
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="h-5 w-5 mr-3" />
-                      Download PDF
-                    </>
-                  )}
-                </Button>
-              </OfflineTooltip>
-              
-              <OfflineTooltip requiresOnline={false}>
-                <Button 
-                  onClick={() => {
-                    const enabledBatches = batches.filter(batch => batch.is_enabled);
-                    if (enabledBatches.length === 0) {
-                      toast.error('No enabled batches available. Enable a batch first to add students.');
-                      return;
-                    }
-                    window.location.href = '/students/enhanced-add';
-                  }} 
-                  className="h-12 px-6 bg-sunset-orange hover:bg-sunset-orange/90 text-white rounded-2xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg"
-                >
-                  <Plus className="h-5 w-5 mr-3" />
-                  Add New Student
-                </Button>
-              </OfflineTooltip>
-              
               <Button 
-                onClick={refetch} 
+                onClick={handleDownloadPDF} 
+                disabled={isGeneratingPDF}
+                variant="outline" 
+                className="h-12 px-6 border-2 border-emerald-green/30 text-emerald-green hover:bg-emerald-green/5 disabled:opacity-50 disabled:cursor-not-allowed rounded-2xl font-semibold transition-all duration-300 hover:scale-105"
+              >
+                {isGeneratingPDF ? (
+                  <>
+                    <div className="animate-spin h-5 w-5 mr-3 border-2 border-emerald-green border-t-transparent rounded-full"></div>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-5 w-5 mr-3" />
+                    Download PDF
+                  </>
+                )}
+              </Button>
+              <Button 
+                onClick={() => {
+                  const enabledBatches = batches.filter(batch => batch.is_enabled);
+                  if (enabledBatches.length === 0) {
+                    toast.error('No enabled batches available. Enable a batch first to add students.');
+                    return;
+                  }
+                  window.location.href = '/students/enhanced-add';
+                }} 
+                className="h-12 px-6 bg-sunset-orange hover:bg-sunset-orange/90 text-white rounded-2xl font-semibold transition-all duration-300 hover:scale-105 shadow-lg"
+              >
+                <Plus className="h-5 w-5 mr-3" />
+                Add New Student
+              </Button>
+              <Button 
+                onClick={forceRefresh} 
                 variant="outline" 
                 className="h-12 px-6 border-2 border-electric-blue/30 text-electric-blue hover:bg-electric-blue/5 rounded-2xl font-semibold transition-all duration-300 hover:scale-105"
               >
                 <RefreshCw className="h-5 w-5 mr-3" />
-                Refresh
+                Force Refresh
               </Button>
             </div>
           </div>
 
-          {/* Premium Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="premium-card">
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-electric-blue/10 border border-electric-blue/20 rounded-xl flex items-center justify-center">
-                    <Users className="h-6 w-6 text-electric-blue" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Total Students</p>
-                    <p className="text-2xl font-bold text-foreground">{stats.totalStudents}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="premium-card">
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-emerald-green/10 border border-emerald-green/20 rounded-xl flex items-center justify-center">
-                    <Fingerprint className="h-6 w-6 text-emerald-green" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Complete Biometrics</p>
-                    <p className="text-2xl font-bold text-foreground">{stats.completeBiometrics}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="premium-card">
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-sunset-orange/10 border border-sunset-orange/20 rounded-xl flex items-center justify-center">
-                    <Activity className="h-6 w-6 text-sunset-orange" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Partial Biometrics</p>
-                    <p className="text-2xl font-bold text-foreground">{stats.partialBiometrics}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="premium-card">
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-destructive/10 border border-destructive/20 rounded-xl flex items-center justify-center">
-                    <AlertTriangle className="h-6 w-6 text-destructive" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">No Biometrics</p>
-                    <p className="text-2xl font-bold text-foreground">{stats.noBiometrics}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Premium Statistics */}
+          
 
           {/* Premium Filters */}
           <Card className="premium-card">
@@ -329,12 +282,7 @@ export default function StudentList() {
                     <Label className="text-sm font-bold text-electric-blue uppercase tracking-wider">Search Students</Label>
                     <div className="relative group">
                       <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-electric-blue group-focus-within:scale-110 transition-transform duration-300" />
-                      <Input 
-                        placeholder="Search by name, mobile, or email..." 
-                        value={searchTerm} 
-                        onChange={(e) => setSearchTerm(e.target.value)} 
-                        className="pl-12 h-12 bg-muted/20 border-2 border-border/50 focus:border-electric-blue focus:bg-background rounded-xl transition-all duration-300" 
-                      />
+                      <Input placeholder="Search by name, mobile, or email..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-12 h-12 bg-muted/20 border-2 border-border/50 focus:border-electric-blue focus:bg-background rounded-xl transition-all duration-300" />
                     </div>
                   </div>
 
@@ -342,13 +290,9 @@ export default function StudentList() {
                     <Label className="text-sm font-bold text-vibrant-purple uppercase tracking-wider">Filter by Batch</Label>
                     <div className="relative group">
                       <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-vibrant-purple group-focus-within:scale-110 transition-transform duration-300" />
-                      <select 
-                        value={selectedBatch} 
-                        onChange={(e) => setSelectedBatch(e.target.value)} 
-                        className="pl-12 pr-4 h-12 w-full bg-muted/20 border-2 border-border/50 focus:border-vibrant-purple focus:bg-background rounded-xl transition-all duration-300 text-foreground"
-                      >
+                      <select value={selectedBatch} onChange={e => setSelectedBatch(e.target.value)} className="pl-12 pr-4 h-12 w-full bg-muted/20 border-2 border-border/50 focus:border-vibrant-purple focus:bg-background rounded-xl transition-all duration-300 text-foreground">
                         <option value="all">All Batches</option>
-                        {batches.map((batch) => (
+                        {batches.map(batch => (
                           <option key={batch.id} value={batch.id}>
                             {batch.batch_name} {!batch.is_enabled ? '(Disabled)' : ''}
                           </option>
@@ -361,15 +305,11 @@ export default function StudentList() {
                     <Label className="text-sm font-bold text-emerald-green uppercase tracking-wider">Sort By</Label>
                     <div className="relative group">
                       <Database className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-emerald-green group-focus-within:scale-110 transition-transform duration-300" />
-                      <select 
-                        value={`${sortBy}-${sortOrder}`} 
-                        onChange={(e) => {
-                          const [field, order] = e.target.value.split('-');
-                          setSortBy(field as any);
-                          setSortOrder(order as any);
-                        }} 
-                        className="pl-12 pr-4 h-12 w-full bg-muted/20 border-2 border-border/50 focus:border-emerald-green focus:bg-background rounded-xl transition-all duration-300 text-foreground"
-                      >
+                      <select value={`${sortBy}-${sortOrder}`} onChange={e => {
+                      const [field, order] = e.target.value.split('-');
+                      setSortBy(field as any);
+                      setSortOrder(order as any);
+                    }} className="pl-12 pr-4 h-12 w-full bg-muted/20 border-2 border-border/50 focus:border-emerald-green focus:bg-background rounded-xl transition-all duration-300 text-foreground">
                         <option value="created_at-desc">Newest First</option>
                         <option value="created_at-asc">Oldest First</option>
                         <option value="student_name-asc">Name A-Z</option>
@@ -403,11 +343,39 @@ export default function StudentList() {
                 </TabsList>
                 
                 <TabsContent value="table" className="space-y-4">
-                  <EnhancedStudentTable 
-                    students={students} 
-                    onEdit={handleEdit} 
-                    onDelete={handleDelete} 
-                  />
+                  <EnhancedStudentTable students={students} onEdit={handleEdit} onDelete={handleDelete} />
+                  
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && <div className="flex items-center justify-between px-4 py-4 bg-muted/20 rounded-xl border border-border/50">
+                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <span>Page {currentPage + 1} of {totalPages}</span>
+                        <span>•</span>
+                        <span>{stats.totalStudents} total students</span>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Button onClick={goToPreviousPage} disabled={!hasPreviousPage} variant="outline" size="sm" className="h-10 px-4 border-border/50 hover:bg-electric-blue/5">
+                          <ChevronLeft className="h-4 w-4 mr-2" />
+                          Previous
+                        </Button>
+                        
+                        <div className="flex items-center space-x-1">
+                          {Array.from({
+                        length: Math.min(5, totalPages)
+                      }, (_, i) => {
+                        const pageNum = Math.max(0, Math.min(totalPages - 5, currentPage - 2)) + i;
+                        return <Button key={pageNum} onClick={() => goToPage(pageNum)} variant={pageNum === currentPage ? "default" : "outline"} size="sm" className="h-10 w-10">
+                                {pageNum + 1}
+                              </Button>;
+                      })}
+                        </div>
+                        
+                        <Button onClick={goToNextPage} disabled={!hasNextPage} variant="outline" size="sm" className="h-10 px-4 border-border/50 hover:bg-electric-blue/5" onMouseEnter={handlePrefetchNext}>
+                          Next
+                          <ChevronRight className="h-4 w-4 ml-2" />
+                        </Button>
+                      </div>
+                    </div>}
                 </TabsContent>
                 
                 <TabsContent value="debug" className="space-y-4">
@@ -418,16 +386,8 @@ export default function StudentList() {
           </Card>
 
           {/* Edit Student Dialog */}
-          <EditStudentDialog 
-            student={editingStudent} 
-            open={showEditDialog} 
-            onOpenChange={setShowEditDialog} 
-            onUpdate={handleUpdateStudent} 
-            batches={batches} 
-            isUpdating={updateMutation.isPending} 
-          />
+          <EditStudentDialog student={editingStudent} open={showEditDialog} onOpenChange={setShowEditDialog} onUpdate={handleUpdateStudent} batches={batches} isUpdating={updateMutation.isPending} />
         </div>
       </div>
-    </DashboardLayout>
-  );
+    </DashboardLayout>;
 }

@@ -391,6 +391,18 @@ export type Database = {
       }
     }
     Views: {
+      mv_dashboard_stats: {
+        Row: {
+          complete_biometrics: number | null
+          last_updated: string | null
+          partial_biometrics: number | null
+          total_batches: number | null
+          total_capacity: number | null
+          total_students: number | null
+          total_users: number | null
+        }
+        Relationships: []
+      }
       vw_batches_optimized: {
         Row: {
           admin_name: string | null
@@ -407,13 +419,6 @@ export type Database = {
           user_id: string | null
           username: string | null
           utilization_rate: number | null
-        }
-        Relationships: []
-      }
-      vw_dashboard_stats: {
-        Row: {
-          stat_type: string | null
-          stats: Json | null
         }
         Relationships: []
       }
@@ -465,10 +470,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["user_role"]
       }
-      get_dashboard_stats: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
       get_student_count_by_batch: {
         Args: { batch_ids: string[] }
         Returns: {
@@ -481,7 +482,7 @@ export type Database = {
         Returns: Json
       }
       get_user_accessible_batches: {
-        Args: Record<PropertyKey, never> | { target_user_id?: string }
+        Args: { target_user_id?: string }
         Returns: string[]
       }
       get_user_profile: {
@@ -561,10 +562,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
-      security_check_passed: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
       set_limit: {
         Args: { "": number }
         Returns: number
@@ -604,10 +601,6 @@ export type Database = {
       }
       user_has_batch_access: {
         Args: { target_user_id: string; target_batch_id: string }
-        Returns: boolean
-      }
-      validate_secure_session: {
-        Args: Record<PropertyKey, never>
         Returns: boolean
       }
     }
