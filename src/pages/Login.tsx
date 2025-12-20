@@ -1,6 +1,8 @@
 
 import { useState } from 'react';
 import { useEnhancedAuth } from '@/contexts/EnhancedAuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Navigate } from 'react-router-dom';
@@ -22,6 +24,17 @@ export default function Login() {
       console.error('Login failed:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleClearCachedSession = async () => {
+    try {
+      // "local" clears browser session storage without needing the backend (useful during Supabase outages)
+      await supabase.auth.signOut({ scope: 'local' });
+      localStorage.removeItem('redirectAfterLogin');
+      toast.success('Cleared cached session. Please try signing in again.');
+    } catch {
+      toast.error('Could not clear cached session. Try clearing site data for this domain.');
     }
   };
 
@@ -159,6 +172,14 @@ export default function Login() {
                     <span className="text-lg">Sign In Securely</span>
                   )}
                 </Button>
+
+                <button
+                  type="button"
+                  onClick={handleClearCachedSession}
+                  className="mt-4 w-full text-sm text-gray-300 hover:text-orange-400 transition-colors"
+                >
+                  Having trouble? Clear cached session
+                </button>
               </div>
             </form>
 
