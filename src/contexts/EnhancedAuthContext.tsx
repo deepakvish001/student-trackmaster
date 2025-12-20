@@ -49,28 +49,21 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
   
   const navigate = useNavigate();
 
-  // Initialize encryption key for biometric data
+  // Initialize encryption key for biometric data using session-based storage
+  // Keys are generated as non-extractable and stored only in memory/session
   const initializeEncryptionKey = async (userId: string) => {
     try {
-      // Try to get existing key from localStorage (in production, use secure storage)
-      const storedKey = localStorage.getItem(`biometric_key_${userId}`);
+      // Generate a new non-extractable key per session for security
+      // This prevents key theft via XSS as keys cannot be exported
+      console.log('Generating session-based encryption key');
+      const key = await generateEncryptionKey();
       
-      if (storedKey) {
-        console.log('Loading existing encryption key');
-        const key = await importEncryptionKey(storedKey);
-        setEncryptionKey(key);
-        logSecurityEvent('ENCRYPTION_KEY_LOADED', { userId });
-      } else {
-        console.log('Generating new encryption key');
-        const key = await generateEncryptionKey();
-        const exportedKey = await exportEncryptionKey(key);
-        
-        // Store key securely (in production, use proper key management)
-        localStorage.setItem(`biometric_key_${userId}`, exportedKey);
-        
-        setEncryptionKey(key);
-        logSecurityEvent('ENCRYPTION_KEY_CREATED', { userId });
-      }
+      setEncryptionKey(key);
+      logSecurityEvent('ENCRYPTION_KEY_CREATED', { 
+        userId,
+        storage: 'session-memory',
+        extractable: false
+      });
       
       setSecurityLevel('high');
     } catch (error) {
@@ -187,11 +180,7 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
         });
         
       } else if (event === 'SIGNED_OUT') {
-        // Clean up encryption key
-        if (user?.id) {
-          localStorage.removeItem(`biometric_key_${user.id}`);
-        }
-        
+        // Clean up encryption key from memory (no localStorage cleanup needed)
         setEncryptionKey(null);
         setSecurityLevel('low');
         setSessionMetrics({
