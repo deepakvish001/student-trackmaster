@@ -277,7 +277,7 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
           .eq('user_id', data.user.id);
       }
 
-      logSecurityEvent('LOGIN_SUCCESS', { 
+      logSecurityEvent('LOGIN_SUCCESS', {
         email: email.substring(0, 3) + '***',
         timestamp: new Date().toISOString()
       });
@@ -294,7 +294,19 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
       }
       
     } catch (error: any) {
-      const errorMessage = error.message || 'Login failed. Please check your credentials.';
+      const rawMessage = typeof error?.message === 'string' ? error.message : '';
+
+      const isNetworkOrBackendError =
+        rawMessage === '{}' ||
+        /Failed to fetch/i.test(rawMessage) ||
+        /upstream connect error/i.test(rawMessage) ||
+        error?.name === 'AuthRetryableFetchError' ||
+        error?.status === 503;
+
+      const errorMessage = isNetworkOrBackendError
+        ? 'Cannot reach the authentication server right now (Supabase). If your Supabase project is paused/starting, wait 1–2 minutes and try again. Also disable any adblock/security extensions for this site.'
+        : (rawMessage || 'Login failed. Please check your credentials.');
+
       toast.error(errorMessage);
       throw error;
     } finally {
@@ -344,7 +356,19 @@ export function EnhancedAuthProvider({ children }: { children: React.ReactNode }
       navigate('/');
       
     } catch (error: any) {
-      const errorMessage = error.message || 'Signup failed. Please try again.';
+      const rawMessage = typeof error?.message === 'string' ? error.message : '';
+
+      const isNetworkOrBackendError =
+        rawMessage === '{}' ||
+        /Failed to fetch/i.test(rawMessage) ||
+        /upstream connect error/i.test(rawMessage) ||
+        error?.name === 'AuthRetryableFetchError' ||
+        error?.status === 503;
+
+      const errorMessage = isNetworkOrBackendError
+        ? 'Cannot reach the authentication server right now (Supabase). If your Supabase project is paused/starting, wait 1–2 minutes and try again. Also disable any adblock/security extensions for this site.'
+        : (rawMessage || 'Signup failed. Please try again.');
+
       toast.error(errorMessage);
       throw error;
     } finally {
