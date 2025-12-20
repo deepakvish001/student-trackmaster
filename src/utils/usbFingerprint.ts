@@ -226,7 +226,10 @@ export const captureFingerprint = async (mfsDevice: MFSDevice, timeout = 10000):
       throw new Error("No image data received");
     }
     
-    const imageData = imageResult.data.buffer;
+    // Create proper ArrayBuffer from buffer to avoid SharedArrayBuffer type issues
+    const rawImageBuffer = imageResult.data.buffer;
+    const imageData = new ArrayBuffer(rawImageBuffer.byteLength);
+    new Uint8Array(imageData).set(new Uint8Array(rawImageBuffer));
     
     // Get ISO template
     const getTemplateCmd = new Uint8Array([CMD_GET_TEMPLATE, 0x00, 0x00, 0x00]);
@@ -243,12 +246,16 @@ export const captureFingerprint = async (mfsDevice: MFSDevice, timeout = 10000):
     
     console.log(`Template size: ${templateSize} bytes`);
     
+    // Create proper ArrayBuffer from the slice to avoid SharedArrayBuffer issues
+    const templateArrayBuffer = new ArrayBuffer(templateData.byteLength);
+    new Uint8Array(templateArrayBuffer).set(new Uint8Array(templateData));
+    
     return {
       id: mfsDevice.id,
       image: imageData,
       quality: quality,
       nfiq: quality > 60 ? 1 : (quality > 40 ? 2 : 3), // Estimate NFIQ from quality
-      template: templateData
+      template: templateArrayBuffer
     };
   } catch (error) {
     console.error("Error capturing fingerprint:", error);

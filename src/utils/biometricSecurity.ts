@@ -14,6 +14,7 @@ const TAG_LENGTH = 16; // bytes for authentication tag
 
 /**
  * Generate a cryptographically secure random key for AES encryption
+ * Keys are generated as non-extractable for enhanced security
  */
 export const generateEncryptionKey = async (): Promise<CryptoKey> => {
   try {
@@ -22,13 +23,14 @@ export const generateEncryptionKey = async (): Promise<CryptoKey> => {
         name: ALGORITHM,
         length: KEY_LENGTH,
       },
-      true, // extractable
+      false, // non-extractable for security - prevents key theft via XSS
       ['encrypt', 'decrypt']
     );
     
     logSecurityEvent('ENCRYPTION_KEY_GENERATED', { 
       algorithm: ALGORITHM,
-      keyLength: KEY_LENGTH 
+      keyLength: KEY_LENGTH,
+      extractable: false
     });
     
     return key;

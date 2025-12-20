@@ -274,8 +274,23 @@ export function USBFingerprintCapture({ index, value, onChange }: USBFingerprint
       
       // This is a simplified approach since we don't have direct access to the stored template
       // In real implementation, you might want to compare with the stored template from database
-      const templateBuffer = Buffer.from(fingerData.template, 'base64');
-      const currentBuffer = Buffer.from(templateToBase64(currentFinger) || "", 'base64');
+      const templateBase64 = fingerData.template;
+      const currentBase64 = templateToBase64(currentFinger) || "";
+      
+      // Convert base64 to ArrayBuffer properly
+      const binaryStr1 = atob(templateBase64);
+      const bytes1 = new Uint8Array(binaryStr1.length);
+      for (let i = 0; i < binaryStr1.length; i++) {
+        bytes1[i] = binaryStr1.charCodeAt(i);
+      }
+      const templateBuffer: ArrayBuffer = bytes1.buffer;
+      
+      const binaryStr2 = atob(currentBase64);
+      const bytes2 = new Uint8Array(binaryStr2.length);
+      for (let i = 0; i < binaryStr2.length; i++) {
+        bytes2[i] = binaryStr2.charCodeAt(i);
+      }
+      const currentBuffer: ArrayBuffer = bytes2.buffer;
       
       const matchResult = await matchFingerprints(templateBuffer, currentBuffer, devices[0]);
       
