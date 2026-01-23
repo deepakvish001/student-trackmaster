@@ -99,7 +99,23 @@ export default function SystemSettings() {
 
   const handleResetToDefaults = async () => {
     try {
-      const { data, error } = await supabase.rpc('reset_system_settings_to_defaults');
+      // Reset settings by updating with default values
+      const defaultSettings = {
+        'security.two_factor_enabled': false,
+        'security.session_timeout': 30,
+        'security.password_min_length': 8,
+        'system.maintenance_mode': false,
+        'system.app_version': '1.0.0',
+        'system.environment': 'production',
+        'notifications.email_enabled': true,
+        'notifications.push_enabled': false,
+        'database.auto_backup': true,
+        'database.backup_interval': 'daily'
+      };
+      
+      const { error } = await supabase.rpc('update_system_settings', { 
+        settings: defaultSettings 
+      });
       
       if (error) {
         console.error('Error resetting settings:', error);
@@ -111,18 +127,12 @@ export default function SystemSettings() {
         return;
       }
 
-      const response = data as { success?: boolean; message?: string; error?: string };
-      
-      if (response?.success) {
-        toast({
-          title: "Success",
-          description: response.message || "Settings reset to defaults successfully"
-        });
-        // Reload settings to reflect changes
-        await loadSettings();
-      } else {
-        throw new Error(response?.error || 'Unknown error');
-      }
+      toast({
+        title: "Success",
+        description: "Settings reset to defaults successfully"
+      });
+      // Reload settings to reflect changes
+      await loadSettings();
     } catch (err: any) {
       console.error('Failed to reset settings:', err);
       toast({
