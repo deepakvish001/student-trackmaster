@@ -13,15 +13,23 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, user, isLoading: authLoading } = useEnhancedAuth();
+  const [isSignUp, setIsSignUp] = useState(false);
+  const { login, signUp, user, isLoading: authLoading } = useEnhancedAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await login(email, password);
-    } catch (error) {
-      console.error('Login failed:', error);
+      if (isSignUp) {
+        await signUp(email, password);
+        toast.success('Account created successfully! You can now log in.');
+        setIsSignUp(false);
+      } else {
+        await login(email, password);
+      }
+    } catch (error: any) {
+      console.error('Auth failed:', error);
+      toast.error(error.message || 'Authentication failed');
     } finally {
       setIsLoading(false);
     }
@@ -99,8 +107,8 @@ export default function Login() {
           <div className="bg-white/5 backdrop-blur-sm rounded-3xl shadow-2xl shadow-black/20 p-8 lg:p-10 border border-white/10">
             {/* Form Header */}
             <div className="text-center mb-10">
-              <h2 className="text-3xl font-bold text-white mb-3">Welcome Back</h2>
-              <p className="text-gray-300 text-lg">Sign in to your secure account</p>
+              <h2 className="text-3xl font-bold text-white mb-3">{isSignUp ? 'Create Account' : 'Welcome Back'}</h2>
+              <p className="text-gray-300 text-lg">{isSignUp ? 'Set up your secure account' : 'Sign in to your secure account'}</p>
             </div>
 
             {/* Login Form */}
@@ -166,17 +174,27 @@ export default function Login() {
                   {isLoading ? (
                     <div className="flex items-center justify-center gap-3">
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      <span className="text-lg">Authenticating...</span>
+                      <span className="text-lg">{isSignUp ? 'Creating Account...' : 'Authenticating...'}</span>
                     </div>
                   ) : (
-                    <span className="text-lg">Sign In Securely</span>
+                    <span className="text-lg">{isSignUp ? 'Create Account' : 'Sign In Securely'}</span>
                   )}
                 </Button>
+
+                <div className="mt-4 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setIsSignUp(!isSignUp)}
+                    className="text-sm text-gray-300 hover:text-orange-400 transition-colors"
+                  >
+                    {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+                  </button>
+                </div>
 
                 <button
                   type="button"
                   onClick={handleClearCachedSession}
-                  className="mt-4 w-full text-sm text-gray-300 hover:text-orange-400 transition-colors"
+                  className="mt-2 w-full text-sm text-gray-400 hover:text-orange-400 transition-colors"
                 >
                   Having trouble? Clear cached session
                 </button>
