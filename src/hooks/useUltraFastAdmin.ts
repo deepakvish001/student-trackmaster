@@ -78,16 +78,17 @@ export function useUltraFastAdmin() {
       const { data, error } = await supabase
         .from('system_settings')
         .select('*')
-        .order('category, setting_key');
+        .order('category');
 
       if (error) throw error;
       
       // Group settings by category for better organization
       const groupedSettings = (data || []).reduce((acc, setting) => {
-        if (!acc[setting.category]) {
-          acc[setting.category] = {};
+        const category = setting.category || 'general';
+        if (!acc[category]) {
+          acc[category] = {};
         }
-        acc[setting.category][setting.setting_key] = setting;
+        acc[category][setting.key] = setting;
         return acc;
       }, {} as Record<string, any>);
       

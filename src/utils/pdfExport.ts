@@ -259,11 +259,14 @@ export const exportStudentsToPDF = async (students: Student[], filters?: {
     filename = `students-${filters.batchName.replace(/[^a-zA-Z0-9]/g, '_')}-${timestamp}.pdf`;
   }
   
-  // Log the PDF download activity
+  // Log the PDF download activity using audit_logs table
   try {
-    await supabase.rpc('log_file_operation', {
-      operation_type: 'PDF_DOWNLOAD',
-      file_details: {
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('audit_logs').insert({
+      user_id: user?.id || null,
+      action: 'PDF_DOWNLOAD',
+      table_name: 'students',
+      new_values: {
         report_type: filters?.searchTerm || filters?.selectedBatch ? 'filtered' : 'complete',
         student_count: students.length,
         batch_name: filters?.batchName,
