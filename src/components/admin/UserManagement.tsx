@@ -419,6 +419,43 @@ export default function UserManagement() {
     }
   });
 
+  // Update role mutation
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: UserRole }) => {
+      const { data, error } = await supabase.functions.invoke('manage-users', {
+        body: { action: 'update_role', user_id: userId, role: role }
+      });
+      
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+      
+      return data;
+    },
+    onSuccess: (data, { userId, role }) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      
+      // Log role change event
+      const targetUser = users?.find(u => u.user_id === userId);
+      logEvent('USER_ROLE_CHANGED', `${targetUser?.full_name || 'User'} role changed to ${role}`, 'user_profiles', userId, {
+        role: targetUser?.role
+      }, {
+        role: role
+      });
+      
+      toast({
+        title: "Success",
+        description: `Role updated to ${role === 'super_admin' ? 'Super Admin' : 'User'}`
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   const handleCreateUser = () => {
     if (!state.createUserForm.email || !state.createUserForm.password || !state.createUserForm.full_name) {
       toast({
@@ -677,9 +714,23 @@ export default function UserManagement() {
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.full_name}</TableCell>
                   <TableCell>
-                    <Badge variant={user.role === 'super_admin' ? 'default' : 'secondary'}>
-                      {user.role === 'super_admin' ? 'Super Admin' : 'User'}
-                    </Badge>
+                    <Select
+                      value={user.role}
+                      onValueChange={(value: UserRole) => {
+                        updateRoleMutation.mutate({ userId: user.user_id, role: value });
+                      }}
+                      disabled={updateRoleMutation.isPending}
+                    >
+                      <SelectTrigger className="w-32">
+                        <Badge variant={user.role === 'super_admin' ? 'default' : 'secondary'}>
+                          {user.role === 'super_admin' ? 'Super Admin' : 'User'}
+                        </Badge>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="user">User</SelectItem>
+                        <SelectItem value="super_admin">Super Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell>
                     <Badge variant={user.is_active ? 'default' : 'destructive'}>

@@ -310,14 +310,57 @@ serve(async (req) => {
           )
         }
 
+      return new Response(
+        JSON.stringify({ success: true, message: 'Max batches updated successfully' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    case 'update_role': {
+      if (!user_id || !role) {
         return new Response(
-          JSON.stringify({ success: true, message: 'Max batches updated successfully' }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: 'User ID and role are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 
-      default:
+      // Validate role value
+      if (!['user', 'super_admin'].includes(role)) {
         return new Response(
+          JSON.stringify({ error: 'Invalid role. Must be "user" or "super_admin"' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Prevent changing own role
+      if (user_id === user.id) {
+        return new Response(
+          JSON.stringify({ error: 'Cannot change your own role' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const { error: updateError } = await supabaseClient
+        .from('user_profiles')
+        .update({ role: role })
+        .eq('user_id', user_id)
+
+      if (updateError) {
+        console.error('Update role error:', updateError)
+        return new Response(
+          JSON.stringify({ error: updateError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: `Role updated to ${role} successfully` }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    default:
+      return new Response(
           JSON.stringify({ error: 'Invalid action' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
