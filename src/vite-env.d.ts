@@ -1,5 +1,6 @@
 
 /// <reference types="vite/client" />
+/// <reference types="node" />
 
 // MFS100 SDK Global Functions
 declare global {
