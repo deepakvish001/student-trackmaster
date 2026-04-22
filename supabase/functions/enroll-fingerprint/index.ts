@@ -1,5 +1,5 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -68,6 +68,30 @@ serve(async (req) => {
       );
     }
 
+    // Authentication: require valid JWT
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      logSecurityEvent('Missing or invalid Authorization header');
+      return new Response(
+        JSON.stringify({ code: 401, message: 'Unauthorized', errorMessage: 'Authentication required' }),
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 401 },
+      );
+    }
+
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+    );
+    const token = authHeader.replace('Bearer ', '');
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    if (userError || !userData?.user) {
+      logSecurityEvent('Invalid JWT token', { error: userError?.message });
+      return new Response(
+        JSON.stringify({ code: 401, message: 'Unauthorized', errorMessage: 'Invalid authentication' }),
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 401 },
+      );
+    }
+
     const requestData = await req.json();
     
     // Validate and sanitize input
@@ -112,7 +136,7 @@ serve(async (req) => {
       );
     }
     
-    console.log(`Enrolling fingerprint for externalId: ${externalId} in group: ${group}`);
+    console.log(`Enrolling fingerprint for externalId: ${externalId} in group: ${group} by user: ${userData.user.id}`);
     console.log(`Fingerprint template length: ${fingerPrint.length}`);
     
     // Enhanced error handling for API call
@@ -144,6 +168,7 @@ serve(async (req) => {
     logSecurityEvent('Fingerprint enrolled successfully', { 
       externalId,
       group,
+      userId: userData.user.id,
       responseCode: data.code 
     });
 
@@ -158,7 +183,7 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Error:', error);
-    logSecurityEvent('Fingerprint enrollment failed', { error: error.message });
+    logSecurityEvent('Fingerprint enrollment failed', { error: (error as Error).message });
     
     return new Response(
       JSON.stringify({ 

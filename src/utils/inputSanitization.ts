@@ -85,13 +85,9 @@ export const logSecurityEvent = (event: string, details: any = {}) => {
     }
   }
   
-  console.warn(`[SECURITY] ${event}:`, {
-    timestamp: new Date().toISOString(),
-    userAgent: navigator.userAgent,
-    url: window.location.href,
-    referrer: document.referrer,
-    ...details
-  });
+  // Only log event name and timestamp client-side to avoid leaking session context
+  // (userAgent, URL, referrer, userId, etc.) via the browser console.
+  console.warn(`[SECURITY] ${event} @ ${new Date().toISOString()}`);
 };
 
 // Content Security Policy validator
