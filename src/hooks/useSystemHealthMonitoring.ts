@@ -20,8 +20,11 @@ interface SystemMetrics {
   lastCheck: string;
 }
 
-const SUPABASE_URL = "https://zwtjjzryscwhqsgvvqzf.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp3dGpqenJ5c2N3aHFzZ3Z2cXpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI5MzQ1MDEsImV4cCI6MjA2ODUxMDUwMX0.l5lgHxwSWVKkdJhuWqomKGz8Q35Ck2BCYIS2CJmPHZs";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://vitvffzejxihfvnumlgn.supabase.co";
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpdHZmZnplanhpaGZ2bnVtbGduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxNjQ0MDksImV4cCI6MjA4NDc0MDQwOX0.M7GtqmgVpAlEBK60cq9xunYJBkURPvQR5ikEbOycKk0";
+
+// Table is optional; silently skip if it does not exist
+let HEALTH_LOG_TABLE_DISABLED = false;
 
 export function useSystemHealthMonitoring(autoCheck = true, interval = 30000) {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
