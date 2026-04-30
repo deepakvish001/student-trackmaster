@@ -51,10 +51,8 @@ export function useSystemHealthMonitoring(autoCheck = true, interval = 30000) {
     details?: any,
     responseTime?: number
   ) => {
+    if (HEALTH_LOG_TABLE_DISABLED) return;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      // Direct insert into system_health_logs table instead of RPC
       const { error } = await (supabase as any)
         .from('system_health_logs')
         .insert({
@@ -66,10 +64,12 @@ export function useSystemHealthMonitoring(autoCheck = true, interval = 30000) {
         });
 
       if (error) {
-        console.error('Failed to record health check:', error);
+        if ((error as any).code === 'PGRST205') {
+          HEALTH_LOG_TABLE_DISABLED = true;
+        }
       }
     } catch (err) {
-      console.error('Health check recording error:', err);
+      // swallow
     }
   };
 
