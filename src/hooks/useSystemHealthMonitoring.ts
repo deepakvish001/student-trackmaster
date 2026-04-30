@@ -179,6 +179,7 @@ export function useSystemHealthMonitoring(autoCheck = true, interval = 30000) {
   };
 
   const fetchRecentChecks = async () => {
+    if (HEALTH_LOG_TABLE_DISABLED) return;
     try {
       const { data, error } = await (supabase as any)
         .from('system_health_logs')
@@ -187,13 +188,15 @@ export function useSystemHealthMonitoring(autoCheck = true, interval = 30000) {
         .limit(20);
 
       if (error) {
-        console.error('Error fetching health checks:', error);
+        if ((error as any).code === 'PGRST205') {
+          HEALTH_LOG_TABLE_DISABLED = true;
+        }
         return;
       }
       
       setRecentChecks((data || []) as HealthCheck[]);
     } catch (err) {
-      console.error('Failed to fetch recent health checks:', err);
+      // swallow
     }
   };
 
