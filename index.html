@@ -6,10 +6,13 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Student Management System</title>
-    <!-- jQuery required by MFS100 SDK -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- MFS100 SDK for fingerprint device -->
-    <script src="/mfs100-9.0.2.6.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://code.jquery.com" />
+    <!-- jQuery required by MFS100 SDK - deferred to avoid blocking initial render -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" defer></script>
+    <!-- MFS100 SDK for fingerprint device - deferred to avoid blocking initial render -->
+    <script src="/mfs100-9.0.2.6.js" defer></script>
   </head>
   <body>
     <div id="root"></div>
