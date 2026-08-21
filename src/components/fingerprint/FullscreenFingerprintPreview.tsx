@@ -52,6 +52,7 @@ export function FullscreenFingerprintPreview({
                 size="sm"
                 onClick={onClose}
                 className="h-8 w-8 p-0"
+                aria-label="Close preview"
               >
                 <X className="h-4 w-4" />
               </Button>

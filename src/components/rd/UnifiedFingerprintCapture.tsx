@@ -304,6 +304,7 @@ export function UnifiedFingerprintCapture({
               variant="outline"
               size="lg"
               className="px-3"
+              aria-label={`Cancel ${fingerName} capture`}
             >
               <X className="h-5 w-5" />
             </Button>
